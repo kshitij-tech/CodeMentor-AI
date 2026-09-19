@@ -42,6 +42,9 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
 .mentor-typing{display:inline-flex;gap:4px;align-items:center;color:#94a3b8}
 .mentor-typing span{width:4px;height:4px;border-radius:999px;background:#94a3b8;animation:mentorDot 1.2s infinite ease-in-out}
 .mentor-typing span:nth-child(2){animation-delay:.15s}.mentor-typing span:nth-child(3){animation-delay:.3s}
+.mentor-panel-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;margin:0!important;border-radius:0!important;z-index:100!important}
+.mentor-panel-fullscreen .mentor-bubble{max-width:min(760px,88vw);font-size:12px}
+.mentor-panel-fullscreen .mentor-user .mentor-bubble{font-size:14px}
 @keyframes mentorDot{0%,70%,100%{opacity:.25;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}
 </style>
 </head>
@@ -238,6 +241,9 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
         </div>
       </div>
       <div class="flex items-center gap-1">
+        <button id="mentor-fullscreen" type="button" class="w-7 h-7 rounded hover:bg-slate-800 text-slate-400" aria-label="Open AI Mentor fullscreen" title="Fullscreen">
+          <span id="mentor-fullscreen-icon" class="material-symbols-outlined text-[16px]">fullscreen</span>
+        </button>
         <button id="mentor-clear" type="button" class="px-2 py-1 rounded text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-200">Clear</button>
         <button id="mentor-close" type="button" class="w-7 h-7 rounded hover:bg-slate-800 text-slate-400" aria-label="Close mentor">
           <span class="material-symbols-outlined text-[16px]">close</span>
@@ -673,7 +679,12 @@ document.querySelectorAll('[data-account-action]').forEach(button=>button.addEve
   else if(action==='preferences'||action==='profile')location.replace('preferences.html');
   else if(action==='settings')location.replace('settings.html');
 }));
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccount();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    closeAccount();
+    if($('mentor-panel')?.classList.contains('mentor-panel-fullscreen'))toggleMentorFullscreen(false);
+  }
+});
 
 function mentorStorageKey(){
   return current ? 'cm_mentor_chat_'+current.slug : 'cm_mentor_chat_none';
@@ -751,6 +762,27 @@ function toggleMentor(){
 $('mentor-trigger').addEventListener('click',toggleMentor);
 $('mentor-close').addEventListener('click',toggleMentor);
 $('mentor-clear').addEventListener('click',clearMentorChat);
+
+function toggleMentorFullscreen(force){
+  const panel=$('mentor-panel');
+  const icon=$('mentor-fullscreen-icon');
+  if(!panel||!icon)return;
+  const next=typeof force==='boolean'?force:!panel.classList.contains('mentor-panel-fullscreen');
+  panel.classList.toggle('mentor-panel-fullscreen',next);
+  icon.textContent=next?'fullscreen_exit':'fullscreen';
+  const button=$('mentor-fullscreen');
+  button?.setAttribute('aria-label',next?'Exit fullscreen':'Open AI Mentor fullscreen');
+  button?.setAttribute('title',next?'Exit fullscreen':'Fullscreen');
+  if(next){
+    panel.classList.remove('hidden');
+    panel.classList.add('flex');
+    renderMentorChat();
+    setTimeout(()=>$('mentor-input')?.focus(),50);
+  }
+  requestAnimationFrame(()=>editor?.layout?.());
+}
+$('mentor-fullscreen').addEventListener('click',()=>toggleMentorFullscreen());
+
 
 async function askMentor(action,question=null){
   if(!current){toast('Select a problem first.');return}
