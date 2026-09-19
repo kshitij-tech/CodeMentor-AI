@@ -361,6 +361,14 @@ function renderSkills(){
     el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+esc(topic)+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">'+status+'</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:'+mastery+'%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>'+stat.solved_problems+' solved in app</span><span>'+mastery+'% mastery</span></div>';
   });
 }
+function renderAnalyticsUnavailable(message){
+  const badge=document.getElementById('telemetry-badge');
+  if(badge){ badge.textContent=message || 'Analytics unavailable'; badge.classList.add('text-error'); }
+  const daily=document.getElementById('daily-telemetry');
+  const labels=document.getElementById('daily-labels');
+  if(daily) daily.innerHTML='<div class="w-full h-full flex items-center justify-center text-xs text-on-surface-variant">Could not load analytics telemetry.</div>';
+  if(labels) labels.innerHTML='';
+}
 function renderAnalytics(data){
   document.getElementById('streak-days').textContent=String(data.active_days_last_7_days||0);
   document.getElementById('metric-solved').textContent=String(data.total_solved||0);
@@ -373,6 +381,8 @@ function renderAnalytics(data){
   if(badge) badge.textContent=data.total_attempts ? data.total_attempts+' attempts tracked' : 'No attempts yet';
   const daily=document.getElementById('daily-telemetry');
   const labels=document.getElementById('daily-labels');
+  const badge=document.getElementById('telemetry-badge');
+  if(badge) badge.classList.remove('text-error');
   if(!daily||!labels)return;
   const points=data.daily||[];
   const max=Math.max(1,...points.map(x=>Number(x.attempts)||0));
@@ -399,8 +409,14 @@ async function loadDashboard(){
     }
     const profile=profileRes.ok?await profileRes.json():{};
     const me=meRes.ok?await meRes.json():{};
-    analyticsSnapshot=analyticsRes.ok?await analyticsRes.json():null;
-    if(analyticsSnapshot) renderAnalytics(analyticsSnapshot);
+    if(analyticsRes.ok){
+      analyticsSnapshot=await analyticsRes.json();
+      renderAnalytics(analyticsSnapshot);
+    }else{
+      analyticsSnapshot=null;
+      const detail=await analyticsRes.text().catch(()=> '');
+      renderAnalyticsUnavailable('Analytics API error ('+analyticsRes.status+')'+(detail?' — '+detail.slice(0,120):''));
+    }
     renderSkills();
     const name=profile.full_name || 'CodeMentor User';
     const role=profile.target_role || 'Complete your profile';
