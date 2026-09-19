@@ -61,19 +61,6 @@ def analytics_summary(
         for attempt in recent
     }
 
-    mentor_hints = (
-        db.query(MentorMessage)
-        .filter(
-            MentorMessage.role == "assistant",
-            MentorMessage.action == "hint",
-        )
-        .join(
-            # mentor_sessions is intentionally joined through the FK path below
-            # using the session id without requiring ORM relationships.
-            # SQLAlchemy accepts the explicit join condition.
-        )
-    )
-
     # Count hints through a lightweight SQL query without adding ORM relationships.
     from sqlalchemy import func
     from backend.models import MentorSession
