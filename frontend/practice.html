@@ -29,40 +29,99 @@ body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mon
 </div>
 </header>
 
-<main class="pt-20 pb-8 px-3 sm:px-5 lg:px-6">
-<div class="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)_340px] gap-4">
-<aside class="bg-white rounded-2xl shadow-sm overflow-hidden">
-<div class="p-4 border-b border-slate-100"><div class="flex items-center justify-between"><div><div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Problem set</div><h2 class="font-bold mt-1">Choose a problem</h2></div><button id="back-dashboard" class="text-xs text-on-surface-variant hover:text-primary">Dashboard</button></div>
-<div class="grid grid-cols-2 gap-2 mt-4"><select id="difficulty" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All levels</option><option>Easy</option><option>Medium</option></select><select id="topic" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All topics</option></select></div></div>
-<div id="problem-list" class="p-2 max-h-[calc(100vh-210px)] overflow-auto"></div>
+<main class="pt-16 h-screen overflow-hidden">
+<div class="h-full max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
+<aside class="bg-white border-r border-slate-200 overflow-hidden flex flex-col min-h-0">
+  <div class="p-4 border-b border-slate-100 shrink-0">
+    <div class="flex items-center justify-between">
+      <div><div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Problem set</div><h2 class="font-bold mt-1">Choose a problem</h2></div>
+      <button id="back-dashboard" class="text-xs text-on-surface-variant hover:text-primary">Dashboard</button>
+    </div>
+    <div class="grid grid-cols-2 gap-2 mt-4">
+      <select id="difficulty" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All levels</option><option>Easy</option><option>Medium</option></select>
+      <select id="topic" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All topics</option></select>
+    </div>
+  </div>
+  <div id="problem-list" class="p-2 flex-1 overflow-auto"></div>
 </aside>
 
-<section class="bg-white rounded-2xl shadow-sm overflow-hidden min-h-[760px] flex flex-col">
-<div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
-<div><div class="flex items-center gap-2"><span id="problem-difficulty" class="mono text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-surface-container-low text-on-surface-variant">—</span><span id="problem-topics" class="text-xs text-on-surface-variant">—</span></div><h1 id="problem-title" class="text-xl font-bold mt-2">Select a problem</h1></div>
-<div class="flex items-center gap-2"><select id="language" class="rounded-lg bg-surface-container-low border-0 px-3 py-2 text-sm outline-none"><option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option></select><button id="reset-code" class="px-3 py-2 rounded-lg bg-surface-container-low text-sm hover:bg-surface-container" type="button"><span class="material-symbols-outlined align-middle text-[17px]">restart_alt</span> Reset</button></div>
-</div>
-<div class="grid grid-cols-1 lg:grid-cols-2 flex-1 min-h-0">
-<div class="p-5 border-b lg:border-b-0 lg:border-r border-slate-100 overflow-auto"><div class="mono text-[10px] uppercase tracking-wider text-on-surface-variant">Problem</div><div id="problem-description" class="text-sm leading-7 mt-3">Choose a problem from the left.</div>
-<div class="mt-6"><h3 class="font-bold text-sm">Examples</h3><div id="examples" class="space-y-3 mt-3"></div></div>
-<div class="mt-6"><h3 class="font-bold text-sm">Constraints</h3><ul id="constraints" class="mt-3 space-y-2 text-xs text-on-surface-variant list-disc pl-5"></ul></div></div>
-<div class="bg-[#0f172a] text-slate-100 flex flex-col min-h-[520px]">
-<div class="px-4 py-3 border-b border-white/10 flex items-center justify-between"><span class="mono text-[10px] uppercase tracking-wider text-slate-400">Code editor</span><span id="autosave" class="mono text-[10px] text-slate-500">Draft not saved</span></div>
-<textarea id="code-editor" class="editor flex-1 w-full resize-none bg-transparent p-5 text-[13px] leading-6 outline-none" spellcheck="false" placeholder="Your solution will appear here..."></textarea>
-<div class="px-4 py-3 border-t border-white/10 flex items-center justify-between gap-3"><div id="execution-status" class="text-xs text-slate-400">Execution engine will be connected next.</div><div class="flex items-center gap-2"><button id="run-btn" class="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm font-semibold hover:bg-slate-600" type="button"><span class="material-symbols-outlined align-middle text-[17px]">play_arrow</span> Run</button><button id="submit-btn" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-container" type="button"><span class="material-symbols-outlined align-middle text-[17px]">task_alt</span> Submit</button></div></div>
-</div></div></section>
+<section class="min-w-0 min-h-0 bg-[#0b1020] text-slate-100 flex flex-col relative">
+  <div class="h-14 bg-[#111827] border-b border-white/10 flex items-center justify-between px-4 shrink-0">
+    <div class="flex items-center gap-3 min-w-0">
+      <div class="flex items-center gap-2 min-w-0">
+        <span id="problem-difficulty" class="mono text-[9px] uppercase tracking-wider px-2 py-1 rounded bg-white/10 text-slate-300">—</span>
+        <span id="problem-topics" class="text-xs text-slate-400 truncate">—</span>
+      </div>
+      <h1 id="problem-title" class="font-semibold text-sm sm:text-base truncate">Select a problem</h1>
+    </div>
+    <div class="flex items-center gap-2 shrink-0">
+      <select id="language" class="rounded-lg bg-[#1f2937] text-slate-200 border border-white/10 px-3 py-2 text-xs outline-none">
+        <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
+      </select>
+      <button id="reset-code" class="w-9 h-9 rounded-lg bg-[#1f2937] hover:bg-[#273449] text-slate-200 flex items-center justify-center" type="button" title="Reset code" aria-label="Reset code">
+        <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+      </button>
+    </div>
+  </div>
 
-<aside class="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col">
-<div class="p-5 bg-gradient-to-br from-primary-container to-primary text-white"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center"><span class="material-symbols-outlined">smart_toy</span></div><div><h2 class="font-bold">AI Mentor</h2><div class="mono text-[10px] opacity-75">Problem context loaded</div></div></div><p class="text-xs opacity-85 mt-4">The mentor will eventually inspect execution results, bugs, edge cases, and complexity. For now, you can record what you are thinking.</p></div>
-<div class="p-5 flex-1"><div class="mono text-[10px] uppercase tracking-wider text-on-surface-variant">Session notes</div><textarea id="notes" rows="7" class="w-full mt-3 rounded-xl bg-surface-container-low border-0 px-4 py-3 text-sm outline-none resize-none" placeholder="What approach are you considering? What part is unclear?"></textarea><div class="mt-4 p-4 rounded-xl bg-surface-container-low"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">lightbulb</span><span class="font-semibold text-sm">Hint strategy</span></div><p class="text-xs text-on-surface-variant mt-2">When the execution engine is connected, hints will be progressively revealed instead of giving away the full solution immediately.</p></div></div>
-<div class="p-5 border-t border-slate-100"><button id="mentor-btn" class="w-full py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm font-semibold" type="button">Ask Mentor About This Problem</button></div>
-</aside>
+  <div class="flex-1 min-h-0 flex flex-col">
+    <div class="px-4 py-2 bg-[#0f172a] border-b border-white/10 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-[16px] text-slate-500">description</span>
+        <span class="mono text-[10px] uppercase tracking-wider text-slate-500">solution</span>
+      </div>
+      <span id="autosave" class="mono text-[10px] text-slate-500">Draft not saved</span>
+    </div>
+    <div id="code-editor" class="flex-1 min-h-0"></div>
+    <div class="h-12 bg-[#111827] border-t border-white/10 flex items-center justify-between px-4 shrink-0">
+      <div id="execution-status" class="text-xs text-slate-400">Execution engine will be connected next.</div>
+      <div class="flex items-center gap-2">
+        <button id="run-btn" class="px-3.5 py-2 rounded-lg bg-[#1f2937] hover:bg-[#273449] text-slate-100 text-xs font-semibold" type="button"><span class="material-symbols-outlined align-middle text-[16px]">play_arrow</span> Run</button>
+        <button id="submit-btn" class="px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container" type="button"><span class="material-symbols-outlined align-middle text-[16px]">task_alt</span> Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="mentor-fab" class="fixed bottom-6 right-6 z-[65] w-12 h-12 rounded-full bg-primary text-white shadow-xl hover:scale-105 transition-transform flex items-center justify-center" type="button" title="Open AI Mentor" aria-label="Open AI Mentor">
+    <span class="material-symbols-outlined text-[22px]">smart_toy</span>
+  </button>
+
+  <div id="mentor-panel" class="hidden fixed bottom-20 right-5 z-[70] w-[min(400px,calc(100vw-2rem))] h-[min(560px,calc(100vh-6rem))] bg-[#101827] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+    <div class="h-14 px-4 flex items-center justify-between border-b border-white/10 shrink-0">
+      <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">smart_toy</span></div><div><div class="font-semibold text-sm">AI Mentor</div><div class="mono text-[9px] uppercase tracking-wider text-slate-500">Problem context loaded</div></div></div>
+      <div class="flex items-center gap-1">
+        <button id="mentor-maximize" class="w-8 h-8 rounded-lg hover:bg-white/10 text-slate-300" type="button" title="Open full screen" aria-label="Open full screen"><span class="material-symbols-outlined text-[18px]">open_in_full</span></button>
+        <button id="mentor-close" class="w-8 h-8 rounded-lg hover:bg-white/10 text-slate-300" type="button" title="Close" aria-label="Close AI Mentor"><span class="material-symbols-outlined text-[18px]">close</span></button>
+      </div>
+    </div>
+    <div class="flex-1 min-h-0 overflow-auto p-4 space-y-4">
+      <div class="rounded-xl bg-white/5 border border-white/5 p-3 text-xs text-slate-400">The mentor will use your problem, code, execution results, and attempt history once those services are connected.</div>
+      <div>
+        <div class="mono text-[10px] uppercase tracking-wider text-slate-500">Session notes</div>
+        <textarea id="notes" rows="8" class="w-full mt-2 rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-3 text-xs outline-none resize-none focus:border-primary/60" placeholder="What approach are you considering? What part is unclear?"></textarea>
+      </div>
+      <div class="rounded-xl bg-white/5 border border-white/5 p-3">
+        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[17px]">lightbulb</span><span class="font-semibold text-xs">Hint strategy</span></div>
+        <p class="text-[11px] text-slate-500 mt-2">Hints will be progressive: concept → direction → edge case → implementation guidance.</p>
+      </div>
+      <div id="mentor-response" class="hidden rounded-xl bg-primary/10 border border-primary/20 p-3 text-xs text-slate-300"></div>
+    </div>
+    <div class="p-3 border-t border-white/10 shrink-0"><button id="mentor-btn" class="w-full py-2.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container" type="button">Ask Mentor About This Problem</button></div>
+  </div>
+
+  <div id="mentor-backdrop" class="hidden fixed inset-0 z-[68] bg-black/30"></div>
+</section>
 </div>
 </main>
 <div id="toast" class="hidden fixed bottom-5 right-5 z-[90] px-4 py-3 rounded-xl bg-on-surface text-white text-sm shadow-xl"></div>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
 <script>
 const API='http://127.0.0.1:8000',KEY='codementor_access_token';
-let problems=[], current=null;
+let problems=[], current=null, editor=null, monacoReady=null;
+const MONACO_LANGUAGE_MAP={
+  Python:'python', 'C++':'cpp', Java:'java', JavaScript:'javascript',
+  TypeScript:'typescript', Go:'go', Rust:'rust'
+};
 function token(){return localStorage.getItem(KEY)}
 function auth(){if(!token()){location.replace('auth.html');return false}return true}
 function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.remove('hidden');clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.add('hidden'),2500)}
@@ -92,7 +151,8 @@ function selectProblem(p){
  const language=document.getElementById('language').value;
  const draftKey='cm_code_draft_'+p.slug+'_'+language;
  const saved=localStorage.getItem(draftKey);
- document.getElementById('code-editor').value=saved!==null?saved:starter(p);
+ const initialCode=saved!==null?saved:starter(p);
+ setEditorValue(initialCode, MONACO_LANGUAGE_MAP[language]||'plaintext');
  localStorage.setItem('cm_current_problem',p.slug);
  document.getElementById('autosave').textContent=saved!==null?'Draft restored':'Starter loaded';
  renderList(filtered());
@@ -133,19 +193,99 @@ document.getElementById('language').addEventListener('change',()=>{
  const language=document.getElementById('language').value;
  const draftKey='cm_code_draft_'+current.slug+'_'+language;
  const saved=localStorage.getItem(draftKey);
- document.getElementById('code-editor').value=saved!==null?saved:starter(current);
+ setEditorValue(saved!==null?saved:starter(current), MONACO_LANGUAGE_MAP[language]||'plaintext');
  document.getElementById('autosave').textContent=saved!==null?'Draft restored':'Starter loaded';
 });
-document.getElementById('reset-code').addEventListener('click',()=>{if(current){document.getElementById('code-editor').value=starter(current);document.getElementById('autosave').textContent='Reset'}});
-document.getElementById('code-editor').addEventListener('input',e=>{
- if(!current)return;
- const draftKey='cm_code_draft_'+current.slug+'_'+document.getElementById('language').value;
- localStorage.setItem(draftKey,e.target.value);
- document.getElementById('autosave').textContent='Draft saved locally';
-});
+document.getElementById('reset-code').addEventListener('click',()=>{if(current){setEditorValue(starter(current),MONACO_LANGUAGE_MAP[document.getElementById('language').value]||'plaintext');document.getElementById('autosave').textContent='Reset'}});
+function setEditorValue(value, languageId){
+  if(!editor){ pendingEditorValue={value,languageId}; return; }
+  editor.setValue(value||'');
+  if(window.monaco && languageId){monaco.editor.setModelLanguage(editor.getModel(),languageId);}
+}
+let pendingEditorValue=null;
+
+function initializeEditor(){
+  monacoReady=new Promise((resolve,reject)=>{
+    require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs'}});
+    require(['vs/editor/editor.main'],()=>{
+      try{
+        editor=monaco.editor.create(document.getElementById('code-editor'),{
+          value:'',
+          language:'python',
+          theme:'vs-dark',
+          automaticLayout:true,
+          fontFamily:'JetBrains Mono, monospace',
+          fontSize:14,
+          lineHeight:22,
+          minimap:{enabled:true},
+          smoothScrolling:true,
+          cursorBlinking:'smooth',
+          padding:{top:14,bottom:14},
+          scrollBeyondLastLine:false,
+          roundedSelection:false,
+          bracketPairColorization:{enabled:true},
+          guides:{bracketPairs:true,indentation:true},
+          suggest:{showMethods:true,showFunctions:true},
+        });
+        editor.onDidChangeModelContent(()=>{
+          if(!current)return;
+          const draftKey='cm_code_draft_'+current.slug+'_'+document.getElementById('language').value;
+          localStorage.setItem(draftKey,editor.getValue());
+          document.getElementById('autosave').textContent='Draft saved locally';
+        });
+        if(pendingEditorValue){setEditorValue(pendingEditorValue.value,pendingEditorValue.languageId);pendingEditorValue=null;}
+        resolve();
+      }catch(error){reject(error);}
+    });
+  }).catch(error=>{
+    console.error('Monaco failed to load:',error);
+    document.getElementById('execution-status').textContent='Editor failed to load. Refresh to retry.';
+  });
+}
+
+
 document.getElementById('run-btn').addEventListener('click',()=>toast('Run is ready for the sandbox stage. No code is executed yet.'));
 document.getElementById('submit-btn').addEventListener('click',()=>toast('Submit will use the isolated execution and test engine in the next stage.'));
-document.getElementById('mentor-btn').addEventListener('click',()=>{const n=document.getElementById('notes').value.trim();toast(n?'Mentor will receive these session notes when the AI engine is connected.':'Add a short session note first.');});
+function openMentor(){
+ const panel=document.getElementById('mentor-panel');
+ const backdrop=document.getElementById('mentor-backdrop');
+ panel?.classList.remove('hidden');
+ backdrop?.classList.remove('hidden');
+}
+function closeMentor(){
+ document.getElementById('mentor-panel')?.classList.add('hidden');
+ document.getElementById('mentor-backdrop')?.classList.add('hidden');
+ document.getElementById('mentor-panel')?.classList.remove('fixed','inset-0','w-full','h-full','rounded-none','right-0','bottom-0');
+ document.getElementById('mentor-panel')?.classList.add('bottom-20','right-5');
+ document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
+}
+function maximizeMentor(){
+ const panel=document.getElementById('mentor-panel');
+ if(!panel)return;
+ const full=panel.classList.contains('inset-0');
+ if(full){
+   panel.classList.remove('fixed','inset-0','w-full','h-full','rounded-none');
+   panel.classList.add('fixed','bottom-20','right-5','w-[min(400px,calc(100vw-2rem))]','h-[min(560px,calc(100vh-6rem))]','rounded-2xl');
+   document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
+ }else{
+   panel.classList.remove('bottom-20','right-5','rounded-2xl');
+   panel.classList.add('fixed','inset-0','w-full','h-full','rounded-none');
+   document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">close_fullscreen</span>';
+ }
+}
+document.getElementById('mentor-fab').addEventListener('click',openMentor);
+document.getElementById('mentor-close').addEventListener('click',closeMentor);
+document.getElementById('mentor-backdrop').addEventListener('click',closeMentor);
+document.getElementById('mentor-maximize').addEventListener('click',maximizeMentor);
+document.getElementById('mentor-btn').addEventListener('click',()=>{
+ const n=document.getElementById('notes').value.trim();
+ const response=document.getElementById('mentor-response');
+ if(!n){toast('Add a short session note first.');return;}
+ response.textContent='Your note will be included in the mentor context when the AI Mentor engine is connected.';
+ response.classList.remove('hidden');
+});
+
+initializeEditor();
 loadProblems();
 </script>
 </body>
