@@ -283,6 +283,16 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "secret_test_count": sum(case.visibility == "secret" for case in test_cases),
     }
 
+    judge_supported = (
+        "pass-fail" in type_values
+        and validation_name == "default"
+        and "interactive" not in type_values
+        and "multi-pass" not in type_values
+        and "submit-answer" not in type_values
+        and "scoring" not in type_values
+    )
+    package_metadata["judge_supported"] = judge_supported
+
     if "domjudge-problem.ini" in files:
         package_metadata["domjudge"] = _parse_domjudge_ini(
             files["domjudge-problem.ini"].decode("utf-8", errors="replace")
@@ -314,14 +324,6 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "memory_limit_mb": memory_limit_mb,
         "validation": validation_name[:30],
         "package_metadata": package_metadata,
-        "judge_supported": (
-            "pass-fail" in type_values
-            and validation_name == "default"
-            and "interactive" not in type_values
-            and "multi-pass" not in type_values
-            and "submit-answer" not in type_values
-            and "scoring" not in type_values
-        ),
     }
 
 
