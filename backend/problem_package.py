@@ -76,6 +76,26 @@ def _strip_latex(value: str) -> str:
     return re.sub(r"\n{3,}", "\n\n", value).strip()
 
 
+def _metadata_mapping(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _extract_statement_title(statement: str) -> str | None:
+    match = re.search(r"(?m)^#\s+(.+?)\s*$", statement)
+    return match.group(1).strip() if match else None
+
+
+def _read_time_limit(files: dict[str, bytes], limits: dict[str, Any]) -> float:
+    value = limits.get("time_limit")
+    if value is None and ".timelimit" in files:
+        raw = files[".timelimit"].decode("utf-8", errors="replace").strip()
+        value = raw.splitlines()[0].strip() if raw else None
+    try:
+        return float(value) if value is not None else 2.0
+    except (TypeError, ValueError):
+        return 2.0
+
+
 def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
     candidates = [
         "problem.html",
@@ -214,20 +234,27 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         raise ProblemPackageError("problem.yaml must contain a YAML mapping.")
 
     title = _localized_value(metadata.get("name")) or package_name
-    slug = _slugify(title)
     keywords = metadata.get("keywords") or []
+    oj_metadata = _metadata_mapping(metadata.get("oj-lab-metadata"))
+    if not keywords:
+        keywords = oj_metadata.get("tags") or []
     if isinstance(keywords, str):
         keywords = [keywords]
     topics = [str(item).strip() for item in keywords if str(item).strip()]
 
     statement, statement_file = _statement_from_files(files)
+    statement_title = _extract_statement_title(statement)
+    if statement_title and "%s" in title:
+        title = statement_title
+    title = title.replace("%s", "").strip(" -") or statement_title or package_name
+    slug = _slugify(title)
     test_cases = _extract_test_cases(files)
 
     limits = metadata.get("limits") or {}
     if not isinstance(limits, dict):
         limits = {}
 
-    time_limit = limits.get("time_limit", 2.0)
+    time_limit = _read_time_limit(files, limits)
     try:
         time_limit_ms = max(100, int(float(time_limit) * 1000))
     except (TypeError, ValueError):
@@ -263,7 +290,10 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         if case.visibility == "sample"
     ][:8]
 
-    source_name = _source_text(metadata.get("source")) or "problem-package"
+    source_name = _source_text(metadata.get("source"))
+    if not source_name and "oj-lab-metadata" in metadata:
+        source_name = "oj-lab"
+    source_name = source_name or "problem-package"
     source_url = metadata.get("source_url")
     external_id = str(metadata.get("uuid") or package_name)
 
@@ -274,6 +304,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "license": metadata.get("license"),
         "rights_owner": metadata.get("rights_owner"),
         "keywords": topics,
+        "difficulty": _source_text(oj_metadata.get("difficulty")) or metadata.get("difficulty"),
         "languages": metadata.get("languages"),
         "type": type_values,
         "validation": validation_metadata,
