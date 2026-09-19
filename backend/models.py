@@ -126,3 +126,52 @@ class CodingAttempt(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class MentorSession(Base):
+    __tablename__ = "mentor_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    problem_id: Mapped[int | None] = mapped_column(
+        ForeignKey("problems.id", ondelete="CASCADE"),
+        index=True,
+        nullable=True,
+    )
+    scope: Mapped[str] = mapped_column(String(30), nullable=False, default="practice")
+    title: Mapped[str] = mapped_column(String(180), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class MentorMessage(Base):
+    __tablename__ = "mentor_messages"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("mentor_sessions.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    role: Mapped[str] = mapped_column(String(20), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    action: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    hint_level: Mapped[int | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
