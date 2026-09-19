@@ -1033,12 +1033,73 @@ async function saveProfile() {
     }
 
     if (loadingText) loadingText.textContent = 'Profile saved successfully.';
+    localStorage.removeItem('codementor_onboarding_draft');
     wizardState.currentStep = 5;
     updateView();
   } catch (error) {
     showError(error.message || 'Unable to save your profile.');
   } finally {
     overlay?.classList.add('hidden');
+  }
+}
+
+
+function loadOnboardingDraft() {
+  try {
+    const raw = localStorage.getItem('codementor_onboarding_draft');
+    if (!raw) return;
+
+    const draft = JSON.parse(raw);
+    if (!draft || typeof draft !== 'object') return;
+
+    wizardState.currentStep = Math.min(Math.max(Number(draft.currentStep) || 1, 1), 4);
+    wizardState.name = draft.name || wizardState.name;
+    wizardState.bio = draft.bio || wizardState.bio;
+    wizardState.experience = draft.experience || wizardState.experience;
+    wizardState.language = draft.language || wizardState.language;
+    wizardState.langVersion = draft.langVersion || wizardState.langVersion;
+    wizardState.leetcodeUser = draft.leetcodeUser || wizardState.leetcodeUser;
+    wizardState.leetcodeSynced = false;
+    wizardState.targetRole = draft.targetRole || wizardState.targetRole;
+    wizardState.companies = Array.isArray(draft.companies) ? draft.companies : wizardState.companies;
+    wizardState.timeline = draft.timeline || wizardState.timeline;
+
+    const nameInput = document.getElementById('user-name');
+    const bioInput = document.getElementById('user-bio');
+    const lcInput = document.getElementById('leetcode-input');
+
+    if (nameInput && wizardState.name) {
+      nameInput.value = wizardState.name;
+      handleNameInput(wizardState.name);
+    }
+
+    if (bioInput && wizardState.bio) {
+      bioInput.value = wizardState.bio;
+      updateBioCounter(bioInput);
+    }
+
+    if (lcInput && wizardState.leetcodeUser) {
+      lcInput.value = wizardState.leetcodeUser;
+      const preview = document.getElementById('lc-preview-name');
+      if (preview) preview.textContent = wizardState.leetcodeUser;
+    }
+
+    if (wizardState.experience) selectExperience(wizardState.experience);
+    if (wizardState.language) selectLanguage(wizardState.language, wizardState.langVersion);
+    if (wizardState.targetRole) selectRole(wizardState.targetRole);
+    if (wizardState.timeline) selectTimeline(wizardState.timeline);
+
+    document.querySelectorAll('.tag-chip').forEach(button => {
+      const company = button.querySelector('span:first-child')?.textContent.trim();
+      if (company && wizardState.companies.includes(company) && !button.classList.contains('bg-primary')) {
+        toggleCompanyTag(button);
+      }
+    });
+
+    localStorage.removeItem('codementor_onboarding_draft');
+    updateView();
+  } catch (error) {
+    console.warn('Onboarding draft load failed:', error);
   }
 }
 
@@ -1167,6 +1228,6 @@ document.querySelectorAll('.exp-card, .lang-card, .role-card, .time-card').forEa
 document.getElementById('btn-skip')?.classList.add('hidden');
 
 updateView();
-loadExistingProfile();
+loadExistingProfile().then(() => loadOnboardingDraft());
 </script>
 </body></html>
