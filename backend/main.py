@@ -1,27 +1,28 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.database import Base, engine
+from backend.routers.auth import router as auth_router
+
+
+Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(
     title="CodeMentor AI API",
-    version="0.1.0",
+    version="0.2.0",
     description="Backend API for the CodeMentor AI platform.",
 )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class HealthResponse(BaseModel):
-    status: str
-    service: str
-    version: str
-
-
-@app.get("/health", response_model=HealthResponse)
-def health_check() -> HealthResponse:
-    return HealthResponse(
-        status="ok",
-        service="codementor-ai-api",
-        version="0.1.0",
-    )
+app.include_router(auth_router)
 
 
 @app.get("/")
@@ -30,4 +31,13 @@ def root() -> dict[str, str]:
         "message": "CodeMentor AI API is running.",
         "docs": "/docs",
         "health": "/health",
+    }
+
+
+@app.get("/health")
+def health_check() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": "codementor-ai-api",
+        "version": "0.2.0",
     }
