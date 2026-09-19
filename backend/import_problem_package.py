@@ -5,6 +5,7 @@ from pathlib import Path
 
 from backend.database import SessionLocal
 from backend.models import Problem
+from backend.problem_storage import ProblemStorageError, materialize_problem_package
 from backend.problem_package import ProblemPackageError, load_problem_package
 
 
@@ -26,6 +27,13 @@ def _find_existing(db, values: dict):
 
 def import_package(path: Path) -> tuple[bool, dict]:
     values = load_problem_package(str(path))
+
+    try:
+        package_root = materialize_problem_package(path, values["slug"])
+    except ProblemStorageError as exc:
+        raise ProblemPackageError(str(exc)) from exc
+
+    values["package_metadata"]["package_root"] = package_root
 
     with SessionLocal() as db:
         problem = _find_existing(db, values)
