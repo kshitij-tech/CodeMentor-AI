@@ -50,6 +50,10 @@ def parse_default_validator_flags(
         "space_change_sensitive": False,
     }
 
+    seen_float_mode = False
+    seen_relative = False
+    seen_absolute = False
+
     index = 0
     while index < len(tokens):
         token = tokens[index]
@@ -79,17 +83,26 @@ def parse_default_validator_flags(
                     f"Validator flag '{token}' requires a finite non-negative value."
                 )
             if token == "float_tolerance":
-                if "float_relative_tolerance" in options or "float_absolute_tolerance" in options:
+                if seen_float_mode or seen_relative or seen_absolute:
                     raise UnsupportedValidatorError(
-                        "float_tolerance cannot be combined with relative/absolute float tolerance."
+                        "float_tolerance cannot be combined with another float tolerance flag."
                     )
+                seen_float_mode = True
                 options["float_relative_tolerance"] = value
                 options["float_absolute_tolerance"] = value
-            else:
-                if "float_tolerance" in options:
+            elif token == "float_relative_tolerance":
+                if seen_float_mode or seen_relative:
                     raise UnsupportedValidatorError(
-                        "float_tolerance cannot be combined with relative/absolute float tolerance."
+                        "float_relative_tolerance was provided more than once or with float_tolerance."
                     )
+                seen_relative = True
+                options[token] = value
+            else:
+                if seen_float_mode or seen_absolute:
+                    raise UnsupportedValidatorError(
+                        "float_absolute_tolerance was provided more than once or with float_tolerance."
+                    )
+                seen_absolute = True
                 options[token] = value
             index += 2
             continue
