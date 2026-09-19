@@ -25,7 +25,11 @@ def serialize(problem: Problem) -> dict:
         "time_limit_ms": problem.time_limit_ms,
         "memory_limit_mb": problem.memory_limit_mb,
         "validation": problem.validation,
-        "package_metadata": problem.package_metadata,
+        "package_metadata": {
+            key: value
+            for key, value in (problem.package_metadata or {}).items()
+            if key != "package_root"
+        },
     }
 
 @router.get("")
