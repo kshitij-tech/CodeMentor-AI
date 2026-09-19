@@ -263,6 +263,8 @@ let current=null;
 let editor=null;
 let pendingEditor=null;
 let currentDifficulty='';
+let lastExecution=null;
+let hintLevel=1;
 
 const $=id=>document.getElementById(id);
 function token(){return localStorage.getItem(TOKEN_KEY)}
@@ -446,6 +448,7 @@ function renderResults(data){
     </div>`;
   }).join(''):'<div class="h-full flex items-center justify-center text-xs text-slate-500">No test results.</div>';
   $('results-body').scrollTop=0;
+  lastExecution=data;
 }
 
 function initWorkspaceSplitter(){
@@ -653,18 +656,49 @@ function toggleMentor(){
 }
 $('mentor-trigger').addEventListener('click',toggleMentor);
 $('mentor-close').addEventListener('click',toggleMentor);
-function mentorPlaceholder(action){
-  const labels={hint:'a progressive hint',debug:'a code diagnosis',complexity:'a complexity analysis',edge:'an edge-case review'};
-  $('mentor-response').textContent=`The mentor is ready to provide ${labels[action]||'guidance'} after the AI analysis service is connected.`;
-  $('mentor-response').classList.remove('hidden');
+async function askMentor(action,question=null){
+  if(!current){toast('Select a problem first.');return}
+  if(!editor){toast('Code editor is still loading.');return}
+  const response=$('mentor-response');
+  response.classList.remove('hidden');
+  response.textContent='Analyzing your problem and code...';
+  document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=true);
+  $('mentor-send').disabled=true;
+  try{
+    const res=await fetch(API+'/mentor/analyze',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
+      body:JSON.stringify({
+        problem_slug:current.slug,
+        language:$('language').value,
+        code:editor.getValue(),
+        action,
+        question,
+        hint_level:hintLevel,
+        execution:lastExecution
+      })
+    });
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
+    response.textContent=data.answer||'The mentor returned no explanation.';
+    if(action==='hint')hintLevel=Math.min(4,hintLevel+1);
+  }catch(err){
+    response.textContent=err.message||'Unable to contact the AI Mentor.';
+  }finally{
+    document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=false);
+    $('mentor-send').disabled=false;
+  }
 }
-document.querySelectorAll('.mentor-action').forEach(b=>b.addEventListener('click',()=>mentorPlaceholder(b.dataset.action)));
+document.querySelectorAll('.mentor-action').forEach(b=>b.addEventListener('click',()=>askMentor(b.dataset.action)));
 $('mentor-send').addEventListener('click',()=>{
-  const q=$('mentor-input').value.trim();if(!q){toast('Enter a question first.');return}
-  $('mentor-response').textContent='Your question will be sent with the current problem and code once the AI Mentor service is connected.';
-  $('mentor-response').classList.remove('hidden');$('mentor-input').value='';
+  const q=$('mentor-input').value.trim();
+  if(!q){$('mentor-input').focus();return}
+  askMentor('question',q);
+  $('mentor-input').value='';
 });
-$('mentor-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('mentor-send').click()});
+$('mentor-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('mentor-send').click()}});
+
 
 async function load(){
   if(!requireAuth())return;
