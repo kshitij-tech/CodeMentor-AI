@@ -104,7 +104,7 @@ tailwind.config = {
   <div class="flex flex-col gap-3 px-3">
     <div class="p-3 rounded-xl bg-surface-container-lowest shadow-sm">
       <div class="flex items-center justify-between"><span class="font-mono text-[10px] text-on-surface-variant">Daily Streak</span><span class="material-symbols-outlined text-primary text-[18px]">local_fire_department</span></div>
-      <div class="mt-1"><span class="font-bold text-2xl">—</span><span class="text-xs text-on-surface-variant ml-1">days active</span></div>
+      <div class="mt-1"><span id="streak-days" class="font-bold text-2xl">0</span><span class="text-xs text-on-surface-variant ml-1">active days</span></div>
       <p class="text-[10px] text-on-surface-variant mt-1">Practice telemetry will appear here.</p>
     </div>
     <div class="flex flex-col gap-1">
@@ -162,13 +162,16 @@ tailwind.config = {
 </section>
 
 <section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
-  <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Velocity &amp; Problem Solving Mastery</h3><p class="text-xs text-on-surface-variant">Your real trend will be computed from practice sessions.</p></div><span class="font-mono text-[10px] px-2 py-1 rounded bg-surface-container-low">Awaiting telemetry</span></div>
-  <div class="mt-5 p-5 rounded-xl bg-surface-container-low min-h-56 flex flex-col justify-center items-center text-center"><span class="material-symbols-outlined text-primary text-3xl">monitoring</span><p class="font-semibold mt-2">Analytics will populate after your first practice sessions</p><p class="text-xs text-on-surface-variant mt-1 max-w-lg">The dashboard will track solved volume, acceptance, runtime, hints used, and topic mastery once the execution and submission systems are connected.</p></div>
+  <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Velocity &amp; Problem Solving Mastery</h3><p class="text-xs text-on-surface-variant">Your real trend will be computed from practice sessions.</p></div><span id="telemetry-badge" class="font-mono text-[10px] px-2 py-1 rounded bg-surface-container-low">No attempts yet</span></div>
+  <div class="mt-5 p-5 rounded-xl bg-surface-container-low min-h-56">
+    <div id="daily-telemetry" class="h-44 flex items-end justify-between gap-2 px-2"></div>
+    <div class="flex justify-between gap-2 text-[9px] text-on-surface-variant mt-2" id="daily-labels"></div>
+  </div>
   <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Total Solved</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Acceptance</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Velocity Pace</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">AI Hints</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Total Solved</span><p id="metric-solved" class="text-xl font-bold mt-1">0</p><span id="metric-solved-note" class="text-[10px] text-on-surface-variant">Across accepted submissions</span></div>
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Acceptance</span><p id="metric-acceptance" class="text-xl font-bold mt-1">0%</p><span id="metric-acceptance-note" class="text-[10px] text-on-surface-variant">0 submissions</span></div>
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Velocity Pace</span><p id="metric-velocity" class="text-xl font-bold mt-1">0/day</p><span id="metric-velocity-note" class="text-[10px] text-on-surface-variant">Last 7 days</span></div>
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">AI Hints</span><p id="metric-hints" class="text-xl font-bold mt-1">0</p><span id="metric-runtime" class="text-[10px] text-on-surface-variant">No runtime data</span></div>
   </div>
 </section>
 
@@ -304,7 +307,7 @@ function handleAction(action){
   if(action==='problem') window.location.replace('practice.html');
   else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
   else if(action==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
-  else if(action==='analytics') navNotice('Detailed Analytics');
+  else if(action==='analytics') document.querySelector('[data-side="analytics"]')?.scrollIntoView({behavior:'smooth',block:'center'}) || document.getElementById('daily-telemetry')?.scrollIntoView({behavior:'smooth',block:'center'});
 }
 const skillCatalog = {
   'Arrays & Strings': {focus:'Array traversal, strings, prefix techniques, sliding windows, and in-place transformations.', next:'Start with array/string problems and let the mentor identify recurring edge-case mistakes.'},
@@ -326,11 +329,12 @@ function openSkillModal(topic){
   document.getElementById('skill-modal-title').textContent=topic;
   document.getElementById('skill-modal-focus').textContent=meta.focus;
   document.getElementById('skill-modal-next').textContent=meta.next;
-  document.getElementById('skill-modal-mastery').textContent='Awaiting data';
-  document.getElementById('skill-modal-solved').textContent='0';
-  document.getElementById('skill-modal-status').textContent='Not evaluated';
+  const stat=(analyticsSnapshot?.topics||[]).find(item=>item.topic===topic)||{mastery:0,solved_problems:0,attempted_problems:0,acceptance_rate:0};
+  document.getElementById('skill-modal-mastery').textContent=(stat.mastery||0)+'%';
+  document.getElementById('skill-modal-solved').textContent=String(stat.solved_problems||0);
+  document.getElementById('skill-modal-status').textContent=stat.attempted_problems ? 'Tracked from attempts' : 'Not evaluated';
   const action=document.getElementById('skill-modal-action');
-  action.onclick=()=>{ closeSkillModal(); toast(topic + ' practice will open when Live Practice is connected.'); };
+  action.onclick=()=>{ closeSkillModal(); window.location.replace('practice.html?topic='+encodeURIComponent(topic)); };
   modal.classList.remove('hidden'); modal.classList.add('flex');
   document.body.classList.add('overflow-hidden');
 }
@@ -341,31 +345,63 @@ function closeSkillModal(){
   document.body.classList.remove('overflow-hidden');
 }
 
+let analyticsSnapshot=null;
 function renderSkills(){
   const topics=['Arrays & Strings','Hashing & Hash Maps','Two Pointers','Binary Search','Linked Lists','Trees & BST','Graphs (BFS/DFS)','Dynamic Programming','Backtracking','Greedy Algorithms'];
+  const statsByTopic=Object.fromEntries((analyticsSnapshot?.topics||[]).map(item=>[item.topic,item]));
   const host=document.querySelectorAll('.skill-card');
   host.forEach((el,i)=>{
     const topic=topics[i];
+    const stat=statsByTopic[topic]||{mastery:0,solved_problems:0,attempted_problems:0,acceptance_rate:0};
+    const mastery=Math.max(0,Math.min(100,Number(stat.mastery)||0));
+    const status=stat.attempted_problems?'Tracked':'No attempts';
     el.className='skill-card w-full text-left p-3.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all focus:outline-none focus:ring-2 focus:ring-primary/20';
     el.setAttribute('aria-label','Open '+topic+' skill details');
     el.setAttribute('title','Open '+topic+' skill details');
-    el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+topic+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">Awaiting data</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-outline-variant rounded-full" style="width:0%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>0 solved in app</span><span>Not evaluated</span></div>';
+    el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+esc(topic)+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">'+status+'</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:'+mastery+'%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>'+stat.solved_problems+' solved in app</span><span>'+mastery+'% mastery</span></div>';
   });
 }
+function renderAnalytics(data){
+  document.getElementById('streak-days').textContent=String(data.active_days_last_7_days||0);
+  document.getElementById('metric-solved').textContent=String(data.total_solved||0);
+  document.getElementById('metric-acceptance').textContent=String(data.acceptance_rate||0)+'%';
+  document.getElementById('metric-acceptance-note').textContent=String(data.total_submissions||0)+' submissions';
+  document.getElementById('metric-velocity').textContent=String(data.velocity_pace||0)+'/day';
+  document.getElementById('metric-hints').textContent=String(data.ai_hints||0);
+  document.getElementById('metric-runtime').textContent=data.average_runtime_ms==null?'No runtime data':'Avg runtime '+data.average_runtime_ms+' ms';
+  const badge=document.getElementById('telemetry-badge');
+  if(badge) badge.textContent=data.total_attempts ? data.total_attempts+' attempts tracked' : 'No attempts yet';
+  const daily=document.getElementById('daily-telemetry');
+  const labels=document.getElementById('daily-labels');
+  if(!daily||!labels)return;
+  const points=data.daily||[];
+  const max=Math.max(1,...points.map(x=>Number(x.attempts)||0));
+  daily.innerHTML=points.map(point=>{
+    const height=point.attempts?Math.max(8,Math.round(((point.attempts)/max)*150)):4;
+    return '<div class="flex-1 h-full flex items-end justify-center" title="'+point.date+': '+point.attempts+' attempts, '+point.solved+' solved"><div class="w-full max-w-10 rounded-t-lg bg-primary" style="height:'+height+'px"></div></div>';
+  }).join('');
+  labels.innerHTML=points.map(point=>'<span class="flex-1 text-center">'+point.date.slice(5)+'</span>').join('');
+}
+
 async function loadDashboard(){
   if(!requireAuth()) return;
   renderSkills();
   void loadDashboardMentor();
   try{
-    const [profileRes, meRes]=await Promise.all([
-      fetch(API_BASE_URL+'/profile',{headers:{Authorization:'Bearer '+token()}}),
-      fetch(API_BASE_URL+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
+    const headers={headers:{Authorization:'Bearer '+token()}};
+    const [profileRes, meRes, analyticsRes]=await Promise.all([
+      fetch(API_BASE_URL+'/profile',headers),
+      fetch(API_BASE_URL+'/auth/me',headers),
+      fetch(API_BASE_URL+'/analytics/summary',headers)
     ]);
     if(profileRes.status===401||meRes.status===401){
       localStorage.removeItem(TOKEN_KEY); window.location.replace('auth.html'); return;
     }
     const profile=profileRes.ok?await profileRes.json():{};
     const me=meRes.ok?await meRes.json():{};
+    analyticsSnapshot=analyticsRes.ok?await analyticsRes.json():null;
+    if(analyticsSnapshot) renderAnalytics(analyticsSnapshot);
+    renderSkills();
     const name=profile.full_name || 'CodeMentor User';
     const role=profile.target_role || 'Complete your profile';
     const language=profile.preferred_language || 'Language not set';
@@ -394,6 +430,7 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
   const target=b.dataset.nav||b.dataset.side;
   if(target==='practice') window.location.replace('practice.html');
   else if(target==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+  else if(target==='analytics') document.querySelector('[data-topic-section]')?.scrollIntoView({behavior:'smooth',block:'center'}) || document.getElementById('daily-telemetry')?.scrollIntoView({behavior:'smooth',block:'center'});
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
