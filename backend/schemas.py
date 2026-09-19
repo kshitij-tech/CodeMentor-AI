@@ -50,3 +50,4 @@ class UserProfileResponse(BaseModel):
     bio: str | None
     target_companies: list[str] | None
     preparation_timeline: str | None
+    onboarding_completed: bool
