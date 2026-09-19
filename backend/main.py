@@ -9,6 +9,7 @@ from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
 from backend.routers.problems import router as problems_router
 from backend.routers.execution import router as execution_router
+from backend.routers.mentor import router as mentor_router
 from backend.problem_seed import seed_problems
 
 
@@ -89,6 +90,7 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(problems_router)
 app.include_router(execution_router)
+app.include_router(mentor_router)
 
 
 @app.get("/")
