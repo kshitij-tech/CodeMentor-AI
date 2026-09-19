@@ -150,12 +150,12 @@ tailwind.config = {
     <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-low text-primary font-mono text-[10px] uppercase tracking-wide"><span class="material-symbols-outlined text-[14px]">psychology</span>Next recommendation</span>
     <span class="text-xs text-on-surface-variant font-mono">Personalized after telemetry is available</span>
   </div>
-  <div class="mt-5 flex flex-wrap items-center gap-3"><h2 class="text-xl font-bold">139. Word Break</h2><span class="px-2.5 py-0.5 rounded bg-surface-container text-xs font-semibold">Medium</span><span class="px-2.5 py-0.5 rounded bg-surface-container text-xs text-on-surface-variant">LeetCode</span></div>
-  <div class="flex flex-wrap gap-2 mt-3"><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">DSA: Dynamic Programming</span><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">Pattern: 1D DP / Trie</span><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">Complexity: O(n²)</span></div>
-  <div class="mt-5 p-4 rounded-xl bg-surface-container-low flex gap-3.5 items-start"><div class="p-2 rounded-lg bg-surface-container-lowest text-primary shadow-sm"><span class="material-symbols-outlined">auto_awesome</span></div><div><span class="font-mono text-[10px] text-primary font-bold uppercase tracking-wider">Diagnostic reasoning</span><p class="text-sm text-on-surface-variant leading-relaxed mt-1">Once your practice telemetry is connected, CodeMentor will use your failed attempts, runtime, hints, and topic history to generate this recommendation.</p></div></div>
+  <div class="mt-5 flex flex-wrap items-center gap-3"><h2 id="recommendation-title" class="text-xl font-bold">Loading recommendation…</h2><span id="recommendation-difficulty" class="px-2.5 py-0.5 rounded bg-surface-container text-xs font-semibold">—</span><span class="px-2.5 py-0.5 rounded bg-surface-container text-xs text-on-surface-variant">CodeMentor</span></div>
+  <div id="recommendation-topics" class="flex flex-wrap gap-2 mt-3"><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">Building recommendation…</span></div>
+  <div class="mt-5 p-4 rounded-xl bg-surface-container-low flex gap-3.5 items-start"><div class="p-2 rounded-lg bg-surface-container-lowest text-primary shadow-sm"><span class="material-symbols-outlined">auto_awesome</span></div><div><span class="font-mono text-[10px] text-primary font-bold uppercase tracking-wider">Why this problem</span><p id="recommendation-reason" class="text-sm text-on-surface-variant leading-relaxed mt-1">Analyzing your attempts, topic gaps, and experience level…</p></div></div>
   <div id="hint-box" class="hidden mt-4 p-4 rounded-xl bg-surface-container text-sm"><div class="font-semibold text-primary mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">lightbulb</span>Socratic Scaffold Hint #1</div>Let <code class="font-mono bg-surface-container-high px-1.5 py-0.5 rounded">dp[i]</code> represent whether the prefix can be segmented. What previous state would you inspect before deciding <code class="font-mono">dp[i]</code>?</div>
   <div class="flex flex-wrap items-center gap-3 mt-5">
-    <button data-action="problem" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold">Start Problem <span class="material-symbols-outlined text-[16px] align-middle">arrow_forward</span></button>
+    <button id="recommendation-start" data-action="problem" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold">Start Problem <span class="material-symbols-outlined text-[16px] align-middle">arrow_forward</span></button>
     <button id="hint-btn" class="px-4 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm"><span class="material-symbols-outlined text-[18px] align-middle">lightbulb</span> Toggle Scaffold Hint</button>
     <button data-action="mentor" class="text-on-surface-variant hover:text-primary text-sm font-semibold">Review with AI <span class="material-symbols-outlined text-[16px] align-middle">chevron_right</span></button>
   </div>
@@ -303,8 +303,14 @@ function toggleAccount(){
   menu.classList.toggle('hidden',!opening); btn.setAttribute('aria-expanded',String(opening));
 }
 function navNotice(area){ toast(area + ' will be connected in the next implementation stage.'); }
+let currentRecommendation=null;
+function startRecommendation(){
+  const slug=currentRecommendation?.problem?.slug;
+  if(slug) window.location.replace('practice.html?problem='+encodeURIComponent(slug));
+  else window.location.replace('practice.html');
+}
 function handleAction(action){
-  if(action==='problem') window.location.replace('practice.html');
+  if(action==='problem') startRecommendation();
   else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
   else if(action==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
   else if(action==='analytics') window.location.replace('analytics.html');
@@ -361,6 +367,27 @@ function renderSkills(){
     el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+esc(topic)+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">'+status+'</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:'+mastery+'%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>'+stat.solved_problems+' solved in app</span><span>'+mastery+'% mastery</span></div>';
   });
 }
+function renderRecommendation(data){
+  currentRecommendation=data;
+  const problem=data?.problem;
+  if(!problem)return;
+  document.getElementById('recommendation-title').textContent=problem.title;
+  document.getElementById('recommendation-difficulty').textContent=problem.difficulty;
+  document.getElementById('recommendation-topics').innerHTML=(problem.topics||[]).map(topic=>'<span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">DSA: '+esc(topic)+'</span>').join('');
+  document.getElementById('recommendation-reason').textContent=data.reason||'Recommended from your current practice telemetry.';
+}
+async function loadRecommendation(){
+  try{
+    const res=await fetch(API_BASE_URL+'/recommendations/next',{headers:{Authorization:'Bearer '+token()}});
+    if(!res.ok)throw new Error('Recommendation request failed.');
+    renderRecommendation(await res.json());
+  }catch(err){
+    console.warn('Recommendation load failed:',err);
+    document.getElementById('recommendation-title').textContent='Choose your next problem';
+    document.getElementById('recommendation-reason').textContent='We could not calculate a personalized recommendation right now.';
+  }
+}
+
 function renderAnalyticsUnavailable(message){
   const badge=document.getElementById('telemetry-badge');
   if(badge){ badge.textContent=message || 'Analytics unavailable'; badge.classList.add('text-error'); }
@@ -398,6 +425,7 @@ async function loadDashboard(){
   if(!requireAuth()) return;
   renderSkills();
   void loadDashboardMentor();
+  void loadRecommendation();
   try{
     const headers={headers:{Authorization:'Bearer '+token()}};
     const [profileRes, meRes, analyticsRes]=await Promise.all([
@@ -451,6 +479,7 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
+document.getElementById('recommendation-start')?.addEventListener('click',startRecommendation);
 const dashboardMentorMessages=[];
 let dashboardMentorSessionId=null;
 function cleanDashboardMentorText(value){
