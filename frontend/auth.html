@@ -220,6 +220,25 @@
       document.getElementById('top-message').classList.add('hidden');
     }
 
+    async function redirectAuthenticatedUser() {
+      const token = localStorage.getItem('codementor_access_token');
+      if (!token) return;
+
+      try {
+        const response = await fetch(API_BASE_URL + '/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (response.ok) {
+          window.location.replace('./onboarding.html?from=auth');
+        } else if (response.status === 401) {
+          localStorage.removeItem('codementor_access_token');
+        }
+      } catch (error) {
+        console.warn('Existing session check failed:', error);
+      }
+    }
+
     async function handleAuthSubmit(type) {
       const isSignin = type === 'signin';
       const button = document.getElementById(isSignin ? 'btn-submit-signin' : 'btn-submit-signup');
@@ -277,12 +296,10 @@
         document.getElementById('success-title').textContent = isSignin ? 'Welcome back!' : 'Account created!';
         document.getElementById('success-desc').textContent =
           isSignin
-            ? 'Your CodeMentor session is authenticated. Taking you to onboarding...'
-            : 'Your account was created and you are now signed in. Taking you to onboarding...';
+            ? 'Your CodeMentor session is authenticated. Redirecting...'
+            : 'Your account was created and you are now signed in. Redirecting...';
 
-        setTimeout(() => {
-          window.location.href = 'onboarding.html';
-        }, 600);
+        window.location.replace('./onboarding.html?from=auth');
       } catch (error) {
         showMessage(error.message || 'Unable to connect to the CodeMentor API.');
       } finally {
@@ -290,6 +307,8 @@
         label.textContent = original;
       }
     }
+
+    redirectAuthenticatedUser();
   </script>
 </body>
 </html>
