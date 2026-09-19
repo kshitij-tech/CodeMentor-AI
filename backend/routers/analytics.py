@@ -132,3 +132,74 @@ def analytics_summary(
         "topics": topic_stats,
         "daily": daily,
     }
+
+@router.get("/detail")
+def analytics_detail(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    summary = analytics_summary(current_user=current_user, db=db)
+
+    rows = (
+        db.query(CodingAttempt, Problem)
+        .join(Problem, CodingAttempt.problem_id == Problem.id)
+        .filter(CodingAttempt.user_id == current_user.id)
+        .order_by(CodingAttempt.created_at.desc())
+        .all()
+    )
+
+    problem_map = {}
+    history = []
+    for attempt, problem in rows:
+        runtimes = [
+            result.get("runtime_ms")
+            for result in (attempt.results or [])
+            if isinstance(result, dict) and isinstance(result.get("runtime_ms"), (int, float))
+        ]
+        problem_key = problem.id
+        if problem_key not in problem_map:
+            problem_map[problem_key] = {
+                "problem_id": problem.id,
+                "slug": problem.slug,
+                "title": problem.title,
+                "difficulty": problem.difficulty,
+                "topics": problem.topics or [],
+                "attempts": 0,
+                "submissions": 0,
+                "accepted_submissions": 0,
+                "last_status": attempt.status,
+                "latest_attempt_at": _naive_utc(attempt.created_at).isoformat(),
+            }
+        stat = problem_map[problem_key]
+        stat["attempts"] += 1
+        if attempt.mode == "submit":
+            stat["submissions"] += 1
+            if attempt.status == "Accepted":
+                stat["accepted_submissions"] += 1
+
+        history.append({
+            "attempt_id": attempt.id,
+            "problem_slug": problem.slug,
+            "problem_title": problem.title,
+            "difficulty": problem.difficulty,
+            "topics": problem.topics or [],
+            "language": attempt.language,
+            "mode": attempt.mode,
+            "status": attempt.status,
+            "summary": attempt.summary,
+            "runtime_ms": round(sum(runtimes) / len(runtimes), 1) if runtimes else None,
+            "created_at": _naive_utc(attempt.created_at).isoformat(),
+        })
+
+    for stat in problem_map.values():
+        stat["acceptance_rate"] = (
+            round((stat["accepted_submissions"] / stat["submissions"]) * 100)
+            if stat["submissions"]
+            else 0
+        )
+
+    return {
+        **summary,
+        "problems": list(problem_map.values()),
+        "history": history[:100],
+    }
