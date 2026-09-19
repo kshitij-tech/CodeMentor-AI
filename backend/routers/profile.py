@@ -57,6 +57,12 @@ def update_profile(
     profile.target_role = profile_data.target_role.strip()
     profile.target_companies = profile_data.target_companies
     profile.preparation_timeline = profile_data.preparation_timeline
+    profile.onboarding_completed = bool(
+        profile.full_name
+        and profile.preferred_language
+        and profile.experience_level
+        and profile.target_role
+    )
 
     db.commit()
     db.refresh(profile)
