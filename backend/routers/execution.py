@@ -107,21 +107,27 @@ def execute_code(
 
     summary = f"{passed}/{total} tests passed."
 
-    results = []
+    stored_results = []
+    public_results = []
     for index, outcome in enumerate(outcomes):
         case = cases[index] if index < len(cases) else {}
         visibility = case.get("visibility")
-        results.append(
+        result = {
+            "test": outcome.index,
+            "passed": outcome.passed,
+            "status": outcome.status,
+            "visibility": visibility,
+            "expected": outcome.expected,
+            "actual": outcome.actual,
+            "runtime_ms": outcome.runtime_ms,
+            "message": outcome.message,
+            "error_line": extract_error_line(outcome.message),
+        }
+        stored_results.append(result)
+        public_results.append(
             {
-                "test": outcome.index,
-                "passed": outcome.passed,
-                "status": outcome.status,
-                "visibility": visibility,
+                **result,
                 "expected": None if visibility == "secret" else outcome.expected,
-                "actual": outcome.actual,
-                "runtime_ms": outcome.runtime_ms,
-                "message": outcome.message,
-                "error_line": extract_error_line(outcome.message),
             }
         )
 
@@ -138,7 +144,7 @@ def execute_code(
         code=request.code,
         status=overall,
         summary=summary,
-        results=results,
+        results=stored_results,
     )
     db.add(attempt)
     db.commit()
@@ -150,5 +156,5 @@ def execute_code(
         "summary": summary,
         "mode": request.mode,
         "error_line": error_line,
-        "results": results,
+        "results": public_results,
     }
