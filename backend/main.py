@@ -52,6 +52,9 @@ def initialize_database() -> None:
                     )
                 )
 
+    if inspector.has_table("coding_attempts"):
+        pass
+
     if inspector.has_table("problems"):
         problem_columns = {column["name"] for column in inspector.get_columns("problems")}
         if "test_cases" not in problem_columns:
