@@ -81,7 +81,7 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
     }
 
 
-def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int) -> dict[str, Any]:
+def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
     api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
     if not api_key:
         raise AIProviderError("GEMINI_API_KEY is not configured. Add your Gemini API key to the backend environment.")
@@ -124,6 +124,9 @@ USER CODE
 EXECUTION RESULT
 {execution_text}
 
+CONVERSATION HISTORY
+{history_text}
+
 REQUEST TYPE
 {action}
 
@@ -142,6 +145,7 @@ USER QUESTION
         language=language,
         code=code,
         execution_text=execution_text,
+        history_text=json.dumps(history or [], ensure_ascii=False, indent=2),
         action=action,
         hint_level=hint_level,
         question=question or "(none)",
@@ -163,6 +167,7 @@ answer: a clean plain-text conversational response with no Markdown.
 error_line: the 1-based line number in the user code that is most directly responsible for the error, or null if no specific line can be identified.
 patch: null unless the request type is modify and a small local code change would help. When present, patch must contain start_line, end_line, and replacement. The replacement must be only the minimal lines needed to demonstrate or fix the issue, not a complete solution.
 
+A previous conversation may be provided. Use it to maintain continuity and avoid asking for information the user already supplied. Treat the current request and current code as authoritative over older messages.
 The mentor must prioritize teaching. Do not solve the entire problem for the user. Explain what to inspect and what concept to apply. Only produce a patch when the user explicitly asks for a code modification or the request type is modify. Even then, keep it minimal and tell the user to understand and try the change themselves before applying it.
 Never silently rewrite the user code. The UI will require explicit user action before a patch is applied.
 Keep the answer concise, educational, and conversational.
