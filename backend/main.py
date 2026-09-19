@@ -2,9 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
+from backend.database import SessionLocal
+
 from backend.database import Base, engine
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
+from backend.routers.problems import router as problems_router
+from backend.problem_seed import seed_problems
 
 
 def initialize_database() -> None:
@@ -54,6 +58,9 @@ def initialize_database() -> None:
 
 initialize_database()
 
+with SessionLocal() as db:
+    seed_problems(db)
+
 
 app = FastAPI(
     title="CodeMentor AI API",
@@ -71,6 +78,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(profile_router)
+app.include_router(problems_router)
 
 
 @app.get("/")
