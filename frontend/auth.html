@@ -220,25 +220,6 @@
       document.getElementById('top-message').classList.add('hidden');
     }
 
-    async function redirectAuthenticatedUser() {
-      const token = localStorage.getItem('codementor_access_token');
-      if (!token) return;
-
-      try {
-        const response = await fetch(API_BASE_URL + '/auth/me', {
-          headers: { 'Authorization': 'Bearer ' + token }
-        });
-
-        if (response.ok) {
-          window.location.replace('./onboarding.html?from=auth');
-        } else if (response.status === 401) {
-          localStorage.removeItem('codementor_access_token');
-        }
-      } catch (error) {
-        console.warn('Existing session check failed:', error);
-      }
-    }
-
     async function handleAuthSubmit(type) {
       const isSignin = type === 'signin';
       const button = document.getElementById(isSignin ? 'btn-submit-signin' : 'btn-submit-signup');
@@ -308,7 +289,6 @@
       }
     }
 
-    redirectAuthenticatedUser();
   </script>
 </body>
 </html>
