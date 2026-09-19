@@ -1,423 +1,501 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CodeMentor AI — Live Practice</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:FILL@0..1&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-tailwind.config={theme:{extend:{colors:{
-primary:"#2a14b4","primary-container":"#4338ca","surface":"#f8f9ff","surface-container-low":"#eff4ff",
-"surface-container":"#e5eeff","surface-container-high":"#dce9ff","surface-container-highest":"#d3e4fe",
-"on-surface":"#0b1c30","on-surface-variant":"#464554","outline":"#777586","tertiary":"#00442d",
-"tertiary-container":"#005e3f","error":"#ba1a1a"
-}}}};
+tailwind.config={darkMode:'class',theme:{extend:{colors:{
+  primary:'#2a14b4','primary-container':'#4338ca','surface':'#f8f9ff','surface-container-low':'#eff4ff',
+  'surface-container':'#e5eeff','surface-container-high':'#dce9ff','surface-container-highest':'#d3e4fe',
+  'on-surface':'#0b1c30','on-surface-variant':'#464554','outline':'#777586','outline-variant':'#c7c4d7',
+  tertiary:'#00442d','tertiary-container':'#005e3f','error':'#ba1a1a'
+},fontFamily:{sans:['Plus Jakarta Sans'],mono:['JetBrains Mono']}}}};
 </script>
 <style>
-body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mono",monospace}
-.editor{font-family:"JetBrains Mono",monospace;tab-size:4}
-.scroll-panel{scrollbar-width:thin;scrollbar-color:#475569 transparent;overscroll-behavior:contain}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{font-family:"Plus Jakarta Sans",sans-serif;overscroll-behavior:none}
+.mono{font-family:"JetBrains Mono",monospace}
+.scroll-panel{scrollbar-width:thin;scrollbar-color:#64748b transparent;overscroll-behavior:contain}
 .scroll-panel::-webkit-scrollbar{width:9px;height:9px}
 .scroll-panel::-webkit-scrollbar-track{background:transparent}
 .scroll-panel::-webkit-scrollbar-thumb{background:#475569;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
 .scroll-panel::-webkit-scrollbar-thumb:hover{background:#64748b;background-clip:padding-box}
+.problem-item.active{background:#eff4ff;border-left:3px solid #4338ca}
+.problem-item{border-left:3px solid transparent}
 </style>
 </head>
-<body class="min-h-screen bg-surface text-on-surface">
-<header class="fixed top-0 inset-x-0 z-50 h-16 bg-white/90 backdrop-blur-xl shadow-sm">
-<div class="h-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-<div class="flex items-center gap-3"><button onclick="location.href='dashboard.html'" class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center" aria-label="Dashboard"><span class="material-symbols-outlined">terminal</span></button><div class="font-bold tracking-tight">CodeMentor <span class="mono text-primary text-xs uppercase tracking-wider">AI</span></div><span class="text-xs text-on-surface-variant">/ Live Practice</span></div>
-<div class="flex items-center gap-2"><button id="settings-btn" onclick="location.href='settings.html'" class="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-low" aria-label="Settings"><span class="material-symbols-outlined">settings</span></button><button id="account-btn" class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center" aria-label="Account"><span class="material-symbols-outlined text-[18px]">person</span></button></div>
-</div>
-</header>
+<body class="bg-surface text-on-surface antialiased">
 
-<main class="pt-16 h-screen overflow-hidden">
-<div class="h-full max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-[360px_minmax(0,1fr)]">
-<aside class="bg-white border-r border-slate-200 overflow-hidden flex flex-col min-h-0">
-  <div class="p-4 border-b border-slate-100 shrink-0">
-    <div class="flex items-center justify-between">
-      <div><div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Problem set</div><h2 class="font-bold mt-1">Choose a problem</h2></div>
-      <button id="back-dashboard" class="text-xs text-on-surface-variant hover:text-primary">Dashboard</button>
-    </div>
-    <div class="grid grid-cols-2 gap-2 mt-4">
-      <select id="difficulty" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All levels</option><option>Easy</option><option>Medium</option></select>
-      <select id="topic" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All topics</option></select>
-    </div>
-  </div>
-  <div id="problem-list" class="p-2 h-[38%] min-h-[220px] overflow-y-auto scroll-panel border-b border-slate-100"></div>
-  <div id="problem-details" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-4">
-    <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Problem statement</div>
-    <h3 id="problem-description-title" class="font-bold text-base mt-1">Select a problem</h3>
-    <p id="problem-description" class="text-xs leading-5 text-on-surface-variant mt-3">Choose a problem above to load its description, examples, and constraints.</p>
-
-    <div class="mt-5">
-      <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Examples</div>
-      <div id="examples" class="mt-2 space-y-2">
-        <div class="text-xs text-on-surface-variant">Examples will appear here.</div>
-      </div>
-    </div>
-
-    <div class="mt-5">
-      <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Constraints</div>
-      <ul id="constraints" class="mt-2 space-y-2 text-xs leading-5 text-on-surface-variant list-disc pl-4">
-        <li>Constraints will appear here.</li>
-      </ul>
-    </div>
-  </div>
-</aside>
-
-<section class="min-w-0 min-h-0 bg-[#0b1020] text-slate-100 flex flex-col relative">
-  <div class="h-14 bg-[#111827] border-b border-white/10 flex items-center justify-between px-4 shrink-0">
+<header class="fixed top-0 left-0 right-0 h-14 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-sm">
+  <div class="h-full px-4 flex items-center justify-between gap-4">
     <div class="flex items-center gap-3 min-w-0">
-      <div class="flex items-center gap-2 min-w-0">
-        <span id="problem-difficulty" class="mono text-[9px] uppercase tracking-wider px-2 py-1 rounded bg-white/10 text-slate-300">—</span>
-        <span id="problem-topics" class="text-xs text-slate-400 truncate">—</span>
+      <button id="home-btn" class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-container to-indigo-500 text-white flex items-center justify-center shadow-sm" title="Dashboard">
+        <span class="material-symbols-outlined text-[20px]">terminal</span>
+      </button>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <span class="font-bold tracking-tight">CodeMentor</span>
+        <span class="mono text-[10px] uppercase tracking-wider bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-full font-semibold">AI</span>
       </div>
-      <h1 id="problem-title" class="font-semibold text-sm sm:text-base truncate">Select a problem</h1>
+      <span class="text-slate-300">/</span>
+      <span class="text-sm font-medium text-slate-700">Live Practice</span>
+      <span class="hidden md:inline text-xs text-slate-400 truncate" id="header-problem">Select a problem</span>
     </div>
+
     <div class="flex items-center gap-2 shrink-0">
-      <div class="relative">
-        <span class="material-symbols-outlined pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-slate-400">code</span>
-        <select id="language" class="appearance-none min-w-[142px] rounded-lg bg-[#182235] text-slate-100 border border-white/10 pl-8 pr-8 py-2 text-xs font-medium outline-none hover:bg-[#202c41] focus:border-primary/70 focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors">
-          <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
-        </select>
-        <span class="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-slate-400">expand_more</span>
+      <div class="hidden md:flex items-center gap-2 bg-surface-container-low rounded-lg px-2.5 py-1.5">
+        <span class="material-symbols-outlined text-[16px] text-slate-500">save</span>
+        <span id="header-save" class="mono text-[10px] text-slate-500">Not saved</span>
       </div>
-      <button id="reset-code" class="w-9 h-9 rounded-lg bg-[#1f2937] hover:bg-[#273449] text-slate-200 flex items-center justify-center" type="button" title="Reset code" aria-label="Reset code">
-        <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+      <button id="settings-btn" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-surface-container-high hover:text-slate-800" title="Settings">
+        <span class="material-symbols-outlined text-[19px]">settings</span>
+      </button>
+      <button id="account-btn" class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center" title="Account">
+        <span class="material-symbols-outlined text-[17px]">person</span>
       </button>
     </div>
   </div>
+</header>
 
-  <div class="flex-1 min-h-0 flex flex-col">
-    <div class="px-4 py-2 bg-[#0f172a] border-b border-white/10 flex items-center justify-between shrink-0">
-      <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-[16px] text-slate-500">description</span>
-        <span class="mono text-[10px] uppercase tracking-wider text-slate-500">solution</span>
+<main class="pt-14 h-screen">
+  <div class="h-[calc(100vh-3.5rem)] grid grid-cols-[300px_410px_minmax(0,1fr)] overflow-hidden">
+
+    <!-- PROBLEM EXPLORER -->
+    <aside class="bg-white border-r border-slate-200/80 flex flex-col min-h-0">
+      <div class="p-3 border-b border-slate-100 shrink-0">
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center gap-2">
+            <h2 class="text-[15px] font-semibold">Problems</h2>
+            <span id="problem-count" class="mono text-[9px] font-semibold bg-surface-container px-1.5 py-0.5 rounded-full text-slate-500">0</span>
+          </div>
+        </div>
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[17px] text-slate-400">search</span>
+          <input id="problem-search" class="w-full pl-8 pr-3 py-2 text-xs bg-surface-container-low border-0 rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Search problems...">
+        </div>
+        <div class="flex items-center gap-1 mt-2">
+          <button data-difficulty="" class="difficulty-btn active px-2.5 py-1 rounded-md text-[10px] font-semibold bg-primary-container text-white">All</button>
+          <button data-difficulty="Easy" class="difficulty-btn px-2.5 py-1 rounded-md text-[10px] font-semibold bg-surface-container text-slate-500 hover:bg-surface-container-high">Easy</button>
+          <button data-difficulty="Medium" class="difficulty-btn px-2.5 py-1 rounded-md text-[10px] font-semibold bg-surface-container text-slate-500 hover:bg-surface-container-high">Medium</button>
+        </div>
       </div>
-      <span id="autosave" class="mono text-[10px] text-slate-500">Draft not saved</span>
-    </div>
-    <div id="code-editor" class="flex-1 min-h-0"></div>
-    <div id="execution-panel" class="hidden h-64 bg-[#0b1220] border-t border-white/10 shrink-0 flex flex-col overflow-hidden">
-      <div class="px-4 py-2 flex items-center justify-between border-b border-white/10 bg-[#0b1220] shrink-0">
-        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-slate-400">terminal</span><span class="mono text-[10px] uppercase tracking-wider text-slate-400">Execution result</span></div>
-        <span id="execution-summary" class="text-xs text-slate-400">—</span>
+      <div id="problem-list" class="flex-1 overflow-y-auto scroll-panel p-1.5 space-y-0.5"></div>
+    </aside>
+
+    <!-- PROBLEM STATEMENT -->
+    <section class="bg-white border-r border-slate-200/80 flex flex-col min-h-0">
+      <div class="p-4 border-b border-slate-100 shrink-0">
+        <div class="flex items-center gap-2 mb-2">
+          <span id="problem-difficulty" class="text-[10px] font-semibold px-2 py-1 rounded bg-slate-100 text-slate-600">—</span>
+        </div>
+        <h1 id="problem-title" class="text-[19px] leading-tight font-bold">Choose a problem</h1>
+        <div id="problem-topics" class="flex flex-wrap gap-1.5 mt-2.5"></div>
       </div>
-      <div id="execution-results" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-2"></div>
-    </div>
-    <div class="h-12 bg-[#111827] border-t border-white/10 flex items-center justify-between px-4 shrink-0">
-      <div id="execution-status" class="text-xs text-slate-400">Execution engine will be connected next.</div>
-      <div class="flex items-center gap-2">
-        <button id="run-btn" class="px-3.5 py-2 rounded-lg bg-[#1f2937] hover:bg-[#273449] text-slate-100 text-xs font-semibold" type="button"><span class="material-symbols-outlined align-middle text-[16px]">play_arrow</span> Run</button>
-        <button id="submit-btn" class="px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container" type="button"><span class="material-symbols-outlined align-middle text-[16px]">task_alt</span> Submit</button>
+      <div id="problem-content" class="flex-1 overflow-y-auto scroll-panel p-4">
+        <div id="problem-empty" class="h-full flex items-center justify-center text-center px-6">
+          <div>
+            <span class="material-symbols-outlined text-4xl text-slate-300">menu_book</span>
+            <p class="font-semibold text-sm mt-3">Choose a problem to start</p>
+            <p class="text-xs text-slate-400 mt-1">The statement, examples, constraints, and starter code will load here.</p>
+          </div>
+        </div>
+        <div id="problem-details" class="hidden space-y-6 text-[13px] leading-6">
+          <section>
+            <div class="mono text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Statement</div>
+            <p id="problem-description" class="text-slate-600"></p>
+          </section>
+          <section>
+            <div class="mono text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Examples</div>
+            <div id="examples" class="space-y-3"></div>
+          </section>
+          <section class="pb-5">
+            <div class="mono text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Constraints</div>
+            <ul id="constraints" class="list-disc pl-5 space-y-1 text-slate-600"></ul>
+          </section>
+        </div>
       </div>
-    </div>
+    </section>
+
+    <!-- CODE / EXECUTION -->
+    <section class="min-w-0 min-h-0 bg-[#0b1020] text-slate-100 flex flex-col">
+      <div class="h-11 bg-[#0f172a] border-b border-white/10 px-3 flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="flex items-center gap-1.5 bg-[#0b1020] px-3 py-1.5 rounded-t border-t-2 border-primary-container min-w-0">
+            <span class="material-symbols-outlined text-[14px] text-amber-400">code</span>
+            <span id="file-label" class="mono text-[11px] truncate">solution.py</span>
+          </div>
+          <div class="relative">
+            <select id="language" class="appearance-none bg-slate-800 text-slate-200 border border-slate-700 pl-2.5 pr-7 py-1.5 rounded-lg mono text-[10px] font-medium outline-none focus:border-indigo-500 cursor-pointer">
+              <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
+            </select>
+            <span class="material-symbols-outlined pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[14px] text-slate-400">expand_more</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <button id="format-code" class="px-2 py-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-[10px]" title="Format">Format</button>
+          <button id="reset-code" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200" title="Reset code">
+            <span class="material-symbols-outlined text-[17px]">restart_alt</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="editor-wrap" class="flex-1 min-h-0 overflow-hidden relative">
+        <div id="code-editor" class="absolute inset-0"></div>
+      </div>
+
+      <section id="results-drawer" class="hidden shrink-0 h-64 bg-[#0f172a] border-t border-white/10 flex-col overflow-hidden">
+        <div class="h-11 shrink-0 px-3 flex items-center justify-between bg-[#131d33] border-b border-white/10">
+          <div class="flex items-center gap-2">
+            <button id="results-toggle" class="flex items-center gap-1.5 text-slate-200 text-xs font-semibold">
+              <span id="results-toggle-icon" class="material-symbols-outlined text-[17px]">expand_more</span>
+              Test Results
+            </button>
+            <span id="execution-badge" class="text-[10px] font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">—</span>
+            <span id="execution-meta" class="hidden sm:inline text-[10px] text-slate-500"></span>
+          </div>
+          <button id="clear-results" class="text-[10px] text-slate-500 hover:text-slate-200">Clear</button>
+        </div>
+        <div id="results-body" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-2"></div>
+      </section>
+
+      <div class="h-12 shrink-0 bg-[#111827] border-t border-white/10 flex items-center justify-between px-3">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="execution-status" class="text-[10px] text-slate-500 truncate">Select a problem to begin.</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="run-btn" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-semibold hover:bg-slate-700 disabled:opacity-50" disabled>
+            <span class="material-symbols-outlined align-middle text-[15px]">play_arrow</span> Run
+          </button>
+          <button id="submit-btn" class="px-3.5 py-2 rounded-lg bg-primary-container text-white text-[11px] font-semibold hover:bg-primary disabled:opacity-50" disabled>
+            <span class="material-symbols-outlined align-middle text-[15px]">task_alt</span> Submit
+          </button>
+        </div>
+      </div>
+    </section>
   </div>
-
-  <button id="mentor-fab" class="fixed bottom-20 right-6 z-[65] w-12 h-12 rounded-full bg-primary text-white shadow-xl hover:scale-105 transition-transform flex items-center justify-center" type="button" title="Open AI Mentor" aria-label="Open AI Mentor">
-    <span class="material-symbols-outlined text-[22px]">smart_toy</span>
-  </button>
-
-  <div id="mentor-panel" class="hidden fixed bottom-20 right-5 z-[70] w-[min(400px,calc(100vw-2rem))] h-[min(560px,calc(100vh-6rem))] bg-[#101827] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-    <div class="h-14 px-4 flex items-center justify-between border-b border-white/10 shrink-0">
-      <div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-primary text-white flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">smart_toy</span></div><div><div class="font-semibold text-sm">AI Mentor</div><div class="mono text-[9px] uppercase tracking-wider text-slate-500">Problem context loaded</div></div></div>
-      <div class="flex items-center gap-1">
-        <button id="mentor-maximize" class="w-8 h-8 rounded-lg hover:bg-white/10 text-slate-300" type="button" title="Open full screen" aria-label="Open full screen"><span class="material-symbols-outlined text-[18px]">open_in_full</span></button>
-        <button id="mentor-close" class="w-8 h-8 rounded-lg hover:bg-white/10 text-slate-300" type="button" title="Close" aria-label="Close AI Mentor"><span class="material-symbols-outlined text-[18px]">close</span></button>
-      </div>
-    </div>
-    <div class="flex-1 min-h-0 overflow-auto p-4 space-y-4">
-      <div class="rounded-xl bg-white/5 border border-white/5 p-3 text-xs text-slate-400">The mentor will use your problem, code, execution results, and attempt history once those services are connected.</div>
-      <div>
-        <div class="mono text-[10px] uppercase tracking-wider text-slate-500">Session notes</div>
-        <textarea id="notes" rows="8" class="w-full mt-2 rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-3 text-xs outline-none resize-none focus:border-primary/60" placeholder="What approach are you considering? What part is unclear?"></textarea>
-      </div>
-      <div class="rounded-xl bg-white/5 border border-white/5 p-3">
-        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[17px]">lightbulb</span><span class="font-semibold text-xs">Hint strategy</span></div>
-        <p class="text-[11px] text-slate-500 mt-2">Hints will be progressive: concept → direction → edge case → implementation guidance.</p>
-      </div>
-      <div id="mentor-response" class="hidden rounded-xl bg-primary/10 border border-primary/20 p-3 text-xs text-slate-300"></div>
-    </div>
-    <div class="p-3 border-t border-white/10 shrink-0"><button id="mentor-btn" class="w-full py-2.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container" type="button">Ask Mentor About This Problem</button></div>
-  </div>
-
-  <div id="mentor-backdrop" class="hidden fixed inset-0 z-[68] bg-black/30"></div>
-</section>
-</div>
 </main>
-<div id="toast" class="hidden fixed bottom-5 right-5 z-[90] px-4 py-3 rounded-xl bg-on-surface text-white text-sm shadow-xl"></div>
+
+<!-- AI MENTOR -->
+<div class="fixed bottom-5 right-5 z-[70] flex flex-col items-end">
+  <div id="mentor-panel" class="hidden w-[min(380px,calc(100vw-2rem))] h-[min(470px,calc(100vh-6rem))] mb-3 bg-[#0f172a] text-slate-100 rounded-xl shadow-2xl border border-slate-700/80 overflow-hidden flex-col">
+    <div class="h-12 shrink-0 px-3 bg-[#131d33] border-b border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-md bg-gradient-to-tr from-primary-container to-indigo-500 flex items-center justify-center">
+          <span class="material-symbols-outlined text-[16px]">psychology</span>
+        </div>
+        <div>
+          <div class="text-[13px] font-semibold">AI Mentor</div>
+          <div id="mentor-context" class="text-[9px] text-slate-500">Select a problem to begin</div>
+        </div>
+      </div>
+      <button id="mentor-close" class="w-7 h-7 rounded hover:bg-slate-800 text-slate-400"><span class="material-symbols-outlined text-[16px]">close</span></button>
+    </div>
+    <div class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-3">
+      <div class="rounded-lg bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">
+        Mentor analysis will use the selected problem, your code, and execution results once the AI analysis service is connected.
+      </div>
+      <div class="space-y-2">
+        <div class="text-[9px] uppercase tracking-wider text-slate-500 mono font-semibold">Guidance</div>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="mentor-action" data-action="hint"><span class="material-symbols-outlined text-[15px] text-amber-400">lightbulb</span>Hint</button>
+          <button class="mentor-action" data-action="debug"><span class="material-symbols-outlined text-[15px] text-rose-400">bug_report</span>Debug</button>
+          <button class="mentor-action" data-action="complexity"><span class="material-symbols-outlined text-[15px] text-purple-400">speed</span>Complexity</button>
+          <button class="mentor-action" data-action="edge"><span class="material-symbols-outlined text-[15px] text-emerald-400">verified</span>Edge cases</button>
+        </div>
+      </div>
+      <div id="mentor-response" class="hidden rounded-lg bg-[#090d1a] border border-slate-800 p-3 text-[11px] text-slate-300 leading-5"></div>
+    </div>
+    <div class="p-2.5 bg-[#131d33] border-t border-slate-800 flex items-center gap-2">
+      <input id="mentor-input" class="flex-1 bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500" placeholder="Ask about this problem...">
+      <button id="mentor-send" class="w-8 h-8 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined text-[15px]">send</span></button>
+    </div>
+  </div>
+  <button id="mentor-trigger" class="h-11 px-4 rounded-full bg-gradient-to-r from-primary-container to-indigo-500 text-white text-[12px] font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-transform">
+    <span class="material-symbols-outlined text-[19px]">psychology</span> AI Mentor
+  </button>
+</div>
+
+<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-lg bg-slate-900 text-white text-xs shadow-xl"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
 <script>
-const API='http://127.0.0.1:8000',KEY='codementor_access_token';
-let problems=[], current=null, editor=null, monacoReady=null;
-const MONACO_LANGUAGE_MAP={
-  Python:'python', 'C++':'cpp', Java:'java', JavaScript:'javascript',
-  TypeScript:'typescript', Go:'go', Rust:'rust'
-};
-function token(){return localStorage.getItem(KEY)}
-function auth(){if(!token()){location.replace('auth.html');return false}return true}
-function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.remove('hidden');clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.add('hidden'),2500)}
-function starter(p){return (p.starter_code||{})[document.getElementById('language').value] || Object.values(p.starter_code||{})[0] || ''}
-function renderList(items){
- const host=document.getElementById('problem-list');
- host.innerHTML='';
- items.forEach(p=>{
-  const b=document.createElement('button');b.type='button';b.className='w-full text-left p-3 rounded-xl border border-transparent hover:bg-surface-container-low hover:border-slate-200 transition-colors '+(current?.slug===p.slug?'bg-surface-container border-slate-200 shadow-sm':'');
-  b.innerHTML='<div class="flex items-center justify-between gap-2"><span class="font-semibold text-sm">'+p.title+'</span><span class="mono text-[9px] px-2 py-1 rounded bg-surface-container-highest">'+p.difficulty+'</span></div><div class="text-[10px] text-on-surface-variant mt-1">'+p.topics.join(' • ')+'</div>';
-  b.onclick=()=>{selectProblem(p);};host.appendChild(b);
- });
- if(!items.length) host.innerHTML='<div class="p-4 text-xs text-on-surface-variant">No problems match these filters.</div>';
+const API='http://127.0.0.1:8000';
+const TOKEN_KEY='codementor_access_token';
+const LANG_IDS={Python:'python','C++':'cpp',Java:'java',JavaScript:'javascript',TypeScript:'typescript',Go:'go',Rust:'rust'};
+const FILE_NAMES={Python:'solution.py','C++':'solution.cpp',Java:'Solution.java',JavaScript:'solution.js',TypeScript:'solution.ts',Go:'solution.go',Rust:'solution.rs'};
+let problems=[];
+let current=null;
+let editor=null;
+let pendingEditor=null;
+let currentDifficulty='';
+
+const $=id=>document.getElementById(id);
+function token(){return localStorage.getItem(TOKEN_KEY)}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function toast(msg){const el=$('toast');el.textContent=msg;el.classList.remove('hidden');clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.add('hidden'),2400)}
+function requireAuth(){if(!token()){location.replace('auth.html');return false}return true}
+
+function starterCode(problem,language){return (problem?.starter_code||{})[language]||''}
+function draftKey(){return current?'cm_code_draft_'+current.slug+'_'+$('language').value:null}
+function loadDraftOrStarter(){
+  if(!current)return;
+  const key=draftKey();
+  const saved=localStorage.getItem(key);
+  const value=saved!==null?saved:starterCode(current,$('language').value);
+  setEditorValue(value,LANG_IDS[$('language').value]);
+  $('header-save').textContent=saved!==null?'Draft restored':'Starter code';
 }
-function populateTopics(){
- const set=[...new Set(problems.flatMap(p=>p.topics||[]))].sort(), select=document.getElementById('topic');
- select.innerHTML='<option value="">All topics</option>'+set.map(t=>'<option>'+t+'</option>').join('');
+function setEditorValue(value,langId){
+  if(!editor){pendingEditor={value:value||'',langId};return}
+  editor.setValue(value||'');
+  if(window.monaco&&langId) monaco.editor.setModelLanguage(editor.getModel(),langId);
+  editor.setScrollTop(0);
+}
+
+function difficultyClass(d){
+  if(d==='Easy')return 'bg-emerald-100 text-emerald-800';
+  if(d==='Medium')return 'bg-amber-100 text-amber-900';
+  return 'bg-rose-100 text-rose-800';
+}
+function renderProblems(){
+  const q=$('problem-search').value.trim().toLowerCase();
+  const filtered=problems.filter(p=>(!currentDifficulty||p.difficulty===currentDifficulty)&&(!q||(`${p.title} ${(p.topics||[]).join(' ')}`).toLowerCase().includes(q)));
+  $('problem-count').textContent=filtered.length;
+  $('problem-list').innerHTML=filtered.map(p=>`
+    <button type="button" class="problem-item w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-surface-container-low transition-colors" data-slug="${esc(p.slug)}">
+      <div class="flex items-start justify-between gap-2">
+        <span class="font-semibold text-[12px] leading-5 text-slate-700">${esc(p.title)}</span>
+        <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${difficultyClass(p.difficulty)}">${esc(p.difficulty)}</span>
+      </div>
+      <div class="mt-1 text-[10px] text-slate-400 truncate">${esc((p.topics||[]).join(' • '))}</div>
+    </button>`).join('') || '<div class="p-4 text-xs text-slate-400">No problems match your filters.</div>';
+  $('problem-list').querySelectorAll('[data-slug]').forEach(btn=>btn.addEventListener('click',()=>{
+    const p=problems.find(x=>x.slug===btn.dataset.slug);if(p)selectProblem(p);
+  }));
+  $('problem-list').querySelectorAll('[data-slug]').forEach(btn=>btn.classList.toggle('active',btn.dataset.slug===current?.slug));
+}
+function renderExamples(examples){
+  return (examples||[]).map((e,i)=>`<div class="bg-surface-container-low rounded-xl p-3 border border-slate-100">
+    <div class="mono text-[9px] uppercase tracking-wider text-primary-container font-semibold">Example ${i+1}</div>
+    <div class="mt-2 space-y-1.5 text-[11px]">
+      <div><span class="text-slate-400">Input: </span><code class="mono text-slate-700">${esc(e.input)}</code></div>
+      <div><span class="text-slate-400">Output: </span><code class="mono text-emerald-700 font-semibold">${esc(e.output)}</code></div>
+      <div class="text-slate-500 leading-5"><span class="text-slate-400">Explanation: </span>${esc(e.explanation)}</div>
+    </div>
+  </div>`).join('');
 }
 function selectProblem(p){
- current=p;
- document.getElementById('problem-title').textContent=p.title;
- document.getElementById('problem-difficulty').textContent=p.difficulty;
- document.getElementById('problem-topics').textContent=(p.topics||[]).join(' • ');
- document.getElementById('problem-description-title').textContent=p.title;
- document.getElementById('problem-description').textContent=p.description||'No description is available for this problem yet.';
- document.getElementById('examples').innerHTML=(p.examples||[]).length
-   ? (p.examples||[]).map((e,i)=>'<div class="rounded-xl bg-surface-container-low p-3"><div class="mono text-[10px] uppercase text-on-surface-variant">Example '+(i+1)+'</div><pre class="mt-2 text-xs whitespace-pre-wrap break-words">'+escapeHtml(e.input)+'</pre><div class="mt-2 text-xs"><strong>Output:</strong> '+escapeHtml(e.output)+'</div><div class="mt-2 text-xs text-on-surface-variant leading-5">'+escapeHtml(e.explanation)+'</div></div>').join('')
-   : '<div class="text-xs text-on-surface-variant">No examples available.</div>';
- document.getElementById('constraints').innerHTML=(p.constraints||[]).length
-   ? (p.constraints||[]).map(x=>'<li>'+escapeHtml(x)+'</li>').join('')
-   : '<li>No constraints available.</li>';
- document.getElementById('problem-details').scrollTop=0;
- const language=document.getElementById('language').value;
- const draftKey='cm_code_draft_'+p.slug+'_'+language;
- const saved=localStorage.getItem(draftKey);
- const initialCode=saved!==null?saved:starter(p);
- setEditorValue(initialCode, MONACO_LANGUAGE_MAP[language]||'plaintext');
- localStorage.setItem('cm_current_problem',p.slug);
- document.getElementById('autosave').textContent=saved!==null?'Draft restored':'Starter loaded';
- renderList(filtered());
+  current=p;
+  $('header-problem').textContent=p.title;
+  $('problem-title').textContent=p.title;
+  $('problem-difficulty').textContent=p.difficulty;
+  $('problem-difficulty').className='text-[10px] font-semibold px-2 py-1 rounded '+difficultyClass(p.difficulty);
+  $('problem-topics').innerHTML=(p.topics||[]).map(t=>`<span class="text-[9px] bg-surface-container-high text-slate-600 px-2 py-1 rounded-full">${esc(t)}</span>`).join('');
+  $('problem-description').textContent=p.description||'No description available.';
+  $('examples').innerHTML=renderExamples(p.examples);
+  $('constraints').innerHTML=(p.constraints||[]).map(c=>`<li>${esc(c)}</li>`).join('')||'<li>No constraints available.</li>';
+  $('problem-empty').classList.add('hidden');
+  $('problem-details').classList.remove('hidden');
+  $('problem-content').scrollTop=0;
+  localStorage.setItem('cm_current_problem',p.slug);
+  $('run-btn').disabled=false;$('submit-btn').disabled=false;
+  $('execution-status').textContent='Ready to run.';
+  $('mentor-context').textContent=`${p.title} · ${$('language').value}`;
+  loadDraftOrStarter();
+  renderProblems();
 }
-function filtered(){
- const d=document.getElementById('difficulty').value,t=document.getElementById('topic').value;
- return problems.filter(p=>(!d||p.difficulty===d)&&(!t||(p.topics||[]).includes(t)));
-}
-async function loadProblems(){
- if(!auth())return;
- const urlParams=new URLSearchParams(location.search);
- const topicParam=urlParams.get('topic')||'';
- const [problemRes, profileRes]=await Promise.all([
-   fetch(API+'/problems',{headers:{Authorization:'Bearer '+token()}}),
-   fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}})
- ]);
- if(problemRes.status===401||profileRes.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}
- const d=await problemRes.json();problems=d.items||[];
- populateTopics();
- if(topicParam){
-   const topicSelect=document.getElementById('topic');
-   if([...topicSelect.options].some(o=>o.value===topicParam)) topicSelect.value=topicParam;
- }
- const profile=profileRes.ok?await profileRes.json():{};
- if(profile.preferred_language && [...document.getElementById('language').options].some(o=>o.value===profile.preferred_language)){
-   document.getElementById('language').value=profile.preferred_language;
- }
- renderList(filtered());
- const slug=urlParams.get('problem')||localStorage.getItem('cm_current_problem');
- const found=problems.find(p=>p.slug===slug) || filtered()[0] || problems[0];
- if(found)selectProblem(found);
-}
-document.getElementById('difficulty').addEventListener('change',()=>renderList(filtered()));
-document.getElementById('topic').addEventListener('change',()=>renderList(filtered()));
-document.getElementById('back-dashboard').addEventListener('click',()=>location.href='dashboard.html');
-document.getElementById('language').addEventListener('change',()=>{
- if(!current)return;
- const language=document.getElementById('language').value;
- const draftKey='cm_code_draft_'+current.slug+'_'+language;
- const saved=localStorage.getItem(draftKey);
- setEditorValue(saved!==null?saved:starter(current), MONACO_LANGUAGE_MAP[language]||'plaintext');
- document.getElementById('autosave').textContent=saved!==null?'Draft restored':'Starter loaded';
-});
-document.getElementById('reset-code').addEventListener('click',()=>{if(current){setEditorValue(starter(current),MONACO_LANGUAGE_MAP[document.getElementById('language').value]||'plaintext');document.getElementById('autosave').textContent='Reset'}});
-function setEditorValue(value, languageId){
-  if(!editor){ pendingEditorValue={value,languageId}; return; }
-  editor.setValue(value||'');
-  if(window.monaco && languageId){monaco.editor.setModelLanguage(editor.getModel(),languageId);}
-}
-let pendingEditorValue=null;
 
-function initializeEditor(){
-  monacoReady=new Promise((resolve,reject)=>{
-    require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs'}});
-    require(['vs/editor/editor.main'],()=>{
-      try{
-        monaco.editor.defineTheme('codementor-vibrant',{
-          base:'vs-dark',
-          inherit:true,
-          rules:[
-            {token:'comment',foreground:'6A9955',fontStyle:'italic'},
-            {token:'keyword',foreground:'C586C0'},
-            {token:'string',foreground:'CE9178'},
-            {token:'number',foreground:'B5CEA8'},
-            {token:'type',foreground:'4EC9B0'},
-            {token:'type.identifier',foreground:'4EC9B0'},
-            {token:'identifier',foreground:'DCDCAA'},
-            {token:'delimiter',foreground:'D4D4D4'},
-            {token:'operator',foreground:'D4D4D4'},
-            {token:'regexp',foreground:'D16969'},
-            {token:'function',foreground:'DCDCAA'}
-          ],
-          colors:{
-            'editor.background':'#0b1020',
-            'editor.foreground':'#E6EDF3',
-            'editorLineNumber.foreground':'#475569',
-            'editorLineNumber.activeForeground':'#CBD5E1',
-            'editorCursor.foreground':'#8B5CF6',
-            'editor.selectionBackground':'#3730A344',
-            'editor.inactiveSelectionBackground':'#3730A322',
-            'editor.lineHighlightBackground':'#111827',
-            'editorIndentGuide.background1':'#1E293B',
-            'editorIndentGuide.activeBackground1':'#334155'
-          }
-        });
-        monaco.editor.setTheme('codementor-vibrant');
-        editor=monaco.editor.create(document.getElementById('code-editor'),{
-          value:'',
-          language:'python',
-          theme:'codementor-vibrant',
-          automaticLayout:true,
-          fontFamily:'JetBrains Mono, monospace',
-          fontSize:14,
-          lineHeight:22,
-          minimap:{enabled:true},
-          smoothScrolling:true,
-          cursorBlinking:'smooth',
-          padding:{top:14,bottom:14},
-          scrollBeyondLastLine:false,
-          roundedSelection:false,
-          bracketPairColorization:{enabled:true},
-          guides:{bracketPairs:true,indentation:true},
-          suggest:{showMethods:true,showFunctions:true},
-        });
-        editor.onDidChangeModelContent(()=>{
-          if(!current)return;
-          const draftKey='cm_code_draft_'+current.slug+'_'+document.getElementById('language').value;
-          localStorage.setItem(draftKey,editor.getValue());
-          document.getElementById('autosave').textContent='Draft saved locally';
-        });
-        if(pendingEditorValue){setEditorValue(pendingEditorValue.value,pendingEditorValue.languageId);pendingEditorValue=null;}
-        resolve();
-      }catch(error){reject(error);}
+function initMonaco(){
+  require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs'}});
+  require(['vs/editor/editor.main'],()=>{
+    monaco.editor.defineTheme('codementor-vibrant',{
+      base:'vs-dark',inherit:true,
+      rules:[
+        {token:'comment',foreground:'6A9955',fontStyle:'italic'},
+        {token:'keyword',foreground:'C586C0'},
+        {token:'string',foreground:'CE9178'},
+        {token:'number',foreground:'B5CEA8'},
+        {token:'type',foreground:'4EC9B0'},
+        {token:'type.identifier',foreground:'4EC9B0'},
+        {token:'identifier',foreground:'DCDCAA'},
+        {token:'function',foreground:'DCDCAA'}
+      ],
+      colors:{
+        'editor.background':'#0b1020','editor.foreground':'#E6EDF3',
+        'editorLineNumber.foreground':'#475569','editorLineNumber.activeForeground':'#CBD5E1',
+        'editorCursor.foreground':'#8B5CF6','editor.selectionBackground':'#3730A344',
+        'editor.lineHighlightBackground':'#111827','editorIndentGuide.background1':'#1E293B',
+        'editorIndentGuide.activeBackground1':'#334155'
+      }
     });
-  }).catch(error=>{
-    console.error('Monaco failed to load:',error);
-    document.getElementById('execution-status').textContent='Editor failed to load. Refresh to retry.';
-  });
+    monaco.editor.setTheme('codementor-vibrant');
+    editor=monaco.editor.create($('code-editor'),{
+      value:'',language:'python',theme:'codementor-vibrant',automaticLayout:true,
+      fontFamily:'JetBrains Mono, monospace',fontSize:13,lineHeight:22,
+      minimap:{enabled:true},smoothScrolling:true,cursorBlinking:'smooth',
+      padding:{top:14,bottom:14},scrollBeyondLastLine:false,
+      bracketPairColorization:{enabled:true},guides:{bracketPairs:true,indentation:true},
+      suggest:{showMethods:true,showFunctions:true}
+    });
+    editor.onDidChangeModelContent(()=>{
+      if(!current)return;
+      localStorage.setItem(draftKey(),editor.getValue());
+      $('header-save').textContent='Draft saved';
+    });
+    if(pendingEditor){setEditorValue(pendingEditor.value,pendingEditor.langId);pendingEditor=null;}
+    if(current)loadDraftOrStarter();
+  },err=>{console.error(err);$('execution-status').textContent='Editor failed to load. Refresh to retry.';});
 }
 
-
-function escapeHtml(value){
- return String(value ?? '').replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+function setExecutionBadge(status,summary){
+  const badge=$('execution-badge');
+  let classes='text-[10px] font-semibold px-2 py-1 rounded ';
+  if(status==='Accepted')classes+='bg-emerald-950 text-emerald-400';
+  else if(['Wrong Answer','Runtime Error','Time Limit Exceeded','Rejected'].includes(status))classes+='bg-rose-950 text-rose-400';
+  else classes+='bg-slate-800 text-slate-300';
+  badge.className=classes;badge.textContent=summary||status||'—';
 }
-function resultValue(value){
- try{return JSON.stringify(value);}
- catch{return String(value);}
+function showResults(){
+  const d=$('results-drawer');d.classList.remove('hidden');d.classList.add('flex');
 }
-function renderExecution(data){
- const panel=document.getElementById('execution-panel');
- const summary=document.getElementById('execution-summary');
- const results=document.getElementById('execution-results');
- if(!panel||!summary||!results)return;
- panel.classList.remove('hidden');
- const status=data.status||'Unknown';
- const statusClass=status==='Accepted'
-   ? 'text-emerald-400'
-   : status==='Wrong Answer'||status==='Runtime Error'||status==='Time Limit Exceeded'
-     ? 'text-rose-400'
-     : 'text-amber-400';
- summary.className='text-xs font-semibold '+statusClass;
- summary.textContent=(status||'Unknown')+' · '+(data.summary||'');
- results.innerHTML='';
- (data.results||[]).forEach(test=>{
-   const row=document.createElement('div');
-   const ok=!!test.passed;
-   row.className='rounded-lg border '+(ok?'border-emerald-500/15 bg-emerald-500/5':'border-rose-500/15 bg-rose-500/5')+' px-3 py-2';
-   row.innerHTML='<div class="flex items-center justify-between gap-3"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[15px] '+(ok?'text-emerald-400':'text-rose-400')+'">'+(ok?'check_circle':'cancel')+'</span><span class="text-xs font-semibold">Test '+escapeHtml(test.test)+'</span><span class="text-[10px] text-slate-500">'+escapeHtml(test.status)+'</span></div><span class="mono text-[10px] text-slate-500">'+escapeHtml(test.runtime_ms)+' ms</span></div>'+
-     (test.message?'<div class="text-[11px] text-slate-400 mt-1">'+escapeHtml(test.message)+'</div>':'')+
-     (test.expected!==undefined&&test.actual!==undefined&&!ok?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-[10px]"><div><span class="text-slate-500">Expected</span><pre class="mono text-slate-300 mt-1 whitespace-pre-wrap">'+escapeHtml(resultValue(test.expected))+'</pre></div><div><span class="text-slate-500">Actual</span><pre class="mono text-slate-300 mt-1 whitespace-pre-wrap">'+escapeHtml(resultValue(test.actual))+'</pre></div></div>':'');
-   results.appendChild(row);
- });
- results.scrollTop=0;
- results.parentElement?.scrollTo(0,0);
+function renderResults(data){
+  showResults();
+  setExecutionBadge(data.status,data.summary);
+  const results=data.results||[];
+  $('execution-meta').textContent=results.length?`${results.length} test${results.length===1?'':'s'}`:'';
+  $('results-body').innerHTML=results.length?results.map(t=>{
+    const good=!!t.passed;
+    const border=good?'border-emerald-800/40':'border-rose-800/40';
+    const bg=good?'bg-emerald-950/20':'bg-rose-950/20';
+    return `<div class="rounded-lg border ${border} ${bg} overflow-hidden">
+      <div class="px-3 py-2.5 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="material-symbols-outlined text-[16px] ${good?'text-emerald-400':'text-rose-400'}">${good?'check_circle':'cancel'}</span>
+          <span class="text-xs font-semibold">Test ${esc(t.test)}</span>
+          <span class="text-[10px] text-slate-500">${esc(t.status)}</span>
+        </div>
+        <span class="mono text-[9px] text-slate-500">${esc(t.runtime_ms)} ms</span>
+      </div>
+      ${t.message?`<div class="px-3 pb-2 text-[10px] text-slate-400">${esc(t.message)}</div>`:''}
+      ${(!good&&t.expected!==undefined&&t.actual!==undefined)?`<div class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-800 border-t border-slate-800">
+        <div class="bg-[#0b1020] p-2.5"><div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Expected</div><pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${esc(JSON.stringify(t.expected))}</pre></div>
+        <div class="bg-[#0b1020] p-2.5"><div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Actual</div><pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${esc(JSON.stringify(t.actual))}</pre></div>
+      </div>`:''}
+    </div>`;
+  }).join(''):'<div class="h-full flex items-center justify-center text-xs text-slate-500">No test results.</div>';
+  $('results-body').scrollTop=0;
 }
 async function execute(mode){
- if(!current){toast('Select a problem first.');return;}
- if(!editor){toast('Code editor is still loading.');return;}
- const code=editor.getValue().trim();
- if(!code){toast('Write a solution before running it.');return;}
- const runBtn=document.getElementById('run-btn'), submitBtn=document.getElementById('submit-btn'), status=document.getElementById('execution-status');
- runBtn.disabled=true; submitBtn.disabled=true; runBtn.classList.add('opacity-60'); submitBtn.classList.add('opacity-60');
- status.textContent=mode==='submit'?'Submitting solution...':'Running tests...';
- try{
-   const response=await fetch(API+'/execution/run',{
-     method:'POST',
-     headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
-     body:JSON.stringify({problem_slug:current.slug,language:document.getElementById('language').value,code,mode})
-   });
-   if(response.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return;}
-   const data=await response.json().catch(()=>({}));
-   if(!response.ok) throw new Error(data.detail||'Execution request failed.');
-   renderExecution(data);
-   status.textContent=(data.status||'Execution complete')+' · '+(data.summary||'');
- }catch(error){
-   status.textContent='Execution request failed.';
-   toast(error.message||'Unable to execute solution.');
- }finally{
-   runBtn.disabled=false; submitBtn.disabled=false; runBtn.classList.remove('opacity-60'); submitBtn.classList.remove('opacity-60');
- }
+  if(!current){toast('Select a problem first.');return}
+  if(!editor){toast('Editor is still loading.');return}
+  const code=editor.getValue();
+  if(!code.trim()){toast('Write a solution before running it.');return}
+  const run=$('run-btn'),submit=$('submit-btn');
+  run.disabled=true;submit.disabled=true;
+  $('execution-status').textContent=mode==='submit'?'Submitting...':'Running tests...';
+  showResults();
+  $('results-body').innerHTML='<div class="h-full flex items-center justify-center text-xs text-slate-500"><span class="material-symbols-outlined animate-spin mr-2 text-[16px]">refresh</span>Running your code...</div>';
+  setExecutionBadge('Running','Running tests');
+  try{
+    const response=await fetch(API+'/execution/run',{
+      method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
+      body:JSON.stringify({problem_slug:current.slug,language:$('language').value,code,mode})
+    });
+    if(response.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.detail||'Execution request failed.');
+    renderResults(data);
+    $('execution-status').textContent=`${data.status||'Complete'} · ${data.summary||''}`;
+  }catch(err){
+    setExecutionBadge('Error','Execution failed');
+    $('results-body').innerHTML=`<div class="rounded-lg border border-rose-800/40 bg-rose-950/20 p-3 text-xs text-rose-300">${esc(err.message||'Unable to execute the solution.')}</div>`;
+    $('execution-status').textContent='Execution failed.';
+  }finally{run.disabled=false;submit.disabled=false}
 }
-document.getElementById('run-btn').addEventListener('click',()=>execute('run'));
-document.getElementById('submit-btn').addEventListener('click',()=>execute('submit'));
-function openMentor(){
- const panel=document.getElementById('mentor-panel');
- const backdrop=document.getElementById('mentor-backdrop');
- panel?.classList.remove('hidden');
- backdrop?.classList.remove('hidden');
-}
-function closeMentor(){
- const panel=document.getElementById('mentor-panel');
- panel?.classList.add('hidden','bottom-28','right-5');
- panel?.classList.remove('inset-0','w-full','h-full','rounded-none');
- document.getElementById('mentor-backdrop')?.classList.add('hidden');
- document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
-}
-function maximizeMentor(){
- const panel=document.getElementById('mentor-panel');
- if(!panel)return;
- const full=panel.classList.contains('inset-0');
- if(full){
-   panel.classList.remove('inset-0','w-full','h-full','rounded-none');
-   panel.classList.add('bottom-28','right-5');
-   document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
- }else{
-   panel.classList.remove('bottom-28','right-5');
-   panel.classList.add('inset-0','w-full','h-full','rounded-none');
-   document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">close_fullscreen</span>';
- }
-}
-document.getElementById('mentor-fab').addEventListener('click',openMentor);
-document.getElementById('mentor-close').addEventListener('click',closeMentor);
-document.getElementById('mentor-backdrop').addEventListener('click',closeMentor);
-document.getElementById('mentor-maximize').addEventListener('click',maximizeMentor);
-document.getElementById('mentor-btn').addEventListener('click',()=>{
- const n=document.getElementById('notes').value.trim();
- const response=document.getElementById('mentor-response');
- if(!n){toast('Add a short session note first.');return;}
- response.textContent='Your note will be included in the mentor context when the AI Mentor engine is connected.';
- response.classList.remove('hidden');
-});
 
-initializeEditor();
-loadProblems();
+$('problem-search').addEventListener('input',renderProblems);
+document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.addEventListener('click',()=>{
+  currentDifficulty=btn.dataset.difficulty;
+  document.querySelectorAll('.difficulty-btn').forEach(b=>{
+    b.classList.remove('active','bg-primary-container','text-white');
+    b.classList.add('bg-surface-container','text-slate-500');
+  });
+  btn.classList.remove('bg-surface-container','text-slate-500');
+  btn.classList.add('active','bg-primary-container','text-white');
+  renderProblems();
+}));
+$('language').addEventListener('change',()=>{
+  $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
+  if(current){$('mentor-context').textContent=`${current.title} · ${$('language').value}`;loadDraftOrStarter();}
+});
+$('reset-code').addEventListener('click',()=>{
+  if(!current)return;
+  localStorage.removeItem(draftKey());
+  setEditorValue(starterCode(current,$('language').value),LANG_IDS[$('language').value]);
+  $('header-save').textContent='Starter code';
+});
+$('format-code').addEventListener('click',()=>toast('Formatting will be connected to the selected language formatter.'));
+$('run-btn').addEventListener('click',()=>execute('run'));
+$('submit-btn').addEventListener('click',()=>execute('submit'));
+$('results-toggle').addEventListener('click',()=>{
+  const body=$('results-body'),drawer=$('results-drawer');
+  body.classList.toggle('hidden');
+  $('results-toggle-icon').textContent=body.classList.contains('hidden')?'expand_less':'expand_more';
+  if(body.classList.contains('hidden'))drawer.classList.remove('h-64');else drawer.classList.add('h-64');
+});
+$('clear-results').addEventListener('click',()=>{
+  $('results-drawer').classList.add('hidden');$('results-drawer').classList.remove('flex');$('results-body').innerHTML='';setExecutionBadge('','—');$('execution-meta').textContent='';
+});
+$('home-btn').addEventListener('click',()=>location.href='dashboard.html');
+$('settings-btn').addEventListener('click',()=>location.href='settings.html');
+
+function toggleMentor(){
+  $('mentor-panel').classList.toggle('hidden');
+  $('mentor-panel').classList.toggle('flex');
+}
+$('mentor-trigger').addEventListener('click',toggleMentor);
+$('mentor-close').addEventListener('click',toggleMentor);
+function mentorPlaceholder(action){
+  const labels={hint:'a progressive hint',debug:'a code diagnosis',complexity:'a complexity analysis',edge:'an edge-case review'};
+  $('mentor-response').textContent=`The mentor is ready to provide ${labels[action]||'guidance'} after the AI analysis service is connected.`;
+  $('mentor-response').classList.remove('hidden');
+}
+document.querySelectorAll('.mentor-action').forEach(b=>b.addEventListener('click',()=>mentorPlaceholder(b.dataset.action)));
+$('mentor-send').addEventListener('click',()=>{
+  const q=$('mentor-input').value.trim();if(!q){toast('Enter a question first.');return}
+  $('mentor-response').textContent='Your question will be sent with the current problem and code once the AI Mentor service is connected.';
+  $('mentor-response').classList.remove('hidden');$('mentor-input').value='';
+});
+$('mentor-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('mentor-send').click()});
+
+async function load(){
+  if(!requireAuth())return;
+  try{
+    const [problemsRes,profileRes]=await Promise.all([
+      fetch(API+'/problems',{headers:{Authorization:'Bearer '+token()}}),
+      fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}})
+    ]);
+    if(problemsRes.status===401||profileRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+    if(!problemsRes.ok)throw new Error('Unable to load problems.');
+    const data=await problemsRes.json();problems=data.items||[];
+    const profile=profileRes.ok?await profileRes.json():{};
+    if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language))$('language').value=profile.preferred_language;
+    $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
+    renderProblems();
+    const requested=new URLSearchParams(location.search).get('problem')||localStorage.getItem('cm_current_problem');
+    const chosen=problems.find(p=>p.slug===requested)||problems[0];
+    if(chosen)selectProblem(chosen);
+  }catch(err){
+    $('problem-list').innerHTML=`<div class="p-4 text-xs text-rose-600">${esc(err.message||'Unable to load problems.')}</div>`;
+  }
+}
+
+initMonaco();
+load();
 </script>
 </body>
 </html>
