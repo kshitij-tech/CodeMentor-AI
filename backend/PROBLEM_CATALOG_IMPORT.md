@@ -59,3 +59,12 @@ For packages using the default validator, CodeMentor now supports the standard t
 - `float_relative_tolerance ε` and `float_absolute_tolerance ε` can be supplied separately
 
 Validator flags can come from the package's `validator_flags` (legacy format) or `output_validator_args` in `test_group.yaml`. These semantics follow the ICPC default output-validator specification. citeturn681946search0turn137182search3
+
+
+## Test-data groups and custom validators
+
+CodeMentor reads `testdata.yaml` from `data/`, `data/sample/`, `data/secret/`, and nested groups. Settings are inherited from parent groups.
+
+For custom pass-fail validators, the importer supports Python validators, prebuilt executables, Windows batch/cmd validators, and single-file C++ validators when `g++` is available. The validator is invoked with the input file, answer file, feedback directory, configured arguments, and the contestant output on stdin. Exit code 42 means Accepted and 43 means Wrong Answer; other exit codes are reported as Judge Error. This matches the Kattis/ICPC output-validator contract. citeturn330198view0turn948456search0
+
+The local validator runner is intended for development. Production execution still needs the stronger OS/container isolation that a system such as DOMjudge provides for contestant and validator processes. citeturn948456search0turn281698search4
