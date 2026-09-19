@@ -12,7 +12,9 @@ DEFAULT_MODEL = "gemini-2.5-flash"
 DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash-lite"
 
 class AIProviderError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, retryable: bool = False):
+        super().__init__(message)
+        self.retryable = retryable
 
 def _extract_text(payload: dict[str, Any]) -> str:
     if isinstance(payload.get("output_text"), str) and payload["output_text"].strip():
@@ -120,12 +122,14 @@ def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retri
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:1200]
             last_error = "AI provider request failed ({}): {}".format(exc.code, detail)
-            if exc.code not in {500, 502, 503, 504} or attempt >= max_retries:
+            if exc.code not in {500, 502, 503, 504}:
                 raise AIProviderError(last_error) from exc
+            if attempt >= max_retries:
+                raise AIProviderError(last_error, retryable=True) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
             last_error = "Unable to reach the AI provider."
             if attempt >= max_retries:
-                raise AIProviderError(last_error) from exc
+                raise AIProviderError(last_error, retryable=True) from exc
         time.sleep(min(8.0, 2 ** attempt))
     raise AIProviderError(last_error or "AI provider request failed after retries.")
 
@@ -233,7 +237,7 @@ Keep the answer concise, educational, and conversational.
             max_retries=2,
         )
     except AIProviderError as primary_error:
-        if fallback_model == model:
+        if not primary_error.retryable or fallback_model == model:
             raise
         try:
             payload = _request_gemini(
