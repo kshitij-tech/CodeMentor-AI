@@ -1,3 +1,5 @@
+from backend.validator import UnsupportedValidatorError, validate_default_output
+
 from __future__ import annotations
 
 import ast
@@ -220,16 +222,24 @@ def run_python_stdio_tests(
                 )
                 continue
 
-            passed = _normalize_output(stdout) == _normalize_output(expected)
+            try:
+                validation = validate_default_output(
+                    stdout,
+                    expected,
+                    case.get("validator_flags"),
+                )
+            except UnsupportedValidatorError as exc:
+                raise CodeRejectedError(str(exc)) from exc
+
             outcomes.append(
                 TestOutcome(
                     index=index,
-                    passed=passed,
-                    status="Passed" if passed else "Wrong Answer",
+                    passed=validation.passed,
+                    status="Passed" if validation.passed else "Wrong Answer",
                     expected=expected,
                     actual=stdout,
                     runtime_ms=runtime_ms,
-                    message=None if passed else "Output does not match the expected answer.",
+                    message=None if validation.passed else validation.message,
                 )
             )
 
