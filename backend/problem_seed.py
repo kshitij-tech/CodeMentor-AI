@@ -124,7 +124,16 @@ def seed_problems(db):
         if existing is None:
             db.add(Problem(**item))
         else:
-            # Backfill execution tests for problems created by an earlier schema version.
-            if not existing.test_cases:
-                existing.test_cases = item.get("test_cases", [])
+            # Keep the seeded execution contract in sync. Also repair the earlier
+            # single-list cases that accidentally had one extra nesting level.
+            seeded_tests = item.get("test_cases", [])
+            normalized_tests = []
+            for case in seeded_tests:
+                copied = dict(case)
+                args = list(copied.get("args", []))
+                if len(args) == 1 and isinstance(args[0], list) and args[0] and isinstance(args[0][0], list):
+                    args = args[0]
+                copied["args"] = args
+                normalized_tests.append(copied)
+            existing.test_cases = normalized_tests
     db.commit()
