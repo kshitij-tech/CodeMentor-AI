@@ -1199,7 +1199,11 @@ function triggerLoadingSimulation() {
 }
 
 function launchWorkspace() {
-  alert('Onboarding complete. The dashboard will be connected in the next stage.');
+  if (!getToken()) {
+    window.location.replace('auth.html');
+    return;
+  }
+  window.location.replace('dashboard.html');
 }
 
 document.getElementById('info-modal')?.addEventListener('click', (event) => {
