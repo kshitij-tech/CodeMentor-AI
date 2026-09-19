@@ -72,14 +72,14 @@ def validate_code(source: str, *, stdio: bool = False) -> None:
         if isinstance(node, ast.Import):
             for alias in node.names:
                 root = alias.name.split(".")[0]
-                if root in BLOCKED_IMPORTS:
+                if root in blocked_imports:
                     raise CodeRejectedError(f"Import '{root}' is not allowed in the local runner.")
         elif isinstance(node, ast.ImportFrom):
             root = (node.module or "").split(".")[0]
             if root in BLOCKED_IMPORTS:
                 raise CodeRejectedError(f"Import '{root}' is not allowed in the local runner.")
         elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in BLOCKED_CALLS:
+            if isinstance(node.func, ast.Name) and node.func.id in blocked_calls:
                 raise CodeRejectedError(f"Call '{node.func.id}' is not allowed in the local runner.")
 
 
