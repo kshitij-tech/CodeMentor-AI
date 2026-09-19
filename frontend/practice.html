@@ -684,7 +684,10 @@ async function askMentor(action,question=null){
     response.textContent=data.answer||'The mentor returned no explanation.';
     if(action==='hint')hintLevel=Math.min(4,hintLevel+1);
   }catch(err){
-    response.textContent=err.message||'Unable to contact the AI Mentor.';
+    const networkMessage = err instanceof TypeError && (err.message||'').toLowerCase().includes('fetch')
+      ? 'Unable to reach the CodeMentor backend. Make sure FastAPI is running on http://127.0.0.1:8000 and refresh the page.'
+      : (err.message||'Unable to contact the AI Mentor.');
+    response.textContent=networkMessage;
   }finally{
     document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=false);
     $('mentor-send').disabled=false;
