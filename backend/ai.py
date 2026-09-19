@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import os
+import time
 import urllib.error
 import urllib.request
 from typing import Any
 
 GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash-lite"
 
 class AIProviderError(RuntimeError):
     pass
@@ -80,26 +82,60 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
         "patch": patch,
     }
 
-
-def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
-    api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
-    if not api_key:
-        raise AIProviderError("GEMINI_API_KEY is not configured. Add your Gemini API key to the backend environment.")
-    model = os.getenv("AI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+def _normalize_model(model: str) -> str:
     model_aliases = {
         "2.5 flash": "gemini-2.5-flash",
         "gemini 2.5 flash": "gemini-2.5-flash",
         "gemini-2.5-flash": "gemini-2.5-flash",
         "gemini 2.5 flash lite": "gemini-2.5-flash-lite",
         "2.5 flash lite": "gemini-2.5-flash-lite",
+        "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
         "gemini 2.5 pro": "gemini-2.5-pro",
         "2.5 pro": "gemini-2.5-pro",
+        "gemini-2.5-pro": "gemini-2.5-pro",
     }
-    model = model_aliases.get(model.lower(), model)
-    if " " in model:
+    normalized = model.strip() or DEFAULT_MODEL
+    normalized = model_aliases.get(normalized.lower(), normalized)
+    if " " in normalized:
         raise AIProviderError(
-            "Invalid AI_MODEL value. Use a Gemini model id such as 'gemini-2.5-flash'."
+            "Invalid AI_MODEL value. Use a Gemini model id such as 'gemini-2.5-flash'.'
         )
+    return normalized
+
+def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retries: int) -> dict[str, Any]:
+    last_error: str | None = None
+    for attempt in range(max_retries + 1):
+        request = urllib.request.Request(
+            GEMINI_GENERATE_URL.format(model=model),
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "x-goog-api-key": api_key,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1200]
+            last_error = "AI provider request failed ({}): {}".format(exc.code, detail)
+            if exc.code not in {500, 502, 503, 504} or attempt >= max_retries:
+                raise AIProviderError(last_error) from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            last_error = "Unable to reach the AI provider."
+            if attempt >= max_retries:
+                raise AIProviderError(last_error) from exc
+        time.sleep(min(8.0, 2 ** attempt))
+    raise AIProviderError(last_error or "AI provider request failed after retries.")
+
+def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
+    api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
+    if not api_key:
+        raise AIProviderError("GEMINI_API_KEY is not configured. Add your Gemini API key to the backend environment.")
+    model = _normalize_model(os.getenv("AI_MODEL", DEFAULT_MODEL))
+    fallback_model = _normalize_model(os.getenv("AI_FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL))
+
     constraints = "\n".join("- " + str(x) for x in (problem.get("constraints") or []))
     execution_text = json.dumps(execution or {"status": "not_run", "results": []}, indent=2)
     context = """
@@ -189,23 +225,26 @@ Keep the answer concise, educational, and conversational.
         },
     }
 
-    request = urllib.request.Request(
-        GEMINI_GENERATE_URL.format(model=model),
-        data=json.dumps(body).encode("utf-8"),
-        headers={
-            "x-goog-api-key": api_key,
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
     try:
-        with urllib.request.urlopen(request, timeout=45) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:1200]
-        raise AIProviderError("AI provider request failed ({}): {}".format(exc.code, detail)) from exc
-    except (urllib.error.URLError, TimeoutError) as exc:
-        raise AIProviderError("Unable to reach the AI provider.") from exc
+        payload = _request_gemini(
+            model=model,
+            api_key=api_key,
+            body=body,
+            max_retries=2,
+        )
+    except AIProviderError as primary_error:
+        if fallback_model == model:
+            raise
+        try:
+            payload = _request_gemini(
+                model=fallback_model,
+                api_key=api_key,
+                body=body,
+                max_retries=1,
+            )
+        except AIProviderError:
+            raise primary_error
+
     candidates = payload.get("candidates") or []
     if not candidates:
         raise AIProviderError("Gemini returned no candidate response.")
