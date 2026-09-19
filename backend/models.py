@@ -94,6 +94,9 @@ class Problem(Base):
     examples: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
     test_cases: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
     starter_code: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False)
+    source: Mapped[str] = mapped_column(String(40), nullable=False, default="local")
+    external_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    external_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
