@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeMentor AI — Live Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{
+primary:"#2a14b4","primary-container":"#4338ca","surface":"#f8f9ff","surface-container-low":"#eff4ff",
+"surface-container":"#e5eeff","surface-container-high":"#dce9ff","surface-container-highest":"#d3e4fe",
+"on-surface":"#0b1c30","on-surface-variant":"#464554","outline":"#777586","tertiary":"#00442d",
+"tertiary-container":"#005e3f","error":"#ba1a1a"
+}}}};
+</script>
+<style>
+body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mono",monospace}
+.editor{font-family:"JetBrains Mono",monospace;tab-size:4}
+</style>
+</head>
+<body class="min-h-screen bg-surface text-on-surface">
+<header class="fixed top-0 inset-x-0 z-50 h-16 bg-white/90 backdrop-blur-xl shadow-sm">
+<div class="h-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+<div class="flex items-center gap-3"><button onclick="location.href='dashboard.html'" class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center" aria-label="Dashboard"><span class="material-symbols-outlined">terminal</span></button><div class="font-bold tracking-tight">CodeMentor <span class="mono text-primary text-xs uppercase tracking-wider">AI</span></div><span class="text-xs text-on-surface-variant">/ Live Practice</span></div>
+<div class="flex items-center gap-2"><button id="settings-btn" onclick="location.href='settings.html'" class="w-9 h-9 rounded-lg text-on-surface-variant hover:bg-surface-container-low" aria-label="Settings"><span class="material-symbols-outlined">settings</span></button><button id="account-btn" class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center" aria-label="Account"><span class="material-symbols-outlined text-[18px]">person</span></button></div>
+</div>
+</header>
+
+<main class="pt-20 pb-8 px-3 sm:px-5 lg:px-6">
+<div class="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)_340px] gap-4">
+<aside class="bg-white rounded-2xl shadow-sm overflow-hidden">
+<div class="p-4 border-b border-slate-100"><div class="flex items-center justify-between"><div><div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Problem set</div><h2 class="font-bold mt-1">Choose a problem</h2></div><button id="back-dashboard" class="text-xs text-on-surface-variant hover:text-primary">Dashboard</button></div>
+<div class="grid grid-cols-2 gap-2 mt-4"><select id="difficulty" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All levels</option><option>Easy</option><option>Medium</option></select><select id="topic" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All topics</option></select></div></div>
+<div id="problem-list" class="p-2 max-h-[calc(100vh-210px)] overflow-auto"></div>
+</aside>
+
+<section class="bg-white rounded-2xl shadow-sm overflow-hidden min-h-[760px] flex flex-col">
+<div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+<div><div class="flex items-center gap-2"><span id="problem-difficulty" class="mono text-[10px] uppercase tracking-wider px-2 py-1 rounded bg-surface-container-low text-on-surface-variant">—</span><span id="problem-topics" class="text-xs text-on-surface-variant">—</span></div><h1 id="problem-title" class="text-xl font-bold mt-2">Select a problem</h1></div>
+<div class="flex items-center gap-2"><select id="language" class="rounded-lg bg-surface-container-low border-0 px-3 py-2 text-sm outline-none"><option>Python</option><option>C++</option><option>Java</option></select><button id="reset-code" class="px-3 py-2 rounded-lg bg-surface-container-low text-sm hover:bg-surface-container" type="button"><span class="material-symbols-outlined align-middle text-[17px]">restart_alt</span> Reset</button></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 flex-1 min-h-0">
+<div class="p-5 border-b lg:border-b-0 lg:border-r border-slate-100 overflow-auto"><div class="mono text-[10px] uppercase tracking-wider text-on-surface-variant">Problem</div><div id="problem-description" class="text-sm leading-7 mt-3">Choose a problem from the left.</div>
+<div class="mt-6"><h3 class="font-bold text-sm">Examples</h3><div id="examples" class="space-y-3 mt-3"></div></div>
+<div class="mt-6"><h3 class="font-bold text-sm">Constraints</h3><ul id="constraints" class="mt-3 space-y-2 text-xs text-on-surface-variant list-disc pl-5"></ul></div></div>
+<div class="bg-[#0f172a] text-slate-100 flex flex-col min-h-[520px]">
+<div class="px-4 py-3 border-b border-white/10 flex items-center justify-between"><span class="mono text-[10px] uppercase tracking-wider text-slate-400">Code editor</span><span id="autosave" class="mono text-[10px] text-slate-500">Draft not saved</span></div>
+<textarea id="code-editor" class="editor flex-1 w-full resize-none bg-transparent p-5 text-[13px] leading-6 outline-none" spellcheck="false" placeholder="Your solution will appear here..."></textarea>
+<div class="px-4 py-3 border-t border-white/10 flex items-center justify-between gap-3"><div id="execution-status" class="text-xs text-slate-400">Execution engine will be connected next.</div><div class="flex items-center gap-2"><button id="run-btn" class="px-4 py-2 rounded-lg bg-slate-700 text-white text-sm font-semibold hover:bg-slate-600" type="button"><span class="material-symbols-outlined align-middle text-[17px]">play_arrow</span> Run</button><button id="submit-btn" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary-container" type="button"><span class="material-symbols-outlined align-middle text-[17px]">task_alt</span> Submit</button></div></div>
+</div></div></section>
+
+<aside class="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col">
+<div class="p-5 bg-gradient-to-br from-primary-container to-primary text-white"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center"><span class="material-symbols-outlined">smart_toy</span></div><div><h2 class="font-bold">AI Mentor</h2><div class="mono text-[10px] opacity-75">Problem context loaded</div></div></div><p class="text-xs opacity-85 mt-4">The mentor will eventually inspect execution results, bugs, edge cases, and complexity. For now, you can record what you are thinking.</p></div>
+<div class="p-5 flex-1"><div class="mono text-[10px] uppercase tracking-wider text-on-surface-variant">Session notes</div><textarea id="notes" rows="7" class="w-full mt-3 rounded-xl bg-surface-container-low border-0 px-4 py-3 text-sm outline-none resize-none" placeholder="What approach are you considering? What part is unclear?"></textarea><div class="mt-4 p-4 rounded-xl bg-surface-container-low"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[18px]">lightbulb</span><span class="font-semibold text-sm">Hint strategy</span></div><p class="text-xs text-on-surface-variant mt-2">When the execution engine is connected, hints will be progressively revealed instead of giving away the full solution immediately.</p></div></div>
+<div class="p-5 border-t border-slate-100"><button id="mentor-btn" class="w-full py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm font-semibold" type="button">Ask Mentor About This Problem</button></div>
+</aside>
+</div>
+</main>
+<div id="toast" class="hidden fixed bottom-5 right-5 z-[90] px-4 py-3 rounded-xl bg-on-surface text-white text-sm shadow-xl"></div>
+<script>
+const API='http://127.0.0.1:8000',KEY='codementor_access_token';
+let problems=[], current=null;
+function token(){return localStorage.getItem(KEY)}
+function auth(){if(!token()){location.replace('auth.html');return false}return true}
+function toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.remove('hidden');clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.add('hidden'),2500)}
+function starter(p){return (p.starter_code||{})[document.getElementById('language').value] || Object.values(p.starter_code||{})[0] || ''}
+function renderList(items){
+ const host=document.getElementById('problem-list');
+ host.innerHTML='';
+ items.forEach(p=>{
+  const b=document.createElement('button');b.type='button';b.className='w-full text-left p-3 rounded-xl hover:bg-surface-container-low transition-colors '+(current?.slug===p.slug?'bg-surface-container':'');
+  b.innerHTML='<div class="flex items-center justify-between gap-2"><span class="font-semibold text-sm">'+p.title+'</span><span class="mono text-[9px] px-2 py-1 rounded bg-surface-container-highest">'+p.difficulty+'</span></div><div class="text-[10px] text-on-surface-variant mt-1">'+p.topics.join(' • ')+'</div>';
+  b.onclick=()=>selectProblem(p);host.appendChild(b);
+ });
+ if(!items.length) host.innerHTML='<div class="p-4 text-xs text-on-surface-variant">No problems match these filters.</div>';
+}
+function populateTopics(){
+ const set=[...new Set(problems.flatMap(p=>p.topics||[]))].sort(), select=document.getElementById('topic');
+ select.innerHTML='<option value="">All topics</option>'+set.map(t=>'<option>'+t+'</option>').join('');
+}
+function selectProblem(p){
+ current=p;
+ document.getElementById('problem-title').textContent=p.title;
+ document.getElementById('problem-difficulty').textContent=p.difficulty;
+ document.getElementById('problem-topics').textContent=p.topics.join(' • ');
+ document.getElementById('problem-description').textContent=p.description;
+ document.getElementById('examples').innerHTML=(p.examples||[]).map((e,i)=>'<div class="rounded-xl bg-surface-container-low p-4"><div class="font-mono text-[10px] uppercase text-on-surface-variant">Example '+(i+1)+'</div><pre class="mt-2 text-xs whitespace-pre-wrap">'+e.input+'</pre><div class="mt-2 text-xs"><strong>Output:</strong> '+e.output+'</div><div class="mt-2 text-xs text-on-surface-variant">'+e.explanation+'</div></div>').join('');
+ document.getElementById('constraints').innerHTML=(p.constraints||[]).map(x=>'<li>'+x+'</li>').join('');
+ document.getElementById('code-editor').value=starter(p);
+ localStorage.setItem('cm_current_problem',p.slug);
+ localStorage.setItem('cm_code_draft',p.starter_code?.[document.getElementById('language').value]||'');
+ document.getElementById('autosave').textContent='Starter loaded';
+ renderList(filtered());
+}
+function filtered(){
+ const d=document.getElementById('difficulty').value,t=document.getElementById('topic').value;
+ return problems.filter(p=>(!d||p.difficulty===d)&&(!t||(p.topics||[]).includes(t)));
+}
+async function loadProblems(){
+ if(!auth())return;
+ const r=await fetch(API+'/problems',{headers:{Authorization:'Bearer '+token()}});
+ if(r.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}
+ const d=await r.json();problems=d.items||[];populateTopics();renderList(problems);
+ const slug=new URLSearchParams(location.search).get('problem')||localStorage.getItem('cm_current_problem');
+ const found=problems.find(p=>p.slug===slug)||problems[0];if(found)selectProblem(found);
+}
+document.getElementById('difficulty').addEventListener('change',()=>renderList(filtered()));
+document.getElementById('topic').addEventListener('change',()=>renderList(filtered()));
+document.getElementById('back-dashboard').addEventListener('click',()=>location.href='dashboard.html');
+document.getElementById('language').addEventListener('change',()=>{if(!current)return;document.getElementById('code-editor').value=starter(current);document.getElementById('autosave').textContent='Starter loaded'});
+document.getElementById('reset-code').addEventListener('click',()=>{if(current){document.getElementById('code-editor').value=starter(current);document.getElementById('autosave').textContent='Reset'}});
+document.getElementById('code-editor').addEventListener('input',e=>{localStorage.setItem('cm_code_draft',e.target.value);document.getElementById('autosave').textContent='Draft saved locally'});
+document.getElementById('run-btn').addEventListener('click',()=>toast('Run is ready for the sandbox stage. No code is executed yet.'));
+document.getElementById('submit-btn').addEventListener('click',()=>toast('Submit will use the isolated execution and test engine in the next stage.'));
+document.getElementById('mentor-btn').addEventListener('click',()=>{const n=document.getElementById('notes').value.trim();toast(n?'Mentor will receive these session notes when the AI engine is connected.':'Add a short session note first.');});
+loadProblems();
+</script>
+</body>
+</html>
