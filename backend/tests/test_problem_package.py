@@ -58,5 +58,20 @@ print(n * 2)
         self.assertEqual(problem["test_cases"][0]["expected_output"], "world\n")
 
 
+    def test_test_group_validator_flags_are_imported(self):
+        files = {
+            "problem.yaml": b"name: Validator Flags Test\n",
+            "problem.md": b"# Validator Flags Test\n",
+            "data/sample/test_group.yaml": b"output_validator_args: [case_sensitive]\n",
+            "data/sample/0.in": b"hello\n",
+            "data/sample/0.ans": b"HELLO\n",
+        }
+        problem = package_to_problem(files, "fixture")
+        self.assertEqual(
+            problem["test_cases"][0]["validator_flags"],
+            ["case_sensitive"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
