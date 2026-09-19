@@ -1,479 +1,1101 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CodeMentor AI — Adaptive Onboarding</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            surface: '#f8f9ff',
-            card: '#ffffff',
-            primary: '#4338ca',
-            primaryDark: '#2a14b4',
-            ink: '#0b1c30',
-            muted: '#464554',
-            soft: '#eff4ff',
-            line: '#c7c4d7',
-            success: '#10b981'
-          },
-          fontFamily: {
-            body: ['Plus Jakarta Sans', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace']
-          }
-        }
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_standard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-error-container":"#93000a","primary-fixed-dim":"#c3c0ff","primary":"#2a14b4","error-container":"#ffdad6","on-surface-variant":"#464554","surface-dim":"#cbdbf5","primary-fixed":"#e3dfff","surface-tint":"#5148d7","tertiary-fixed-dim":"#4edea3","on-surface":"#0b1c30","background":"#f8f9ff","surface-variant":"#d3e4fe","inverse-primary":"#c3c0ff","surface-container-lowest":"#ffffff","on-tertiary-fixed-variant":"#005236","primary-container":"#4338ca","tertiary-container":"#005e3f","on-primary":"#ffffff","inverse-on-surface":"#eaf1ff","on-primary-fixed":"#100069","surface-container-low":"#eff4ff","inverse-surface":"#213145","surface-container-highest":"#d3e4fe","secondary-container":"#39b8fd","on-secondary":"#ffffff","on-primary-container":"#c1beff","on-secondary-fixed-variant":"#004c6e","on-primary-fixed-variant":"#372abf","outline":"#777586","on-error":"#ffffff","outline-variant":"#c7c4d7","error":"#ba1a1a","on-tertiary-container":"#4ddda2","on-tertiary-fixed":"#002113","tertiary":"#00442d","tertiary-fixed":"#6ffbbe","on-tertiary":"#ffffff","surface-container":"#e5eeff","surface-bright":"#f8f9ff","on-background":"#0b1c30","surface":"#f8f9ff","secondary":"#006591","surface-container-high":"#dce9ff","on-secondary-fixed":"#001e2f","secondary-fixed-dim":"#89ceff","on-secondary-container":"#004666","secondary-fixed":"#c9e6ff"},borderRadius:{DEFAULT:"0.25rem",lg:"0.5rem",xl:"0.75rem",full:"9999px"},spacing:{"gutter-mobile":"1rem","space-xl":"2.5rem","margin-mobile":"1rem","space-lg":"1.5rem",gutter:"1.5rem","space-sm":"0.5rem","space-xs":"0.25rem",margin:"2rem","space-md":"1rem"},fontFamily:{"headline-lg-mobile":["Plus Jakarta Sans"],"label-md":["JetBrains Mono"],"body-md":["Plus Jakarta Sans"],"code-block":["JetBrains Mono"],"headline-md":["Plus Jakarta Sans"],"headline-sm":["Plus Jakarta Sans"],"headline-xl":["Plus Jakarta Sans"],"headline-xl-mobile":["Plus Jakarta Sans"],"code-inline":["JetBrains Mono"],"body-sm":["Plus Jakarta Sans"],"headline-lg":["Plus Jakarta Sans"],"label-sm":["JetBrains Mono"],"body-lg":["Plus Jakarta Sans"]},fontSize:{"headline-lg-mobile":["24px",{lineHeight:"32px",letterSpacing:"-0.01em",fontWeight:"600"}],"label-md":["12px",{lineHeight:"16px",letterSpacing:"0.04em",fontWeight:"500"}],"body-md":["14px",{lineHeight:"22px",fontWeight:"400"}],"code-block":["13px",{lineHeight:"20px",fontWeight:"400"}],"headline-md":["22px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],"headline-sm":["18px",{lineHeight:"24px",fontWeight:"600"}],"headline-xl":["40px",{lineHeight:"48px",letterSpacing:"-0.02em",fontWeight:"700"}],"headline-xl-mobile":["30px",{lineHeight:"38px",letterSpacing:"-0.015em",fontWeight:"700"}],"code-inline":["13px",{lineHeight:"18px",fontWeight:"500"}],"body-sm":["12px",{lineHeight:"18px",fontWeight:"400"}],"headline-lg":["32px",{lineHeight:"40px",letterSpacing:"-0.015em",fontWeight:"600"}],"label-sm":["10px",{lineHeight:"14px",letterSpacing:"0.06em",fontWeight:"600"}],"body-lg":["16px",{lineHeight:"26px",fontWeight:"400"}]}}}};</script></head><body class="bg-background font-body-md text-on-surface antialiased min-h-screen flex flex-col"><header class="fixed top-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 max-w-[1440px] mx-auto px-margin-mobile lg:px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="w-9 h-9 rounded-lg bg-primary-container flex items-center justify-center text-on-primary shadow-sm"><span class="material-symbols-outlined text-[20px]">terminal</span></div><div class="flex items-baseline gap-space-xs"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight font-bold">CodeMentor</span><span class="font-label-md text-label-md text-primary font-semibold tracking-wider uppercase">AI</span></div></div><nav class="flex items-center gap-space-md lg:gap-space-lg" data-active-classes="text-primary font-semibold"><a class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" data-path="help" href="#">Help</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors" data-path="save-exit" href="#">Save &amp; Exit</a></nav><div class="flex items-center gap-space-md"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="w-full pt-16 flex-1 bg-surface"><div class="flex flex-col w-full">
+<!-- Subtle Ambient Glow and Grid Backdrop Container -->
+<div class="relative w-full overflow-hidden px-gutter-mobile lg:px-margin py-space-md lg:py-space-xl flex flex-col items-center">
+<!-- Ambient Radial Blur Circles -->
+<div class="absolute -top-32 left-1/2 -translate-x-1/2 w-[700px] h-[350px] bg-gradient-to-b from-primary-fixed/60 via-surface-variant/40 to-transparent rounded-full blur-3xl pointer-events-none -z-10"></div>
+<div class="absolute top-72 -left-20 w-80 h-80 bg-secondary-container/20 rounded-full blur-2xl pointer-events-none -z-10"></div>
+<div class="absolute top-96 -right-20 w-80 h-80 bg-tertiary-fixed/30 rounded-full blur-3xl pointer-events-none -z-10"></div>
+<!-- Stepper Navigation & Header Sub-bar -->
+<div class="w-full max-w-2xl mb-space-lg flex flex-col gap-space-sm">
+<!-- Stepper Top Row: Brand & Progress Meta -->
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-7 h-7 rounded-lg bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Adaptive Onboarding</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-label-md text-label-md text-primary font-semibold tracking-wider uppercase" id="step-indicator-text">Step 1 of 4</span>
+<span class="text-outline-variant font-label-md text-label-md">•</span>
+<span class="font-label-md text-label-md text-on-surface-variant font-medium" id="step-percentage-text">25% Complete</span>
+</div>
+</div>
+<!-- Linear Progress Bar -->
+<div class="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
+<div class="h-full bg-primary-container rounded-full transition-all duration-500 ease-out" id="progress-bar-fill" style="width: 25%;"></div>
+</div>
+<!-- Pill Breadcrumbs -->
+<div class="grid grid-cols-4 gap-space-xs pt-space-xs">
+<button class="group flex items-center gap-1.5 py-1 text-left transition-all" id="crumb-1" onclick="goToStep(1)" type="button">
+<span class="w-4 h-4 rounded-full bg-primary-container text-on-primary text-[10px] flex items-center justify-center font-bold">1</span>
+<span class="font-label-sm text-label-sm font-semibold text-primary truncate">Profile</span>
+</button>
+<button class="group flex items-center gap-1.5 py-1 text-left opacity-60 hover:opacity-100 transition-all" id="crumb-2" onclick="goToStep(2)" type="button">
+<span class="w-4 h-4 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] flex items-center justify-center font-bold">2</span>
+<span class="font-label-sm text-label-sm font-medium text-on-surface-variant truncate">Language</span>
+</button>
+<button class="group flex items-center gap-1.5 py-1 text-left opacity-60 hover:opacity-100 transition-all" id="crumb-3" onclick="goToStep(3)" type="button">
+<span class="w-4 h-4 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] flex items-center justify-center font-bold">3</span>
+<span class="font-label-sm text-label-sm font-medium text-on-surface-variant truncate">LeetCode</span>
+</button>
+<button class="group flex items-center gap-1.5 py-1 text-left opacity-60 hover:opacity-100 transition-all" id="crumb-4" onclick="goToStep(4)" type="button">
+<span class="w-4 h-4 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] flex items-center justify-center font-bold">4</span>
+<span class="font-label-sm text-label-sm font-medium text-on-surface-variant truncate">Goals</span>
+</button>
+</div>
+</div>
+<!-- Error Banner (Toggleable) -->
+<div class="hidden w-full max-w-2xl mb-space-md p-space-md rounded-xl bg-error-container text-on-error-container shadow-sm flex items-start gap-space-sm transition-all duration-300" id="error-banner">
+<span class="material-symbols-outlined text-[20px] text-error shrink-0">error</span>
+<div class="flex-1">
+<p class="font-headline-sm text-[14px] leading-tight font-semibold text-error">Action Required</p>
+<p class="font-body-sm text-body-sm mt-0.5" id="error-text">Please complete all required fields and choose an option before proceeding.</p>
+</div>
+<button class="text-on-error-container/70 hover:text-on-error-container" onclick="hideError()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<!-- Main Interactive Wizard Card -->
+<div class="w-full max-w-2xl bg-surface-container-lowest rounded-xl shadow-sm p-space-lg lg:p-space-xl relative min-h-[540px] flex flex-col justify-between">
+<!-- Inner Form Steps Container -->
+<div class="w-full">
+<!-- STEP 1: ABOUT YOU -->
+<section class="step-view flex flex-col gap-space-lg" id="step-1">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider font-semibold">
+<span class="material-symbols-outlined text-[16px]">badge</span>
+<span>Step 1 • Core Identity</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold">Tell us about yourself</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">We customize feedback granularity, interview pressure, and AI coaching vocabulary to your level.</p>
+</div>
+<!-- Full Name Field with validation checkmark -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center justify-between" for="user-name">
+<span>Full Name or Dev Handle <span class="text-error">*</span></span>
+<span class="hidden text-tertiary font-label-sm text-label-sm font-semibold flex items-center gap-1" id="name-status">
+<span class="material-symbols-outlined text-[14px]">check_circle</span> Verified
+              </span>
+</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[18px]">person</span>
+<input class="w-full pl-10 pr-10 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md shadow-sm outline-none transition-all placeholder:text-outline" id="user-name" oninput="handleNameInput(this.value)" placeholder="e.g. " type="text" value="Maya Lin"/>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-tertiary text-[18px]" id="name-check-icon">check_circle</span>
+</div>
+</div>
+<!-- Experience Level Single Select Cards -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-body-sm text-body-sm font-semibold text-on-surface">
+              Current DSA &amp; Coding Depth <span class="text-error">*</span>
+</label>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-sm" id="experience-options">
+<!-- Beginner -->
+<button class="exp-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between gap-space-xs" data-exp="Beginner" onclick="selectExperience('Beginner')" type="button">
+<div class="flex items-center justify-between">
+<span class="w-7 h-7 rounded-md bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">school</span>
+</span>
+<span class="exp-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Beginner</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight mt-0.5">&lt; 1 yr • Arrays, basics, simple loops</p>
+</div>
+</button>
+<!-- Intermediate (Default active) -->
+<button class="exp-card active-card text-left p-space-md rounded-lg bg-surface-container transition-all flex flex-col justify-between gap-space-xs shadow-sm" data-exp="Intermediate" onclick="selectExperience('Intermediate')" type="button">
+<div class="flex items-center justify-between">
+<span class="w-7 h-7 rounded-md bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[18px]">psychology</span>
+</span>
+<span class="exp-check material-symbols-outlined text-primary text-[18px] opacity-100" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Intermediate</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight mt-0.5">1-3 yrs • Trees, heaps, graph BFS/DFS</p>
+</div>
+</button>
+<!-- Advanced -->
+<button class="exp-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between gap-space-xs" data-exp="Advanced" onclick="selectExperience('Advanced')" type="button">
+<div class="flex items-center justify-between">
+<span class="w-7 h-7 rounded-md bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">neurology</span>
+</span>
+<span class="exp-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Advanced</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight mt-0.5">3+ yrs • Complex DP, high scalability</p>
+</div>
+</button>
+</div>
+</div>
+<!-- Short intro textarea -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<label class="font-body-sm text-body-sm font-semibold text-on-surface" for="user-bio">Short Introduction / Notes (Optional)</label>
+<span class="font-label-sm text-label-sm text-on-surface-variant" id="bio-counter">42 / 180</span>
+</div>
+<textarea class="w-full p-space-sm rounded-lg bg-surface-container-lowest text-on-surface font-body-md text-body-md shadow-sm outline-none resize-none placeholder:text-outline" id="user-bio" maxlength="180" oninput="updateBioCounter(this)" placeholder="e.g. CS senior prepping for fall tier-1 tech company technical screenings." rows="2">CS senior prepping for tier-1 technical interviews.</textarea>
+</div>
+<!-- Reassurance Informative Callout -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-sm text-on-surface">
+<span class="material-symbols-outlined text-[20px] text-primary shrink-0">tips_and_updates</span>
+<div class="font-body-sm text-body-sm text-on-surface-variant">
+<strong class="text-on-surface font-semibold">Why we ask:</strong> We tune our AI hints to match your conceptual depth — never talking down to you or skipping foundations you haven't mastered yet.
+            </div>
+</div>
+</section>
+<!-- STEP 2: CODING PREFERENCES -->
+<section class="step-view hidden flex flex-col gap-space-lg" id="step-2">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider font-semibold">
+<span class="material-symbols-outlined text-[16px]">code</span>
+<span>Step 2 • Technical Dialect</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold">Select your interview language</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">All mock interviews, real-time hints, and time-complexity inspections will compile and evaluate in this language.</p>
+</div>
+<!-- Language Selection Grid -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-sm" id="language-grid">
+<!-- Python -->
+<button class="lang-card active-card text-left p-space-md rounded-lg bg-surface-container transition-all flex flex-col justify-between h-28 shadow-sm relative overflow-hidden" data-lang="Python" onclick="selectLanguage('Python', '3.11')" type="button">
+<div class="flex items-center justify-between">
+<span class="font-code-block text-code-block font-semibold text-primary">py</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Python</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">v3.11 • Standard lib</span>
+</div>
+</button>
+<!-- C++ -->
+<button class="lang-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-28 relative overflow-hidden" data-lang="C++" onclick="selectLanguage('C++', '20')" type="button">
+<div class="flex items-center justify-between">
+<span class="font-code-block text-code-block font-semibold text-secondary">c++</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">C++</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">C++20 STL</span>
+</div>
+</button>
+<!-- Java -->
+<button class="lang-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-28 relative overflow-hidden" data-lang="Java" onclick="selectLanguage('Java', '21')" type="button">
+<div class="flex items-center justify-between">
+<span class="font-code-block text-code-block font-semibold text-tertiary">java</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Java</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">OpenJDK 21</span>
+</div>
+</button>
+<!-- JavaScript -->
+<button class="lang-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-28 relative overflow-hidden" data-lang="JavaScript" onclick="selectLanguage('JavaScript', 'ES2024')" type="button">
+<div class="flex items-center justify-between">
+<span class="font-code-block text-code-block font-semibold text-on-surface-variant">js</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">JavaScript</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Node.js 20</span>
+</div>
+</button>
+<!-- TypeScript -->
+<button class="lang-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-28 relative overflow-hidden" data-lang="TypeScript" onclick="selectLanguage('TypeScript', '5.4')" type="button">
+<div class="flex items-center justify-between">
+<span class="font-code-block text-code-block font-semibold text-primary">ts</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">TypeScript</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Strict Types</span>
+</div>
+</button>
+<!-- Go -->
+<button class="lang-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-28 relative overflow-hidden" data-lang="Go" onclick="selectLanguage('Go', '1.22')" type="button">
+<div class="flex items-center justify-between">
+<span class="font-code-block text-code-block font-semibold text-secondary">go</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Go</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">v1.22 Fast Run</span>
+</div>
+</button>
+<!-- Rust -->
+<button class="lang-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-28 relative overflow-hidden" data-lang="Rust" onclick="selectLanguage('Rust', '2021')" type="button">
+<div class="flex items-center justify-between">
+<span class="font-code-block text-code-block font-semibold text-on-surface-variant">rs</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Rust</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Edition 2021</span>
+</div>
+</button>
+<!-- Other -->
+<button class="lang-card text-left p-space-md rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-28 relative overflow-hidden" data-lang="Other" onclick="selectLanguage('Other', 'Custom')" type="button">
+<div class="flex items-center justify-between">
+<span class="material-symbols-outlined text-[20px] text-outline">more_horiz</span>
+<span class="lang-check material-symbols-outlined text-primary text-[18px] opacity-0">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md text-body-md font-bold text-on-surface">Other</h4>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Kotlin, Swift, etc</span>
+</div>
+</button>
+</div>
+<!-- Language Capability Hint -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-secondary shrink-0">speed</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+<strong class="text-on-surface font-semibold">Native Idiom Analyzer:</strong> CodeMentor AI checks memory bounds and provides idiomatic refactorings matching modern <span class="text-primary font-bold" id="selected-lang-pill">Python</span> coding conventions.
+            </p>
+</div>
+</section>
+<!-- STEP 3: LEETCODE SYNC -->
+<section class="step-view hidden flex flex-col gap-space-lg" id="step-3">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider font-semibold">
+<span class="material-symbols-outlined text-[16px]">sync_alt</span>
+<span>Step 3 • Historical Calibration</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold">Connect your LeetCode profile</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">We sync solved questions to detect problem clusters where you hesitate or get time limit exceeded.</p>
+</div>
+<!-- Input + Sync Action -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center justify-between" for="leetcode-input">
+<span>LeetCode Username</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Public profile only</span>
+</label>
+<div class="flex gap-space-xs">
+<div class="relative flex-1">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-label-md text-label-md text-outline font-bold">lc/</span>
+<input class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface font-code-inline text-code-inline shadow-sm outline-none placeholder:text-outline" id="leetcode-input" placeholder="e.g. mayacodes" type="text" value=""/>
+</div>
+<button class="px-space-md py-2.5 rounded-lg bg-primary text-on-primary font-body-sm text-body-sm font-semibold shadow-sm hover:opacity-90 transition-all flex items-center gap-1.5" id="sync-profile-btn" onclick="simulateLeetcodeSync()" type="button">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+<span>Calibrate</span>
+</button>
+</div>
+</div>
+<!-- Live Profile Preview Card -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-sm shadow-sm transition-all duration-300" id="leetcode-preview">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary font-bold">
+<span class="material-symbols-outlined text-[22px]">terminal</span>
+</div>
+<div>
+<div class="flex items-center gap-space-xs">
+<span class="font-headline-sm text-[15px] font-bold text-on-surface" id="lc-preview-name">mayacodes_sf</span>
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">check</span> Verified
+                    </span>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Global Rank: #48,210 • 78.4% Acceptance</p>
+</div>
+</div>
+<div class="text-right hidden sm:block">
+<span class="font-headline-md text-headline-md font-bold text-primary">243</span>
+<span class="font-label-sm text-label-sm block text-on-surface-variant uppercase">Solved</span>
+</div>
+</div>
+<!-- Breakdown Stats Bar -->
+<div class="grid grid-cols-3 gap-space-xs pt-space-xs">
+<div class="p-2 rounded-lg bg-surface-container-lowest text-center">
+<span class="font-label-sm text-label-sm text-tertiary block font-semibold">Easy</span>
+<span class="font-headline-sm text-[16px] font-bold text-on-surface">112</span>
+</div>
+<div class="p-2 rounded-lg bg-surface-container-lowest text-center">
+<span class="font-label-sm text-label-sm text-secondary block font-semibold">Medium</span>
+<span class="font-headline-sm text-[16px] font-bold text-on-surface">117</span>
+</div>
+<div class="p-2 rounded-lg bg-surface-container-lowest text-center">
+<span class="font-label-sm text-label-sm text-error block font-semibold">Hard</span>
+<span class="font-headline-sm text-[16px] font-bold text-on-surface">14</span>
+</div>
+</div>
+<!-- Identified Diagnostic Areas -->
+<div class="flex items-center gap-2 pt-1 font-body-sm text-body-sm text-on-surface-variant flex-wrap">
+<span class="font-label-sm text-label-sm font-semibold uppercase text-outline">Identified Weak Spots:</span>
+<span class="px-2 py-0.5 rounded-md bg-error-container text-on-error-container font-label-sm text-label-sm font-medium">Interval DP</span>
+<span class="px-2 py-0.5 rounded-md bg-error-container text-on-error-container font-label-sm text-label-sm font-medium">Monotonic Queue</span>
+<span class="px-2 py-0.5 rounded-md bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm font-medium">Union-Find</span>
+</div>
+</div>
+<!-- Explanation Callout -->
+<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-tertiary shrink-0">history_edu</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+              Connecting your LeetCode username lets CodeMentor AI avoid repeating problems you've already conquered, and immediately surfaces target variations you struggled with.
+            </p>
+</div>
+</section>
+<!-- STEP 4: CAREER GOALS -->
+<section class="step-view hidden flex flex-col gap-space-lg" id="step-4">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider font-semibold">
+<span class="material-symbols-outlined text-[16px]">flag</span>
+<span>Step 4 • Destination Benchmark</span>
+</div>
+<h2 class="font-headline-md text-headline-md text-on-surface font-bold">Target role &amp; companies</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">We align daily challenge frequency with actual technical rubrics used by high-tier tech companies.</p>
+</div>
+<!-- Target Role Selection Cards -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-body-sm text-body-sm font-semibold text-on-surface">Target Position <span class="text-error">*</span></label>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs" id="role-options">
+<button class="role-card active-card text-left p-space-sm rounded-lg bg-surface-container transition-all flex flex-col justify-between h-20 shadow-sm" data-role="Backend Engineer" onclick="selectRole('Backend Engineer')" type="button">
+<span class="material-symbols-outlined text-primary text-[20px]">database</span>
+<span class="font-body-sm text-body-sm font-bold text-on-surface leading-tight">Backend</span>
+</button>
+<button class="role-card text-left p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-20" data-role="Full Stack" onclick="selectRole('Full Stack')" type="button">
+<span class="material-symbols-outlined text-outline text-[20px]">layers</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Full Stack</span>
+</button>
+<button class="role-card text-left p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-20" data-role="Frontend Engineer" onclick="selectRole('Frontend Engineer')" type="button">
+<span class="material-symbols-outlined text-outline text-[20px]">web</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Frontend</span>
+</button>
+<button class="role-card text-left p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-20" data-role="ML / AI Engineer" onclick="selectRole('ML / AI Engineer')" type="button">
+<span class="material-symbols-outlined text-outline text-[20px]">smart_toy</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">ML / AI</span>
+</button>
+<button class="role-card text-left p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-20" data-role="Systems / Infra" onclick="selectRole('Systems / Infra')" type="button">
+<span class="material-symbols-outlined text-outline text-[20px]">memory</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Systems</span>
+</button>
+<button class="role-card text-left p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-20" data-role="Data Engineer" onclick="selectRole('Data Engineer')" type="button">
+<span class="material-symbols-outlined text-outline text-[20px]">query_stats</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Data Eng</span>
+</button>
+<button class="role-card text-left p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-20" data-role="Mobile (iOS/Android)" onclick="selectRole('Mobile (iOS/Android)')" type="button">
+<span class="material-symbols-outlined text-outline text-[20px]">smartphone</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">Mobile</span>
+</button>
+<button class="role-card text-left p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container transition-all flex flex-col justify-between h-20" data-role="General SWE" onclick="selectRole('General SWE')" type="button">
+<span class="material-symbols-outlined text-outline text-[20px]">terminal</span>
+<span class="font-body-sm text-body-sm font-semibold text-on-surface leading-tight">General SWE</span>
+</button>
+</div>
+</div>
+<!-- Target Companies Multi-select Tags -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-body-sm text-body-sm font-semibold text-on-surface">Target Companies (Click to toggle)</label>
+<div class="flex flex-wrap gap-space-xs" id="company-tags">
+<button class="tag-chip active-tag px-3 py-1.5 rounded-full bg-primary text-on-primary font-body-sm text-body-sm font-medium transition-all flex items-center gap-1" onclick="toggleCompanyTag(this)" type="button">
+<span>Google</span>
+<span class="material-symbols-outlined text-[14px]">check</span>
+</button>
+<button class="tag-chip active-tag px-3 py-1.5 rounded-full bg-primary text-on-primary font-body-sm text-body-sm font-medium transition-all flex items-center gap-1" onclick="toggleCompanyTag(this)" type="button">
+<span>Stripe</span>
+<span class="material-symbols-outlined text-[14px]">check</span>
+</button>
+<button class="tag-chip px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant font-body-sm text-body-sm font-medium transition-all flex items-center gap-1" onclick="toggleCompanyTag(this)" type="button">
+<span>Meta</span>
+</button>
+<button class="tag-chip px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant font-body-sm text-body-sm font-medium transition-all flex items-center gap-1" onclick="toggleCompanyTag(this)" type="button">
+<span>Netflix</span>
+</button>
+<button class="tag-chip px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant font-body-sm text-body-sm font-medium transition-all flex items-center gap-1" onclick="toggleCompanyTag(this)" type="button">
+<span>Amazon</span>
+</button>
+<button class="tag-chip px-3 py-1.5 rounded-full bg-surface-container-low hover:bg-surface-container text-on-surface-variant font-body-sm text-body-sm font-medium transition-all flex items-center gap-1" onclick="toggleCompanyTag(this)" type="button">
+<span>High-Growth Startups</span>
+</button>
+</div>
+</div>
+<!-- Timeline Selection -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-body-sm text-body-sm font-semibold text-on-surface">Preparation Timeline</label>
+<div class="grid grid-cols-3 gap-space-xs" id="timeline-options">
+<button class="time-card p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container text-center transition-all" data-time="30 Days Sprint" onclick="selectTimeline('30 Days Sprint')" type="button">
+<span class="font-label-sm text-label-sm uppercase font-semibold text-outline block">Urgent</span>
+<span class="font-body-sm text-body-sm font-bold text-on-surface">30 Days Sprint</span>
+</button>
+<button class="time-card active-card p-space-sm rounded-lg bg-surface-container text-center transition-all shadow-sm" data-time="3 Months Deep Dive" onclick="selectTimeline('3 Months Deep Dive')" type="button">
+<span class="font-label-sm text-label-sm uppercase font-semibold text-primary block">Recommended</span>
+<span class="font-body-sm text-body-sm font-bold text-on-surface">3 Months</span>
+</button>
+<button class="time-card p-space-sm rounded-lg bg-surface-container-low hover:bg-surface-container text-center transition-all" data-time="Continuous Growth" onclick="selectTimeline('Continuous Growth')" type="button">
+<span class="font-label-sm text-label-sm uppercase font-semibold text-outline block">Paced</span>
+<span class="font-body-sm text-body-sm font-bold text-on-surface">Casual &amp; Weekly</span>
+</button>
+</div>
+</div>
+</section>
+<!-- STEP 5: COMPLETION & WORKSPACE READY STATE -->
+<section class="step-view hidden flex flex-col gap-space-lg" id="step-5">
+<!-- Header Banner -->
+<div class="flex flex-col items-center text-center gap-space-xs">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-primary-container to-secondary-container text-on-primary flex items-center justify-center shadow-md mb-space-xs">
+<span class="material-symbols-outlined text-[32px]">task_alt</span>
+</div>
+<span class="font-label-md text-label-md text-tertiary font-semibold tracking-wider uppercase">Workspace Calibrated</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-bold">You're ready to master interviews</h2>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md">Your AI mentor has modeled your diagnostic profile and generated an adaptive technical curriculum.</p>
+</div>
+<!-- Dynamic Calibration Summary Card -->
+<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-md shadow-sm">
+<div class="flex items-center justify-between pb-space-sm border-b border-surface-dim/40">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant font-semibold">Configured Trajectory</span>
+<span class="font-label-sm text-label-sm text-primary font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">verified</span> Real-time Rubric
+              </span>
+</div>
+<!-- Profile Summary Chips -->
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs">
+<div class="p-2.5 rounded-lg bg-surface-container-lowest">
+<span class="font-label-sm text-label-sm text-on-surface-variant block">Target Role</span>
+<span class="font-body-sm text-body-sm font-bold text-on-surface truncate block" id="summary-role">Backend</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-lowest">
+<span class="font-label-sm text-label-sm text-on-surface-variant block">Primary Lang</span>
+<span class="font-body-sm text-body-sm font-bold text-primary truncate block" id="summary-lang">Python 3.11</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-lowest">
+<span class="font-label-sm text-label-sm text-on-surface-variant block">Experience</span>
+<span class="font-body-sm text-body-sm font-bold text-on-surface truncate block" id="summary-exp">Intermediate</span>
+</div>
+<div class="p-2.5 rounded-lg bg-surface-container-lowest">
+<span class="font-label-sm text-label-sm text-on-surface-variant block">LeetCode Sync</span>
+<span class="font-body-sm text-body-sm font-bold text-tertiary truncate block" id="summary-lc">Not synced yet</span>
+</div>
+</div>
+<!-- Generated Day 1 Plan -->
+<div class="p-space-sm rounded-lg bg-surface-container-lowest flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[20px]">rocket_launch</span>
+</div>
+<div class="flex-1 min-w-0">
+<span class="font-label-sm text-label-sm text-primary font-semibold uppercase block">Recommended Day 1 Focus</span>
+<p class="font-body-sm text-body-sm font-bold text-on-surface truncate">Sliding Window Patterns &amp; Graph Cycle Detection</p>
+</div>
+<span class="px-2 py-1 rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm font-semibold">25 min</span>
+</div>
+</div>
+<!-- Launch CTA Action -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<button class="w-full py-3 px-space-lg rounded-lg bg-primary-container text-on-primary font-headline-sm text-[16px] font-bold shadow-md hover:bg-primary transition-all flex items-center justify-center gap-2" onclick="launchWorkspace()" type="button">
+<span>Enter CodeMentor AI Workspace</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+<p class="text-center font-body-sm text-[12px] text-on-surface-variant">Your session environment will immediately initialize with syntax highlighting and live hint engine.</p>
+</div>
+</section>
+<!-- SIMULATED LOADING OVERLAY (Hidden by default) -->
+<div class="hidden absolute inset-0 bg-surface-container-lowest/95 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-space-lg z-20 transition-all duration-300" id="loading-overlay">
+<div class="relative w-16 h-16 mb-space-md flex items-center justify-center">
+<div class="w-16 h-16 rounded-full border-4 border-primary-container/20 border-t-primary-container animate-spin"></div>
+<span class="material-symbols-outlined text-primary text-[24px] absolute">psychology</span>
+</div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface text-center">Calibrating Diagnostic Model</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center max-w-sm mt-1" id="loading-subtext">Analyzing past LeetCode contest submissions and synthesizing company rubrics...</p>
+<div class="w-64 h-1.5 rounded-full bg-surface-container-high mt-space-md overflow-hidden">
+<div class="h-full bg-primary-container rounded-full animate-pulse" style="width: 75%;"></div>
+</div>
+</div>
+</div>
+<!-- Footer Action Controls (Bottom Bar of Wizard Card) -->
+<div class="w-full pt-space-lg mt-space-lg border-t border-surface-container-high/60 flex items-center justify-between" id="card-footer-controls">
+<!-- Left Action: Back Button -->
+<button class="hidden px-space-md py-2 rounded-lg text-on-surface-variant hover:text-on-surface font-body-md text-body-md font-medium transition-colors flex items-center gap-1" id="btn-back" onclick="stepBack()" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Back</span>
+</button>
+<div class="w-16" id="btn-back-placeholder"></div>
+<!-- Right Action: Continue / Finish Button & Skip Option -->
+<div class="flex items-center gap-space-sm">
+<button class="hidden text-on-surface-variant hover:text-on-surface font-body-sm text-body-sm font-medium transition-colors px-2 py-1" id="btn-skip" onclick="skipStep()" type="button">
+            Skip for now
+          </button>
+<button class="px-space-lg py-2.5 rounded-lg bg-primary-container text-on-primary font-body-md text-body-md font-bold shadow-sm hover:bg-primary transition-all flex items-center gap-1.5" id="btn-next" onclick="stepForward()" type="button">
+<span id="btn-next-label">Continue</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Interactive Demo Tester Bar (Quick jump & state testing) -->
+<div class="w-full max-w-2xl mt-space-lg p-space-md rounded-xl bg-surface-container-lowest/80 backdrop-blur-sm shadow-sm flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline font-semibold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">tune</span> Prototype State Switcher
+        </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Click below to jump directly to any wizard step or simulate system states</span>
+</div>
+<div class="flex flex-wrap gap-1.5 pt-1">
+<button class="px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high font-label-sm text-label-sm font-medium text-on-surface transition-all" onclick="goToStep(1)" type="button">Step 1: Profile</button>
+<button class="px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high font-label-sm text-label-sm font-medium text-on-surface transition-all" onclick="goToStep(2)" type="button">Step 2: Language</button>
+<button class="px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high font-label-sm text-label-sm font-medium text-on-surface transition-all" onclick="goToStep(3)" type="button">Step 3: LeetCode</button>
+<button class="px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high font-label-sm text-label-sm font-medium text-on-surface transition-all" onclick="goToStep(4)" type="button">Step 4: Goals</button>
+<button class="px-2.5 py-1 rounded-md bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold transition-all" onclick="goToStep(5)" type="button">Success View</button>
+<button class="px-2.5 py-1 rounded-md bg-error-container text-on-error-container font-label-sm text-label-sm font-semibold transition-all" onclick="toggleErrorState()" type="button">Toggle Error</button>
+<button class="px-2.5 py-1 rounded-md bg-primary-fixed text-on-primary-fixed font-label-sm text-label-sm font-semibold transition-all" onclick="triggerLoadingSimulation()" type="button">Simulate Loading</button>
+</div>
+</div>
+</div>
+</div>
+<script>
+  // Onboarding Wizard State Machine
+  const API_BASE_URL = 'http://127.0.0.1:8000';
+  const wizardState = {
+    currentStep: 1,
+    name: "",
+    bio: "",
+    experience: "",
+    language: "",
+    langVersion: "",
+    leetcodeUser: "",
+    leetcodeSynced: false,
+    targetRole: "",
+    companies: [],
+    timeline: ""
+  };
+
+  function updateView() {
+    hideError();
+
+    // Hide all step sections
+    for (let i = 1; i <= 5; i++) {
+      const stepElem = document.getElementById('step-' + i);
+      if (stepElem) {
+        stepElem.classList.add('hidden');
       }
     }
-  </script>
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background:#f8f9ff; color:#0b1c30; }
-    .step-hidden { display:none; }
-    .grid-bg {
-      background-image: linear-gradient(rgba(67,56,202,.035) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(67,56,202,.035) 1px, transparent 1px);
-      background-size:32px 32px;
+
+    // Show current step section
+    const activeElem = document.getElementById('step-' + wizardState.currentStep);
+    if (activeElem) {
+      activeElem.classList.remove('hidden');
     }
-  </style>
-</head>
-<body class="min-h-screen bg-surface">
-<header class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/70">
-  <div class="h-16 max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between">
-    <a href="index.html" class="flex items-center gap-2.5">
-      <div class="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-sm">
-        <span class="material-symbols-outlined">terminal</span>
-      </div>
-      <div class="flex items-baseline gap-1.5">
-        <span class="font-bold tracking-tight">CodeMentor</span>
-        <span class="font-mono text-xs tracking-widest uppercase text-primary font-semibold">AI</span>
-      </div>
-    </a>
-    <div class="flex items-center gap-4">
-      <span id="save-state" class="text-xs text-slate-400 hidden sm:inline">Your progress is saved when you finish</span>
-      <a href="index.html" class="text-xs font-semibold text-slate-500 hover:text-slate-900">Save &amp; Exit</a>
-      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
-        <span class="material-symbols-outlined text-sm">person</span>
-      </div>
-    </div>
-  </div>
-</header>
 
-<main class="pt-16 min-h-screen grid-bg">
-  <div class="max-w-3xl mx-auto px-4 py-8 lg:py-14">
-    <div class="mb-6">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <div class="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center">
-            <span class="material-symbols-outlined text-sm">auto_awesome</span>
-          </div>
-          <span class="font-semibold">Adaptive Onboarding</span>
-        </div>
-        <div class="flex items-center gap-2 text-xs font-mono">
-          <span id="step-label" class="text-primary font-semibold">STEP 1 OF 4</span>
-          <span class="text-slate-300">•</span>
-          <span id="percent-label" class="text-slate-500">25% COMPLETE</span>
-        </div>
-      </div>
-      <div class="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
-        <div id="progress" class="h-full bg-primary rounded-full transition-all duration-300" style="width:25%"></div>
-      </div>
-    </div>
+    // Update Progress Header
+    const progressBar = document.getElementById('progress-bar-fill');
+    const stepText = document.getElementById('step-indicator-text');
+    const stepPct = document.getElementById('step-percentage-text');
+    const footerControls = document.getElementById('card-footer-controls');
 
-    <div id="error" class="hidden mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-      <div class="flex items-start gap-2">
-        <span class="material-symbols-outlined text-lg">error</span>
-        <span id="error-text"></span>
-      </div>
-    </div>
-
-    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 lg:p-8">
-      <div id="step-1">
-        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 1 • Core Identity</div>
-        <h1 class="mt-2 text-2xl font-bold">Tell us about yourself</h1>
-        <p class="mt-2 text-sm text-slate-500">We use your level to tune the depth of explanations and practice.</p>
-
-        <div class="mt-7">
-          <label for="user-name" class="block text-sm font-semibold">Full Name or Dev Handle <span class="text-red-500">*</span></label>
-          <input id="user-name" type="text" maxlength="120" placeholder="e.g. Maya Lin" oninput="state.name=this.value.trim()" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-indigo-100">
-        </div>
-
-        <div class="mt-6">
-          <label class="block text-sm font-semibold">Current DSA &amp; Coding Depth <span class="text-red-500">*</span></label>
-          <div class="grid md:grid-cols-3 gap-3 mt-2">
-            <button type="button" data-value="Beginner" onclick="selectExperience('Beginner')" class="exp-card rounded-xl border border-slate-200 bg-white p-4 text-left">
-              <div class="font-semibold">Beginner</div>
-              <div class="mt-1 text-xs text-slate-500">&lt; 1 yr · arrays, basics</div>
-            </button>
-            <button type="button" data-value="Intermediate" onclick="selectExperience('Intermediate')" class="exp-card rounded-xl border border-slate-200 bg-white p-4 text-left">
-              <div class="font-semibold">Intermediate</div>
-              <div class="mt-1 text-xs text-slate-500">1–3 yrs · trees, heaps, graphs</div>
-            </button>
-            <button type="button" data-value="Advanced" onclick="selectExperience('Advanced')" class="exp-card rounded-xl border border-slate-200 bg-white p-4 text-left">
-              <div class="font-semibold">Advanced</div>
-              <div class="mt-1 text-xs text-slate-500">3+ yrs · complex DSA</div>
-            </button>
-          </div>
-        </div>
-
-        <div class="mt-6">
-          <div class="flex justify-between">
-            <label for="bio" class="block text-sm font-semibold">Short Introduction / Notes <span class="text-slate-400 font-normal">(Optional)</span></label>
-            <span id="bio-count" class="text-xs text-slate-400">0 / 180</span>
-          </div>
-          <textarea id="bio" maxlength="180" rows="3" oninput="state.bio=this.value; document.getElementById('bio-count').textContent=this.value.length+' / 180'" placeholder="e.g. CS senior preparing for technical interviews." class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-indigo-100"></textarea>
-        </div>
-      </div>
-
-      <div id="step-2" class="step-hidden">
-        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 2 • Technical Dialect</div>
-        <h1 class="mt-2 text-2xl font-bold">Select your interview language</h1>
-        <p class="mt-2 text-sm text-slate-500">This becomes the default language for future coding sessions.</p>
-
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-7">
-          <button type="button" data-value="Python" onclick="selectLanguage('Python','3.11')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">python</div><div class="mt-5 font-semibold text-sm">Python</div><div class="text-xs text-slate-500">3.11</div></button><button type="button" data-value="C++" onclick="selectLanguage('C++','20')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">c++</div><div class="mt-5 font-semibold text-sm">C++</div><div class="text-xs text-slate-500">20</div></button><button type="button" data-value="Java" onclick="selectLanguage('Java','21')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">java</div><div class="mt-5 font-semibold text-sm">Java</div><div class="text-xs text-slate-500">21</div></button><button type="button" data-value="JavaScript" onclick="selectLanguage('JavaScript','ES2024')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">js</div><div class="mt-5 font-semibold text-sm">JavaScript</div><div class="text-xs text-slate-500">ES2024</div></button><button type="button" data-value="TypeScript" onclick="selectLanguage('TypeScript','5.4')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">ts</div><div class="mt-5 font-semibold text-sm">TypeScript</div><div class="text-xs text-slate-500">5.4</div></button><button type="button" data-value="Go" onclick="selectLanguage('Go','1.22')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">go</div><div class="mt-5 font-semibold text-sm">Go</div><div class="text-xs text-slate-500">1.22</div></button><button type="button" data-value="Rust" onclick="selectLanguage('Rust','2021')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">rust</div><div class="mt-5 font-semibold text-sm">Rust</div><div class="text-xs text-slate-500">2021</div></button><button type="button" data-value="Other" onclick="selectLanguage('Other','Custom')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">…</div><div class="mt-5 font-semibold text-sm">Other</div><div class="text-xs text-slate-500">Custom</div></button>
-        </div>
-      </div>
-
-      <div id="step-3" class="step-hidden">
-        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 3 • Historical Calibration</div>
-        <h1 class="mt-2 text-2xl font-bold">Connect your LeetCode profile</h1>
-        <p class="mt-2 text-sm text-slate-500">We'll store the username now; the real problem-history sync will be added in the LeetCode integration stage.</p>
-
-        <div class="mt-7">
-          <label for="leetcode" class="block text-sm font-semibold">LeetCode Username</label>
-          <div class="mt-2 flex gap-2">
-            <input id="leetcode" type="text" maxlength="100" placeholder="e.g. yourusername" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-4 focus:ring-indigo-100">
-            <button type="button" onclick="previewLeetCode()" class="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">Save Username</button>
-          </div>
-          <p id="lc-status" class="mt-2 text-xs text-slate-500">You can skip this step.</p>
-        </div>
-
-        <div class="mt-6 rounded-2xl bg-soft border border-indigo-100 p-5">
-          <div class="flex items-center justify-between">
-            <div>
-              <div id="lc-preview-name" class="font-semibold text-sm">No username connected</div>
-              <div id="lc-preview-detail" class="mt-1 text-xs text-slate-500">LeetCode analytics will be populated later.</div>
-            </div>
-            <span class="material-symbols-outlined text-primary">sync</span>
-          </div>
-        </div>
-      </div>
-
-      <div id="step-4" class="step-hidden">
-        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 4 • Destination Benchmark</div>
-        <h1 class="mt-2 text-2xl font-bold">Target role &amp; preparation plan</h1>
-        <p class="mt-2 text-sm text-slate-500">Your target role will later influence which DSA patterns and interview questions are recommended.</p>
-
-        <label class="block text-sm font-semibold mt-7">Target Position <span class="text-red-500">*</span></label>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
-          <button type="button" data-value="Backend Engineer" onclick="selectRole('Backend Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">database</span><span class="font-semibold text-xs">Backend Engineer</span></button><button type="button" data-value="Full Stack" onclick="selectRole('Full Stack')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">layers</span><span class="font-semibold text-xs">Full Stack</span></button><button type="button" data-value="Frontend Engineer" onclick="selectRole('Frontend Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">web</span><span class="font-semibold text-xs">Frontend Engineer</span></button><button type="button" data-value="ML / AI Engineer" onclick="selectRole('ML / AI Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">smart_toy</span><span class="font-semibold text-xs">ML / AI Engineer</span></button><button type="button" data-value="Systems / Infra" onclick="selectRole('Systems / Infra')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">memory</span><span class="font-semibold text-xs">Systems / Infra</span></button><button type="button" data-value="Data Engineer" onclick="selectRole('Data Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">query_stats</span><span class="font-semibold text-xs">Data Engineer</span></button><button type="button" data-value="Mobile (iOS/Android)" onclick="selectRole('Mobile (iOS/Android)')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">smartphone</span><span class="font-semibold text-xs">Mobile (iOS/Android)</span></button><button type="button" data-value="General SWE" onclick="selectRole('General SWE')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">terminal</span><span class="font-semibold text-xs">General SWE</span></button>
-        </div>
-
-        <label class="block text-sm font-semibold mt-6">Target Companies <span class="text-slate-400 font-normal">(Optional)</span></label>
-        <div class="flex flex-wrap gap-2 mt-2">
-          <button type="button" onclick="toggleCompany('Google', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Google</button><button type="button" onclick="toggleCompany('Stripe', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Stripe</button><button type="button" onclick="toggleCompany('Meta', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Meta</button><button type="button" onclick="toggleCompany('Netflix', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Netflix</button><button type="button" onclick="toggleCompany('Amazon', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Amazon</button><button type="button" onclick="toggleCompany('High-Growth Startups', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">High-Growth Startups</button>
-        </div>
-
-        <label class="block text-sm font-semibold mt-6">Preparation Timeline</label>
-        <div class="grid grid-cols-3 gap-3 mt-2">
-          <button type="button" data-value="30 Days Sprint" onclick="selectTimeline('30 Days Sprint')" class="time-card rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="font-semibold text-xs">30 Days Sprint</div></button><button type="button" data-value="3 Months Deep Dive" onclick="selectTimeline('3 Months Deep Dive')" class="time-card rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="font-semibold text-xs">3 Months Deep Dive</div></button><button type="button" data-value="Continuous Growth" onclick="selectTimeline('Continuous Growth')" class="time-card rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="font-semibold text-xs">Continuous Growth</div></button>
-        </div>
-      </div>
-
-      <div id="step-5" class="step-hidden text-center">
-        <div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-100 text-primary flex items-center justify-center">
-          <span class="material-symbols-outlined text-3xl">task_alt</span>
-        </div>
-        <div class="mt-5 text-xs font-mono uppercase tracking-widest text-success font-semibold">Workspace Ready</div>
-        <h1 class="mt-2 text-2xl font-bold">Your profile is saved</h1>
-        <p class="mt-2 text-sm text-slate-500 max-w-lg mx-auto">Your onboarding information is now available to the systems we'll build next: analytics, recommendations, and AI mentoring.</p>
-        <div class="mt-7 rounded-2xl bg-soft p-5 text-left grid grid-cols-2 gap-3">
-          <div><div class="text-xs text-slate-500">Role</div><div id="sum-role" class="font-semibold mt-1 truncate"></div></div>
-          <div><div class="text-xs text-slate-500">Language</div><div id="sum-lang" class="font-semibold mt-1 truncate"></div></div>
-          <div><div class="text-xs text-slate-500">Experience</div><div id="sum-exp" class="font-semibold mt-1 truncate"></div></div>
-          <div><div class="text-xs text-slate-500">LeetCode</div><div id="sum-lc" class="font-semibold mt-1 truncate"></div></div>
-        </div>
-      </div>
-
-      <div id="loading" class="hidden fixed inset-0 bg-white/80 backdrop-blur-sm z-[60] items-center justify-center">
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-xl p-7 text-center max-w-sm mx-4">
-          <div class="w-12 h-12 mx-auto rounded-full border-4 border-indigo-100 border-t-primary animate-spin"></div>
-          <div class="mt-4 font-bold">Saving your profile</div>
-          <div id="loading-text" class="mt-1 text-xs text-slate-500">Persisting your onboarding preferences…</div>
-        </div>
-      </div>
-
-      <div id="controls" class="mt-8 pt-6 border-t border-slate-200 flex items-center justify-between">
-        <button id="back-btn" type="button" onclick="back()" class="hidden px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">← Back</button>
-        <div id="back-placeholder" class="w-16"></div>
-        <div class="flex items-center gap-2">
-          <button id="skip-btn" type="button" onclick="skip()" class="hidden px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-900">Skip for now</button>
-          <button id="next-btn" type="button" onclick="next()" class="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primaryDark">Continue</button>
-        </div>
-      </div>
-    </section>
-  </div>
-</main>
-
-<script>
-const API_BASE_URL = 'http://127.0.0.1:8000';
-
-const state = {
-  step: 1,
-  name: '',
-  bio: '',
-  experience: '',
-  language: '',
-  languageVersion: '',
-  leetcode: '',
-  role: '',
-  companies: [],
-  timeline: ''
-};
-
-function token() {
-  return localStorage.getItem('codementor_access_token');
-}
-
-function showError(message) {
-  document.getElementById('error-text').textContent = message;
-  document.getElementById('error').classList.remove('hidden');
-}
-
-function clearError() {
-  document.getElementById('error').classList.add('hidden');
-}
-
-function updateView() {
-  clearError();
-  for (let i = 1; i <= 5; i++) {
-    const el = document.getElementById('step-' + i);
-    if (el) el.classList.toggle('step-hidden', i !== state.step);
-  }
-  const pct = state.step <= 4 ? state.step * 25 : 100;
-  document.getElementById('progress').style.width = pct + '%';
-  document.getElementById('step-label').textContent = state.step <= 4 ? 'STEP ' + state.step + ' OF 4' : 'SETUP FINALIZED';
-  document.getElementById('percent-label').textContent = state.step <= 4 ? pct + '% COMPLETE' : '100% READY';
-
-  const back = document.getElementById('back-btn');
-  const placeholder = document.getElementById('back-placeholder');
-  const skip = document.getElementById('skip-btn');
-  const next = document.getElementById('next-btn');
-
-  if (state.step === 1) {
-    back.classList.add('hidden'); placeholder.classList.remove('hidden'); skip.classList.add('hidden'); next.textContent = 'Continue to Language';
-  } else if (state.step === 2) {
-    back.classList.remove('hidden'); placeholder.classList.add('hidden'); skip.classList.add('hidden'); next.textContent = 'Continue to LeetCode Sync';
-  } else if (state.step === 3) {
-    back.classList.remove('hidden'); placeholder.classList.add('hidden'); skip.classList.remove('hidden'); next.textContent = 'Continue to Career Goals';
-  } else if (state.step === 4) {
-    back.classList.remove('hidden'); placeholder.classList.add('hidden'); skip.classList.add('hidden'); next.textContent = 'Finish & Personalize';
-  } else {
-    document.getElementById('controls').classList.add('hidden');
-  }
-}
-
-function markSelected(selector, value, activeClasses='border-primary bg-soft') {
-  document.querySelectorAll(selector).forEach(card => {
-    const active = card.dataset.value === value;
-    card.classList.toggle('border-primary', active);
-    card.classList.toggle('bg-soft', active);
-    card.classList.toggle('ring-2', active);
-    card.classList.toggle('ring-indigo-100', active);
-    if (!active) {
-      card.classList.remove('bg-soft', 'ring-2', 'ring-indigo-100');
-      card.classList.add('border-slate-200');
+    if (wizardState.currentStep <= 4) {
+      const pct = (wizardState.currentStep / 4) * 100;
+      if (progressBar) progressBar.style.width = pct + '%';
+      if (stepText) stepText.textContent = `Step ${wizardState.currentStep} of 4`;
+      if (stepPct) stepPct.textContent = `${pct}% Complete`;
+      if (footerControls) footerControls.classList.remove('hidden');
+    } else {
+      // Step 5: Success view
+      if (progressBar) progressBar.style.width = '100%';
+      if (stepText) stepText.textContent = `Setup Finalized`;
+      if (stepPct) stepPct.textContent = `100% Ready`;
+      if (footerControls) footerControls.classList.add('hidden');
+      syncSummaryState();
     }
-  });
-}
 
-function selectExperience(value) { state.experience=value; markSelected('.exp-card', value); }
-function selectLanguage(value, version) {
-  state.language=value; state.languageVersion=version;
-  markSelected('.lang-card', value);
-}
-function selectRole(value) { state.role=value; markSelected('.role-card', value); }
-function selectTimeline(value) { state.timeline=value; markSelected('.time-card', value); }
+    // Update Breadcrumbs
+    for (let i = 1; i <= 4; i++) {
+      const crumb = document.getElementById('crumb-' + i);
+      if (!crumb) continue;
+      const numBadge = crumb.querySelector('span:first-child');
+      const label = crumb.querySelector('span:last-child');
 
-function toggleCompany(company, button) {
-  if (state.companies.includes(company)) {
-    state.companies = state.companies.filter(x => x !== company);
-    button.classList.remove('bg-primary','text-white');
-    button.classList.add('bg-soft','text-slate-600');
-  } else {
-    state.companies.push(company);
-    button.classList.remove('bg-soft','text-slate-600');
-    button.classList.add('bg-primary','text-white');
+      if (i < wizardState.currentStep) {
+        // Completed step
+        crumb.classList.remove('opacity-60');
+        numBadge.className = "w-4 h-4 rounded-full bg-tertiary text-on-tertiary text-[10px] flex items-center justify-center font-bold";
+        numBadge.innerHTML = "✓";
+        label.className = "font-label-sm text-label-sm font-semibold text-tertiary truncate";
+      } else if (i === wizardState.currentStep) {
+        // Active step
+        crumb.classList.remove('opacity-60');
+        numBadge.className = "w-4 h-4 rounded-full bg-primary-container text-on-primary text-[10px] flex items-center justify-center font-bold";
+        numBadge.textContent = i;
+        label.className = "font-label-sm text-label-sm font-semibold text-primary truncate";
+      } else {
+        // Future step
+        crumb.classList.add('opacity-60');
+        numBadge.className = "w-4 h-4 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] flex items-center justify-center font-bold";
+        numBadge.textContent = i;
+        label.className = "font-label-sm text-label-sm font-medium text-on-surface-variant truncate";
+      }
+    }
+
+    // Control Buttons logic
+    const btnBack = document.getElementById('btn-back');
+    const btnBackPh = document.getElementById('btn-back-placeholder');
+    const btnNext = document.getElementById('btn-next');
+    const btnNextLabel = document.getElementById('btn-next-label');
+    const btnSkip = document.getElementById('btn-skip');
+
+    if (wizardState.currentStep === 1) {
+      if (btnBack) btnBack.classList.add('hidden');
+      if (btnBackPh) btnBackPh.classList.remove('hidden');
+      if (btnSkip) btnSkip.classList.add('hidden');
+      if (btnNextLabel) btnNextLabel.textContent = "Continue to Language";
+    } else if (wizardState.currentStep === 2) {
+      if (btnBack) btnBack.classList.remove('hidden');
+      if (btnBackPh) btnBackPh.classList.add('hidden');
+      if (btnSkip) btnSkip.classList.add('hidden');
+      if (btnNextLabel) btnNextLabel.textContent = "Continue to LeetCode Sync";
+    } else if (wizardState.currentStep === 3) {
+      if (btnBack) btnBack.classList.remove('hidden');
+      if (btnBackPh) btnBackPh.classList.add('hidden');
+      if (btnSkip) btnSkip.classList.remove('hidden');
+      if (btnNextLabel) btnNextLabel.textContent = "Continue to Career Goals";
+    } else if (wizardState.currentStep === 4) {
+      if (btnBack) btnBack.classList.remove('hidden');
+      if (btnBackPh) btnBackPh.classList.add('hidden');
+      if (btnSkip) btnSkip.classList.add('hidden');
+      if (btnNextLabel) btnNextLabel.textContent = "Finish & Personalize AI Workspace";
+    }
   }
-}
 
-function previewLeetCode() {
-  const value = document.getElementById('leetcode').value.trim();
-  state.leetcode = value;
-  document.getElementById('lc-preview-name').textContent = value || 'No username connected';
-  document.getElementById('lc-preview-detail').textContent = value ? 'Username saved for the upcoming LeetCode sync.' : 'LeetCode analytics will be populated later.';
-  document.getElementById('lc-status').textContent = value ? 'Username saved locally in your onboarding session.' : 'You can skip this step.';
-}
-
-function validateStep() {
-  if (state.step === 1) {
-    state.name = document.getElementById('user-name').value.trim();
-    state.bio = document.getElementById('bio').value.trim();
-    if (!state.name) return 'Please enter your full name or developer handle.';
-    if (!state.experience) return 'Please choose your coding experience level.';
-  }
-  if (state.step === 2 && !state.language) return 'Please choose your primary programming language.';
-  if (state.step === 4 && !state.role) return 'Please choose your target role.';
-  return null;
-}
-
-async function next() {
-  clearError();
-  const problem = validateStep();
-  if (problem) { showError(problem); return; }
-
-  if (state.step < 4) {
-    state.step++;
-    updateView();
-    return;
+  function getToken() {
+    return localStorage.getItem('codementor_access_token');
   }
 
-  await saveProfile();
-}
-
-function back() {
-  if (state.step > 1) {
-    state.step--;
-    updateView();
-  }
-}
-
-function skip() {
-  if (state.step === 3) {
-    state.leetcode = '';
-    document.getElementById('leetcode').value = '';
-    state.step++;
+  function goToStep(step) {
+    wizardState.currentStep = step;
     updateView();
   }
-}
 
-async function saveProfile() {
-  const accessToken = token();
-  if (!accessToken) {
-    window.location.href = 'auth.html';
-    return;
-  }
+  function stepForward() {
+    if (wizardState.currentStep === 1) {
+      const nameInput = document.getElementById('user-name');
+      const bioInput = document.getElementById('user-bio');
+      wizardState.name = nameInput ? nameInput.value.trim() : "";
+      wizardState.bio = bioInput ? bioInput.value.trim() : "";
 
-  document.getElementById('loading').classList.remove('hidden');
-  document.getElementById('loading').classList.add('flex');
+      if (!wizardState.name) {
+        showError("Please enter your full name or developer handle before continuing.");
+        return;
+      }
+      if (!wizardState.experience) {
+        showError("Please choose your coding experience depth.");
+        return;
+      }
+    }
 
-  try {
-    const response = await fetch(API_BASE_URL + '/profile', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + accessToken
-      },
-      body: JSON.stringify({
-        full_name: state.name,
-        bio: state.bio || null,
-        leetcode_username: state.leetcode || null,
-        preferred_language: state.language,
-        experience_level: state.experience,
-        target_role: state.role,
-        target_companies: state.companies,
-        preparation_timeline: state.timeline || null
-      })
-    });
-
-    const data = await response.json().catch(() => ({}));
-    if (response.status === 401) {
-      localStorage.removeItem('codementor_access_token');
-      window.location.href = 'auth.html';
+    if (wizardState.currentStep === 2 && !wizardState.language) {
+      showError("Please choose your primary programming language.");
       return;
     }
-    if (!response.ok) throw new Error(data.detail || 'Unable to save your profile.');
 
-    document.getElementById('loading-text').textContent = 'Profile saved successfully.';
-    document.getElementById('sum-role').textContent = data.target_role || state.role;
-    document.getElementById('sum-lang').textContent = data.preferred_language || state.language;
-    document.getElementById('sum-exp').textContent = data.experience_level || state.experience;
-    document.getElementById('sum-lc').textContent = data.leetcode_username || 'Skipped';
+    if (wizardState.currentStep === 3) {
+      const input = document.getElementById('leetcode-input');
+      wizardState.leetcodeUser = input ? input.value.trim() : "";
+    }
 
-    state.step = 5;
-    document.getElementById('save-state').textContent = 'Profile saved';
-    document.getElementById('save-state').classList.remove('text-slate-400');
-    document.getElementById('save-state').classList.add('text-emerald-600');
-    updateView();
+    if (wizardState.currentStep === 4) {
+      if (!wizardState.targetRole) {
+        showError("Please choose a target role before continuing.");
+        return;
+      }
+      saveProfile();
+      return;
+    }
 
-  } catch (error) {
-    showError(error.message || 'Unable to save your profile.');
-  } finally {
-    document.getElementById('loading').classList.add('hidden');
-    document.getElementById('loading').classList.remove('flex');
+    if (wizardState.currentStep < 5) {
+      wizardState.currentStep++;
+      updateView();
+    }
   }
-}
+      if (!wizardState.experience) {
+        showError("Please choose your coding experience depth.");
+        return;
+      }
+    }
 
-async function loadProfile() {
-  const accessToken = token();
-  if (!accessToken) {
-    window.location.href = 'auth.html';
-    return;
+    // Step 4 to Step 5 Transition with Loading Effect
+    if (wizardState.currentStep === 4) {
+      triggerLoadingSimulation();
+      return;
+    }
+
+    if (wizardState.currentStep < 5) {
+      wizardState.currentStep++;
+      updateView();
+    }
   }
 
-  try {
-    const response = await fetch(API_BASE_URL + '/profile', {
-      headers: { 'Authorization': 'Bearer ' + accessToken }
+  function stepBack() {
+    if (wizardState.currentStep > 1) {
+      wizardState.currentStep--;
+      updateView();
+    }
+  }
+
+  function skipStep() {
+    if (wizardState.currentStep === 3) {
+      wizardState.leetcodeUser = "";
+      wizardState.leetcodeSynced = false;
+      const input = document.getElementById('leetcode-input');
+      if (input) input.value = "";
+      stepForward();
+    }
+  }
+  }
+
+  // Experience Selection
+  function selectExperience(exp) {
+    wizardState.experience = exp;
+    document.querySelectorAll('.exp-card').forEach(card => {
+      const isCurrent = card.getAttribute('data-exp') === exp;
+      const checkIcon = card.querySelector('.exp-check');
+      if (isCurrent) {
+        card.classList.remove('bg-surface-container-low');
+        card.classList.add('bg-surface-container', 'shadow-sm');
+        if (checkIcon) {
+          checkIcon.classList.remove('opacity-0');
+          checkIcon.classList.add('opacity-100');
+          checkIcon.style.fontVariationSettings = "'FILL' 1";
+        }
+      } else {
+        card.classList.remove('bg-surface-container', 'shadow-sm');
+        card.classList.add('bg-surface-container-low');
+        if (checkIcon) {
+          checkIcon.classList.add('opacity-0');
+          checkIcon.classList.remove('opacity-100');
+        }
+      }
     });
+  }
 
-    if (response.status === 401) {
-      localStorage.removeItem('codementor_access_token');
+  // Language Selection
+  function selectLanguage(lang, version) {
+    wizardState.language = lang;
+    wizardState.langVersion = version;
+
+    const langPill = document.getElementById('selected-lang-pill');
+    if (langPill) langPill.textContent = lang;
+
+    document.querySelectorAll('.lang-card').forEach(card => {
+      const isCurrent = card.getAttribute('data-lang') === lang;
+      const checkIcon = card.querySelector('.lang-check');
+      if (isCurrent) {
+        card.classList.remove('bg-surface-container-low');
+        card.classList.add('bg-surface-container', 'shadow-sm');
+        if (checkIcon) {
+          checkIcon.classList.remove('opacity-0');
+          checkIcon.style.fontVariationSettings = "'FILL' 1";
+        }
+      } else {
+        card.classList.remove('bg-surface-container', 'shadow-sm');
+        card.classList.add('bg-surface-container-low');
+        if (checkIcon) {
+          checkIcon.classList.add('opacity-0');
+        }
+      }
+    });
+  }
+
+  // Role Selection
+  function selectRole(role) {
+    wizardState.targetRole = role;
+    document.querySelectorAll('.role-card').forEach(card => {
+      const isCurrent = card.getAttribute('data-role') === role;
+      const icon = card.querySelector('.material-symbols-outlined');
+      if (isCurrent) {
+        card.classList.remove('bg-surface-container-low');
+        card.classList.add('bg-surface-container', 'shadow-sm');
+        if (icon) {
+          icon.classList.remove('text-outline');
+          icon.classList.add('text-primary');
+        }
+      } else {
+        card.classList.remove('bg-surface-container', 'shadow-sm');
+        card.classList.add('bg-surface-container-low');
+        if (icon) {
+          icon.classList.remove('text-primary');
+          icon.classList.add('text-outline');
+        }
+      }
+    });
+  }
+
+  // Timeline Selection
+  function selectTimeline(time) {
+    wizardState.timeline = time;
+    document.querySelectorAll('.time-card').forEach(card => {
+      const isCurrent = card.getAttribute('data-time') === time;
+      if (isCurrent) {
+        card.classList.remove('bg-surface-container-low');
+        card.classList.add('bg-surface-container', 'shadow-sm');
+      } else {
+        card.classList.remove('bg-surface-container', 'shadow-sm');
+        card.classList.add('bg-surface-container-low');
+      }
+    });
+  }
+
+  // Company Multi-tag toggle
+  function toggleCompanyTag(btn) {
+    const textSpan = btn.querySelector('span:first-child');
+    const company = textSpan ? textSpan.textContent.trim() : '';
+    const hasActive = btn.classList.contains('bg-primary');
+
+    if (hasActive) {
+      btn.classList.remove('bg-primary', 'text-on-primary');
+      btn.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+      const check = btn.querySelector('.material-symbols-outlined');
+      if (check) check.remove();
+      wizardState.companies = wizardState.companies.filter(c => c !== company);
+    } else {
+      btn.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+      btn.classList.add('bg-primary', 'text-on-primary');
+      const checkIcon = document.createElement('span');
+      checkIcon.className = "material-symbols-outlined text-[14px]";
+      checkIcon.textContent = "check";
+      btn.appendChild(checkIcon);
+      if (!wizardState.companies.includes(company)) {
+        wizardState.companies.push(company);
+      }
+    }
+  }
+
+  // Name Validation input handler
+  function handleNameInput(val) {
+    wizardState.name = val.trim();
+    const checkIcon = document.getElementById('name-check-icon');
+    const nameStatus = document.getElementById('name-status');
+    if (val.trim().length > 2) {
+      if (checkIcon) checkIcon.classList.remove('hidden');
+      if (nameStatus) nameStatus.classList.remove('hidden');
+    } else {
+      if (checkIcon) checkIcon.classList.add('hidden');
+      if (nameStatus) nameStatus.classList.add('hidden');
+    }
+  }
+
+  // Bio Character Counter
+  function updateBioCounter(textarea) {
+    const counter = document.getElementById('bio-counter');
+    if (counter) {
+      counter.textContent = `${textarea.value.length} / 180`;
+    }
+  }
+
+  // Simulate LeetCode API Sync
+  function simulateLeetcodeSync() {
+    const input = document.getElementById('leetcode-input');
+    const previewName = document.getElementById('lc-preview-name');
+    const btn = document.getElementById('sync-profile-btn');
+
+    if (!input || !input.value.trim()) {
+      showError("Please enter a LeetCode username.");
+      return;
+    }
+
+    wizardState.leetcodeUser = input.value.trim();
+
+    if (btn) {
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">done</span><span>Username Saved</span>`;
+    }
+    if (previewName) previewName.textContent = wizardState.leetcodeUser;
+    wizardState.leetcodeSynced = true;
+  }
+
+    if (btn) {
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px] animate-spin">refresh</span><span>Calibrating...</span>`;
+    }
+
+    setTimeout(() => {
+      wizardState.leetcodeUser = input.value.trim();
+      wizardState.leetcodeSynced = true;
+      if (previewName) previewName.textContent = wizardState.leetcodeUser;
+      if (btn) {
+        btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">done</span><span>Updated</span>`;
+        setTimeout(() => {
+          btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">refresh</span><span>Calibrate</span>`;
+        }, 1500);
+      }
+    }, 600);
+  }
+
+  // Error Banner controls
+  function showError(msg) {
+    const banner = document.getElementById('error-banner');
+    const errText = document.getElementById('error-text');
+    if (errText) errText.textContent = msg;
+    if (banner) banner.classList.remove('hidden');
+  }
+
+  function hideError() {
+    const banner = document.getElementById('error-banner');
+    if (banner) banner.classList.add('hidden');
+  }
+
+  function toggleErrorState() {
+    const banner = document.getElementById('error-banner');
+    if (banner && banner.classList.contains('hidden')) {
+      showError("Please enter your full name and select your DSA depth before proceeding.");
+    } else {
+      hideError();
+    }
+  }
+
+  // Simulated AI Loading Experience
+  async function saveProfile() {
+    const token = getToken();
+    if (!token) {
       window.location.href = 'auth.html';
       return;
     }
 
-    if (!response.ok) return;
+    const overlay = document.getElementById('loading-overlay');
+    const subtext = document.getElementById('loading-subtext');
 
-    const data = await response.json();
-    if (data.full_name) {
-      state.name = data.full_name;
-      document.getElementById('user-name').value = data.full_name;
-    }
-    if (data.bio) {
-      state.bio = data.bio;
-      document.getElementById('bio').value = data.bio;
-      document.getElementById('bio-count').textContent = data.bio.length + ' / 180';
-    }
-    if (data.experience_level) selectExperience(data.experience_level);
-    if (data.preferred_language) {
-      const versions = {Python:'3.11','C++':'20',Java:'21',JavaScript:'ES2024',TypeScript:'5.4',Go:'1.22',Rust:'2021',Other:'Custom'};
-      selectLanguage(data.preferred_language, versions[data.preferred_language] || '');
-    }
-    if (data.leetcode_username) {
-      state.leetcode = data.leetcode_username;
-      document.getElementById('leetcode').value = data.leetcode_username;
-      previewLeetCode();
-    }
-    if (data.target_role) selectRole(data.target_role);
-    if (data.preparation_timeline) selectTimeline(data.preparation_timeline);
-    if (Array.isArray(data.target_companies)) {
-      document.querySelectorAll('.company-chip').forEach(button => {
-        const company = button.textContent.trim();
-        if (data.target_companies.includes(company) && !state.companies.includes(company)) toggleCompany(company, button);
+    if (overlay) overlay.classList.remove('hidden');
+    if (subtext) subtext.textContent = "Saving your CodeMentor AI profile...";
+
+    try {
+      const response = await fetch(API_BASE_URL + '/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          full_name: wizardState.name,
+          bio: wizardState.bio || null,
+          leetcode_username: wizardState.leetcodeUser || null,
+          preferred_language: wizardState.language,
+          experience_level: wizardState.experience,
+          target_role: wizardState.targetRole,
+          target_companies: wizardState.companies,
+          preparation_timeline: wizardState.timeline || null
+        })
       });
-    }
-  } catch (error) {
-    console.warn('Profile load failed:', error);
-  }
-}
 
-updateView();
-loadProfile();
-</script>
-</body>
-</html>
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        localStorage.removeItem('codementor_access_token');
+        window.location.href = 'auth.html';
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Unable to save your profile.");
+      }
+
+      if (subtext) subtext.textContent = "Profile saved successfully.";
+      await new Promise(resolve => setTimeout(resolve, 450));
+
+      wizardState.currentStep = 5;
+      updateView();
+    } catch (error) {
+      showError(error.message || "Unable to save your profile.");
+    } finally {
+      if (overlay) overlay.classList.add('hidden');
+    }
+  }
+
+  async function loadExistingProfile() {
+    const token = getToken();
+    if (!token) {
+      window.location.href = 'auth.html';
+      return;
+    }
+
+    try {
+      const response = await fetch(API_BASE_URL + '/profile', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+
+      if (response.status === 401) {
+        localStorage.removeItem('codementor_access_token');
+        window.location.href = 'auth.html';
+        return;
+      }
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      if (data.full_name) {
+        wizardState.name = data.full_name;
+        const input = document.getElementById('user-name');
+        if (input) input.value = data.full_name;
+      }
+
+      if (data.bio) {
+        wizardState.bio = data.bio;
+        const bio = document.getElementById('user-bio');
+        if (bio) {
+          bio.value = data.bio;
+          updateBioCounter(bio);
+        }
+      }
+
+      if (data.experience_level) selectExperience(data.experience_level);
+      if (data.preferred_language) {
+        const versions = {
+          Python: '3.11', 'C++': '20', Java: '21', JavaScript: 'ES2024',
+          TypeScript: '5.4', Go: '1.22', Rust: '2021', Other: 'Custom'
+        };
+        selectLanguage(data.preferred_language, versions[data.preferred_language] || "");
+      }
+
+      if (data.leetcode_username) {
+        wizardState.leetcodeUser = data.leetcode_username;
+        wizardState.leetcodeSynced = true;
+        const input = document.getElementById('leetcode-input');
+        const preview = document.getElementById('lc-preview-name');
+        if (input) input.value = data.leetcode_username;
+        if (preview) preview.textContent = data.leetcode_username;
+      }
+
+      if (data.target_role) selectRole(data.target_role);
+      if (data.preparation_timeline) selectTimeline(data.preparation_timeline);
+
+      if (Array.isArray(data.target_companies)) {
+        wizardState.companies = [...data.target_companies];
+        document.querySelectorAll('.tag-chip').forEach(btn => {
+          const text = btn.querySelector('span:first-child');
+          const company = text ? text.textContent.trim() : "";
+          if (wizardState.companies.includes(company) && !btn.classList.contains('bg-primary')) {
+            toggleCompanyTag(btn);
+          }
+        });
+      }
+    } catch (error) {
+      console.warn("Could not load existing profile:", error);
+    }
+  }, 700);
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      goToStep(5);
+    }, 1400);
+  }
+
+  // Populate Step 5 Summary Card
+  function syncSummaryState() {
+    const sRole = document.getElementById('summary-role');
+    const sLang = document.getElementById('summary-lang');
+    const sExp = document.getElementById('summary-exp');
+    const sLc = document.getElementById('summary-lc');
+
+    if (sRole) sRole.textContent = wizardState.targetRole;
+    if (sLang) sLang.textContent = wizardState.language + " (" + wizardState.langVersion + ")";
+    if (sExp) sExp.textContent = wizardState.experience;
+    if (sLc) sLc.textContent = wizardState.leetcodeSynced ? "Not connected yet" : "Manual Level";
+  }
+
+  // Launch CTA action
+  function launchWorkspace() {
+    window.location.href = 'index.html';
+  }
+
+  // Initial View Setup
+  updateView();
+  loadExistingProfile();
+</script></main><footer class="w-full bg-surface-container-lowest shadow-[0_-1px_8px_rgba(0,0,0,0.02)]"><div class="max-w-[1440px] mx-auto px-margin-mobile lg:px-margin py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm"><span class="material-symbols-outlined text-[18px] text-tertiary">verified_user</span><span>Secure account session · Personalized settings</span></div><div class="flex items-center gap-space-lg font-body-sm text-body-sm text-on-surface-variant"><span>© 2026 CodeMentor AI</span><a class="hover:text-on-surface transition-colors" data-path="privacy" href="#">Privacy Policy</a><a class="hover:text-on-surface transition-colors" data-path="security" href="#">Security Overview</a></div></div></footer></body></html>
