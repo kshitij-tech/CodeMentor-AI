@@ -173,7 +173,8 @@ body.workspace-splitter-dragging *{cursor:col-resize!important}
         <div id="code-editor" class="absolute inset-0"></div>
       </div>
 
-      <section id="results-drawer" class="hidden shrink-0 h-64 bg-[#0f172a] border-t border-white/10 flex-col overflow-hidden">
+      <div id="results-resizer" class="hidden h-1 shrink-0 cursor-row-resize bg-transparent hover:bg-primary/60 active:bg-primary transition-colors" role="separator" aria-label="Resize test results and code editor" aria-orientation="horizontal" title="Drag to resize results"></div>
+      <section id="results-drawer" class="hidden shrink-0 bg-[#0f172a] border-t border-white/10 flex-col overflow-hidden" style="height:var(--results-height,256px)">
         <div class="h-11 shrink-0 px-3 flex items-center justify-between bg-[#131d33] border-b border-white/10">
           <div class="flex items-center gap-2">
             <button id="results-toggle" class="flex items-center gap-1.5 text-slate-200 text-xs font-semibold">
@@ -386,7 +387,9 @@ function setExecutionBadge(status,summary){
   badge.className=classes;badge.textContent=summary||status||'—';
 }
 function showResults(){
-  const d=$('results-drawer');d.classList.remove('hidden');d.classList.add('flex');
+  const d=$('results-drawer'),r=$('results-resizer');
+  d.classList.remove('hidden');d.classList.add('flex');
+  r?.classList.remove('hidden');
 }
 function renderResults(data){
   showResults();
@@ -507,6 +510,45 @@ async function execute(mode){
   }finally{run.disabled=false;submit.disabled=false}
 }
 
+
+function initResultsResizer(){
+  const grid=$('workspace-grid'),drawer=$('results-drawer'),handle=$('results-resizer');
+  if(!grid||!drawer||!handle)return;
+  const saved=parseInt(localStorage.getItem('cm_results_height')||'',10);
+  if(Number.isFinite(saved))drawer.style.setProperty('--results-height',saved+'px');
+
+  let dragging=false,startY=0,startHeight=256;
+  const clampHeight=(height)=>{
+    const total=grid.getBoundingClientRect().height;
+    return Math.max(110,Math.min(height,total-44));
+  };
+  const move=(event)=>{
+    if(!dragging)return;
+    const next=clampHeight(startHeight+(startY-event.clientY));
+    drawer.style.height=next+'px';
+    if(editor)editor.layout();
+  };
+  const stop=()=>{
+    if(!dragging)return;
+    dragging=false;
+    document.body.classList.remove('workspace-splitter-dragging');
+    const height=parseInt(drawer.style.height,10)||256;
+    drawer.style.setProperty('--results-height',height+'px');
+    localStorage.setItem('cm_results_height',height+'px');
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',stop);
+  };
+  handle.addEventListener('pointerdown',event=>{
+    if(window.innerWidth<1000)return;
+    event.preventDefault();
+    dragging=true;startY=event.clientY;
+    startHeight=parseInt(drawer.getBoundingClientRect().height,10)||256;
+    document.body.classList.add('workspace-splitter-dragging');
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',stop);
+  });
+}
+
 $('problem-search').addEventListener('input',renderProblems);
 document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.addEventListener('click',()=>{
   currentDifficulty=btn.dataset.difficulty;
@@ -532,13 +574,16 @@ $('format-code').addEventListener('click',()=>toast('Formatting will be connecte
 $('run-btn').addEventListener('click',()=>execute('run'));
 $('submit-btn').addEventListener('click',()=>execute('submit'));
 $('results-toggle').addEventListener('click',()=>{
-  const body=$('results-body'),drawer=$('results-drawer');
-  body.classList.toggle('hidden');
-  $('results-toggle-icon').textContent=body.classList.contains('hidden')?'expand_less':'expand_more';
-  if(body.classList.contains('hidden'))drawer.classList.remove('h-64');else drawer.classList.add('h-64');
+  const body=$('results-body'),drawer=$('results-drawer'),resizer=$('results-resizer');
+  const collapsed=body.classList.toggle('hidden');
+  $('results-toggle-icon').textContent=collapsed?'expand_less':'expand_more';
+  drawer.style.height=collapsed?'44px':(localStorage.getItem('cm_results_height')||'256px');
+  if(resizer)resizer.classList.toggle('hidden',false);
 });
 $('clear-results').addEventListener('click',()=>{
-  $('results-drawer').classList.add('hidden');$('results-drawer').classList.remove('flex');$('results-body').innerHTML='';setExecutionBadge('','—');$('execution-meta').textContent='';
+  $('results-drawer').classList.add('hidden');$('results-drawer').classList.remove('flex');
+  $('results-resizer')?.classList.add('hidden');
+  $('results-body').innerHTML='';setExecutionBadge('','—');$('execution-meta').textContent='';
 });
 $('home-btn').addEventListener('click',()=>location.href='dashboard.html');
 $('settings-btn').addEventListener('click',()=>location.href='settings.html');
@@ -617,6 +662,7 @@ async function load(){
 
 initMonaco();
 initWorkspaceSplitter();
+initResultsResizer();
 load();
 </script>
 </body>
