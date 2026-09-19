@@ -30,7 +30,7 @@ validation: default
         self.assertEqual(problem["time_limit_ms"], 1500)
         self.assertEqual(problem["memory_limit_mb"], 512)
         self.assertEqual(len(problem["test_cases"]), 2)
-        self.assertTrue(problem["judge_supported"])
+        self.assertTrue(problem["package_metadata"]["judge_supported"])
 
     def test_stdio_execution(self):
         source = """import sys
