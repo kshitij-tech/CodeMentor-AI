@@ -476,16 +476,29 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
 
     pass_fail = "pass-fail" in type_values
     unsupported_type = any(
-        item in validation_tokens for item in {"interactive", "multi-pass", "submit-answer", "score"}
+        item in validation_tokens
+        for item in {"interactive", "multi-pass", "submit-answer", "score"}
     )
+    case_validator_supported = all(
+        not case.get("validator_name")
+        or case.get("validator_name") in custom_validator_programs
+        for case in [
+            {
+                "validator_name": item["validator_name"],
+            }
+            for item in test_cases
+        ]
+    )
+    uses_custom_validators = any(item.validator_name for item in test_cases)
     judge_supported = (
         pass_fail
         and not unsupported_type
+        and case_validator_supported
         and (
-            validation_kind == "default"
-            and not available_programs
+            uses_custom_validators
             or validation_kind == "custom"
             and custom_validator_supported
+            or validation_kind == "default"
         )
     )
     package_metadata["judge_supported"] = judge_supported
