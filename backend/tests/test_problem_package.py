@@ -47,5 +47,16 @@ print(n * 2)
         self.assertEqual([result.status for result in results], ["Passed", "Passed"])
 
 
+    def test_extracts_dot_ans_files(self):
+        files = {
+            "problem.yaml": b"name: Answer Mapping Test\n",
+            "problem.md": b"# Answer Mapping Test\n",
+            "data/sample/0.in": b"hello\n",
+            "data/sample/0.ans": b"world\n",
+        }
+        problem = package_to_problem(files, "fixture")
+        self.assertEqual(problem["test_cases"][0]["expected_output"], "world\n")
+
+
 if __name__ == "__main__":
     unittest.main()
