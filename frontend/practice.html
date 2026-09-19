@@ -36,7 +36,7 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
 .mentor-user{display:flex;justify-content:flex-end}
 .mentor-agent{display:flex;justify-content:flex-start}
 .mentor-bubble{max-width:88%;padding:10px 12px;border-radius:14px;font-size:11px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
-.mentor-user .mentor-bubble{background:#4338ca;color:#fff;border-bottom-right-radius:5px}
+.mentor-user .mentor-bubble{max-width:92%;padding:12px 14px;background:#4338ca;color:#fff;border-bottom-right-radius:5px;font-size:13px;line-height:1.55}
 .mentor-agent .mentor-bubble{background:#1b253b;color:#dbe4ef;border:1px solid #334155;border-bottom-left-radius:5px}
 .mentor-label{font-size:9px;line-height:1;margin-bottom:4px;color:#64748b}
 .mentor-typing{display:inline-flex;gap:4px;align-items:center;color:#94a3b8}
@@ -259,7 +259,7 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
         <button class="mentor-action" data-action="edge" type="button"><span class="material-symbols-outlined text-[15px] text-emerald-400">verified</span>Edge</button>
       </div>
       <div class="flex items-end gap-2">
-        <textarea id="mentor-input" rows="1" class="flex-1 resize-none bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500" placeholder="Ask about this problem..."></textarea>
+        <textarea id="mentor-input" rows="1" class="flex-1 resize-none overflow-y-hidden max-h-24 bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500" placeholder="Ask about this problem..."></textarea>
         <button id="mentor-send" type="button" class="w-9 h-9 shrink-0 rounded-lg bg-primary-container text-white flex items-center justify-center hover:bg-primary disabled:opacity-50" aria-label="Send message">
           <span class="material-symbols-outlined text-[16px]">send</span>
         </button>
@@ -820,7 +820,10 @@ $('mentor-send').addEventListener('click',()=>{
 $('mentor-input').addEventListener('input',()=>{
   const el=$('mentor-input');
   el.style.height='auto';
-  el.style.height=Math.min(el.scrollHeight,96)+'px';
+  const maxHeight=96;
+  const nextHeight=Math.min(el.scrollHeight,maxHeight);
+  el.style.height=nextHeight+'px';
+  el.style.overflowY=el.scrollHeight>maxHeight?'auto':'hidden';
 });
 $('mentor-input').addEventListener('keydown',e=>{
   if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('mentor-send').click();}
