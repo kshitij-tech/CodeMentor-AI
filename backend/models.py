@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -23,5 +23,43 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class UserProfile(Base):
+    __tablename__ = "user_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+    full_name: Mapped[str | None] = mapped_column(
+        String(120),
+        nullable=True,
+    )
+    leetcode_username: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+    preferred_language: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+    experience_level: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+    target_role: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
