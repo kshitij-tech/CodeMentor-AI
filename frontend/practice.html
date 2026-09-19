@@ -303,6 +303,8 @@ let hintLevel=1;
 let mentorMessages=[];
 let mentorRequestId=0;
 let errorLineDecorationIds=[];
+let pendingMentorQuestion=null;
+let pendingMentorOpen=false;
 
 const $=id=>document.getElementById(id);
 function token(){return localStorage.getItem(TOKEN_KEY)}
@@ -448,6 +450,7 @@ function initMonaco(){
     });
     if(pendingEditor){setEditorValue(pendingEditor.value,pendingEditor.langId);pendingEditor=null;}
     if(current)loadDraftOrStarter();
+    maybeOpenMentorFromDashboard();
   },err=>{console.error(err);$('execution-status').textContent='Editor failed to load. Refresh to retry.';});
 }
 
@@ -825,6 +828,17 @@ function clearMentorChat(){
   renderMentorChat();
 }
 
+function maybeOpenMentorFromDashboard(){
+  if(!pendingMentorOpen||!current||!editor)return;
+  pendingMentorOpen=false;
+  toggleMentor();
+  if(pendingMentorQuestion){
+    const question=pendingMentorQuestion;
+    pendingMentorQuestion=null;
+    setTimeout(()=>askMentor('question',question),100);
+  }
+}
+
 function toggleMentor(){
   $('mentor-panel').classList.toggle('hidden');
   $('mentor-panel').classList.toggle('flex');
@@ -955,10 +969,14 @@ async function load(){
     if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language))$('language').value=profile.preferred_language;
     $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
     renderProblems();
-    const requested=new URLSearchParams(location.search).get('problem')||localStorage.getItem('cm_current_problem');
+    const params=new URLSearchParams(location.search);
+    const requested=params.get('problem')||localStorage.getItem('cm_current_problem');
     const chosen=requested?problems.find(p=>p.slug===requested):null;
+    pendingMentorOpen=params.get('mentor')==='1';
+    pendingMentorQuestion=(params.get('question')||'').trim()||null;
     if(chosen){
       selectProblem(chosen);
+      maybeOpenMentorFromDashboard();
     }else{
       $('header-problem').textContent='Choose a problem';
       $('execution-status').textContent='Choose a problem to begin.';
