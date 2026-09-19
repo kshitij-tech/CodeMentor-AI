@@ -275,6 +275,11 @@ const API_BASE_URL = 'http://127.0.0.1:8000';
 const TOKEN_KEY = 'codementor_access_token';
 
 function token(){ return localStorage.getItem(TOKEN_KEY); }
+function esc(value){
+  return String(value??'').replace(/[&<>"']/g,character=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[character]));
+}
 function toast(message){
   const el=document.getElementById('toast');
   el.textContent=message; el.classList.remove('hidden');
