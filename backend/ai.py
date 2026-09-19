@@ -58,7 +58,12 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
                 start_line = int(patch.get("start_line"))
                 end_line = int(patch.get("end_line"))
                 replacement = str(patch.get("replacement", ""))
-                if start_line < 1 or end_line < start_line:
+                if (
+                    start_line < 1
+                    or end_line < start_line
+                    or end_line - start_line + 1 > 8
+                    or len(replacement) > 1600
+                ):
                     patch = None
                 else:
                     patch = {
@@ -204,4 +209,7 @@ Keep the answer concise, educational, and conversational.
     answer = "\n".join(texts).strip()
     if not answer:
         raise AIProviderError("Gemini returned an empty response.")
-    return _parse_mentor_response(answer)
+    result = _parse_mentor_response(answer)
+    if action != "modify":
+        result["patch"] = None
+    return result
