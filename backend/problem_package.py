@@ -332,7 +332,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
     return {
         "slug": slug,
         "title": title[:180],
-        "difficulty": "Unknown",
+        "difficulty": (str(oj_metadata.get("difficulty") or metadata.get("difficulty") or "Unknown").title()),
         "topics": topics,
         "description": statement,
         "constraints": [],
