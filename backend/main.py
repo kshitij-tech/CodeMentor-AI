@@ -65,6 +65,11 @@ def initialize_database() -> None:
             "source": "VARCHAR(40) NOT NULL DEFAULT 'local'",
             "external_id": "VARCHAR(120)",
             "external_url": "VARCHAR(500)",
+            "execution_mode": "VARCHAR(20) NOT NULL DEFAULT 'function'",
+            "time_limit_ms": "INTEGER NOT NULL DEFAULT 2000",
+            "memory_limit_mb": "INTEGER",
+            "validation": "VARCHAR(30) NOT NULL DEFAULT 'default'",
+            "package_metadata": "JSON",
         }
         with engine.begin() as connection:
             for column_name, column_type in problem_migrations.items():
