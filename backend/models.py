@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -54,6 +54,18 @@ class UserProfile(Base):
         nullable=True,
     )
     target_role: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+    bio: Mapped[str | None] = mapped_column(
+        String(180),
+        nullable=True,
+    )
+    target_companies: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    preparation_timeline: Mapped[str | None] = mapped_column(
         String(100),
         nullable=True,
     )
