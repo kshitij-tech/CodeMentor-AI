@@ -108,6 +108,7 @@ def _prepare_command(program: Path, compile_dir: Path) -> tuple[list[str], Path]
             raise CustomValidatorError(
                 "Custom C++ validator requires g++ to be installed and available on PATH."
             )
+        compile_dir.mkdir(parents=True, exist_ok=True)
         binary = compile_dir / ("validator.exe" if os.name == "nt" else "validator")
         completed = subprocess.run(
             [
