@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeMentor AI — Adaptive Onboarding</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: '#f8f9ff',
+            card: '#ffffff',
+            primary: '#4338ca',
+            primaryDark: '#2a14b4',
+            ink: '#0b1c30',
+            muted: '#464554',
+            soft: '#eff4ff',
+            line: '#c7c4d7',
+            success: '#10b981'
+          },
+          fontFamily: {
+            body: ['Plus Jakarta Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background:#f8f9ff; color:#0b1c30; }
+    .step-hidden { display:none; }
+    .grid-bg {
+      background-image: linear-gradient(rgba(67,56,202,.035) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(67,56,202,.035) 1px, transparent 1px);
+      background-size:32px 32px;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-surface">
+<header class="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200/70">
+  <div class="h-16 max-w-7xl mx-auto px-4 lg:px-8 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2.5">
+      <div class="w-9 h-9 rounded-xl bg-primary text-white flex items-center justify-center shadow-sm">
+        <span class="material-symbols-outlined">terminal</span>
+      </div>
+      <div class="flex items-baseline gap-1.5">
+        <span class="font-bold tracking-tight">CodeMentor</span>
+        <span class="font-mono text-xs tracking-widest uppercase text-primary font-semibold">AI</span>
+      </div>
+    </a>
+    <div class="flex items-center gap-4">
+      <span id="save-state" class="text-xs text-slate-400 hidden sm:inline">Your progress is saved when you finish</span>
+      <a href="index.html" class="text-xs font-semibold text-slate-500 hover:text-slate-900">Save &amp; Exit</a>
+      <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center">
+        <span class="material-symbols-outlined text-sm">person</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="pt-16 min-h-screen grid-bg">
+  <div class="max-w-3xl mx-auto px-4 py-8 lg:py-14">
+    <div class="mb-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center">
+            <span class="material-symbols-outlined text-sm">auto_awesome</span>
+          </div>
+          <span class="font-semibold">Adaptive Onboarding</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs font-mono">
+          <span id="step-label" class="text-primary font-semibold">STEP 1 OF 4</span>
+          <span class="text-slate-300">•</span>
+          <span id="percent-label" class="text-slate-500">25% COMPLETE</span>
+        </div>
+      </div>
+      <div class="mt-3 h-2 rounded-full bg-slate-200 overflow-hidden">
+        <div id="progress" class="h-full bg-primary rounded-full transition-all duration-300" style="width:25%"></div>
+      </div>
+    </div>
+
+    <div id="error" class="hidden mb-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <div class="flex items-start gap-2">
+        <span class="material-symbols-outlined text-lg">error</span>
+        <span id="error-text"></span>
+      </div>
+    </div>
+
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 lg:p-8">
+      <div id="step-1">
+        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 1 • Core Identity</div>
+        <h1 class="mt-2 text-2xl font-bold">Tell us about yourself</h1>
+        <p class="mt-2 text-sm text-slate-500">We use your level to tune the depth of explanations and practice.</p>
+
+        <div class="mt-7">
+          <label for="user-name" class="block text-sm font-semibold">Full Name or Dev Handle <span class="text-red-500">*</span></label>
+          <input id="user-name" type="text" maxlength="120" placeholder="e.g. Maya Lin" oninput="state.name=this.value.trim()" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-indigo-100">
+        </div>
+
+        <div class="mt-6">
+          <label class="block text-sm font-semibold">Current DSA &amp; Coding Depth <span class="text-red-500">*</span></label>
+          <div class="grid md:grid-cols-3 gap-3 mt-2">
+            <button type="button" data-value="Beginner" onclick="selectExperience('Beginner')" class="exp-card rounded-xl border border-slate-200 bg-white p-4 text-left">
+              <div class="font-semibold">Beginner</div>
+              <div class="mt-1 text-xs text-slate-500">&lt; 1 yr · arrays, basics</div>
+            </button>
+            <button type="button" data-value="Intermediate" onclick="selectExperience('Intermediate')" class="exp-card rounded-xl border border-slate-200 bg-white p-4 text-left">
+              <div class="font-semibold">Intermediate</div>
+              <div class="mt-1 text-xs text-slate-500">1–3 yrs · trees, heaps, graphs</div>
+            </button>
+            <button type="button" data-value="Advanced" onclick="selectExperience('Advanced')" class="exp-card rounded-xl border border-slate-200 bg-white p-4 text-left">
+              <div class="font-semibold">Advanced</div>
+              <div class="mt-1 text-xs text-slate-500">3+ yrs · complex DSA</div>
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-6">
+          <div class="flex justify-between">
+            <label for="bio" class="block text-sm font-semibold">Short Introduction / Notes <span class="text-slate-400 font-normal">(Optional)</span></label>
+            <span id="bio-count" class="text-xs text-slate-400">0 / 180</span>
+          </div>
+          <textarea id="bio" maxlength="180" rows="3" oninput="state.bio=this.value; document.getElementById('bio-count').textContent=this.value.length+' / 180'" placeholder="e.g. CS senior preparing for technical interviews." class="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-indigo-100"></textarea>
+        </div>
+      </div>
+
+      <div id="step-2" class="step-hidden">
+        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 2 • Technical Dialect</div>
+        <h1 class="mt-2 text-2xl font-bold">Select your interview language</h1>
+        <p class="mt-2 text-sm text-slate-500">This becomes the default language for future coding sessions.</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-7">
+          <button type="button" data-value="Python" onclick="selectLanguage('Python','3.11')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">python</div><div class="mt-5 font-semibold text-sm">Python</div><div class="text-xs text-slate-500">3.11</div></button><button type="button" data-value="C++" onclick="selectLanguage('C++','20')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">c++</div><div class="mt-5 font-semibold text-sm">C++</div><div class="text-xs text-slate-500">20</div></button><button type="button" data-value="Java" onclick="selectLanguage('Java','21')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">java</div><div class="mt-5 font-semibold text-sm">Java</div><div class="text-xs text-slate-500">21</div></button><button type="button" data-value="JavaScript" onclick="selectLanguage('JavaScript','ES2024')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">js</div><div class="mt-5 font-semibold text-sm">JavaScript</div><div class="text-xs text-slate-500">ES2024</div></button><button type="button" data-value="TypeScript" onclick="selectLanguage('TypeScript','5.4')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">ts</div><div class="mt-5 font-semibold text-sm">TypeScript</div><div class="text-xs text-slate-500">5.4</div></button><button type="button" data-value="Go" onclick="selectLanguage('Go','1.22')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">go</div><div class="mt-5 font-semibold text-sm">Go</div><div class="text-xs text-slate-500">1.22</div></button><button type="button" data-value="Rust" onclick="selectLanguage('Rust','2021')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">rust</div><div class="mt-5 font-semibold text-sm">Rust</div><div class="text-xs text-slate-500">2021</div></button><button type="button" data-value="Other" onclick="selectLanguage('Other','Custom')" class="lang-card rounded-xl border border-slate-200 bg-white p-4 text-left h-28"><div class="font-mono text-xs text-primary">…</div><div class="mt-5 font-semibold text-sm">Other</div><div class="text-xs text-slate-500">Custom</div></button>
+        </div>
+      </div>
+
+      <div id="step-3" class="step-hidden">
+        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 3 • Historical Calibration</div>
+        <h1 class="mt-2 text-2xl font-bold">Connect your LeetCode profile</h1>
+        <p class="mt-2 text-sm text-slate-500">We'll store the username now; the real problem-history sync will be added in the LeetCode integration stage.</p>
+
+        <div class="mt-7">
+          <label for="leetcode" class="block text-sm font-semibold">LeetCode Username</label>
+          <div class="mt-2 flex gap-2">
+            <input id="leetcode" type="text" maxlength="100" placeholder="e.g. yourusername" class="flex-1 rounded-xl border border-slate-300 px-4 py-3 font-mono text-sm outline-none focus:border-primary focus:ring-4 focus:ring-indigo-100">
+            <button type="button" onclick="previewLeetCode()" class="rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white">Save Username</button>
+          </div>
+          <p id="lc-status" class="mt-2 text-xs text-slate-500">You can skip this step.</p>
+        </div>
+
+        <div class="mt-6 rounded-2xl bg-soft border border-indigo-100 p-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <div id="lc-preview-name" class="font-semibold text-sm">No username connected</div>
+              <div id="lc-preview-detail" class="mt-1 text-xs text-slate-500">LeetCode analytics will be populated later.</div>
+            </div>
+            <span class="material-symbols-outlined text-primary">sync</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="step-4" class="step-hidden">
+        <div class="text-xs font-mono uppercase tracking-widest text-primary font-semibold">Step 4 • Destination Benchmark</div>
+        <h1 class="mt-2 text-2xl font-bold">Target role &amp; preparation plan</h1>
+        <p class="mt-2 text-sm text-slate-500">Your target role will later influence which DSA patterns and interview questions are recommended.</p>
+
+        <label class="block text-sm font-semibold mt-7">Target Position <span class="text-red-500">*</span></label>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
+          <button type="button" data-value="Backend Engineer" onclick="selectRole('Backend Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">database</span><span class="font-semibold text-xs">Backend Engineer</span></button><button type="button" data-value="Full Stack" onclick="selectRole('Full Stack')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">layers</span><span class="font-semibold text-xs">Full Stack</span></button><button type="button" data-value="Frontend Engineer" onclick="selectRole('Frontend Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">web</span><span class="font-semibold text-xs">Frontend Engineer</span></button><button type="button" data-value="ML / AI Engineer" onclick="selectRole('ML / AI Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">smart_toy</span><span class="font-semibold text-xs">ML / AI Engineer</span></button><button type="button" data-value="Systems / Infra" onclick="selectRole('Systems / Infra')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">memory</span><span class="font-semibold text-xs">Systems / Infra</span></button><button type="button" data-value="Data Engineer" onclick="selectRole('Data Engineer')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">query_stats</span><span class="font-semibold text-xs">Data Engineer</span></button><button type="button" data-value="Mobile (iOS/Android)" onclick="selectRole('Mobile (iOS/Android)')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">smartphone</span><span class="font-semibold text-xs">Mobile (iOS/Android)</span></button><button type="button" data-value="General SWE" onclick="selectRole('General SWE')" class="role-card rounded-xl border border-slate-200 bg-white p-3 text-left h-20 flex flex-col justify-between"><span class="material-symbols-outlined text-slate-400">terminal</span><span class="font-semibold text-xs">General SWE</span></button>
+        </div>
+
+        <label class="block text-sm font-semibold mt-6">Target Companies <span class="text-slate-400 font-normal">(Optional)</span></label>
+        <div class="flex flex-wrap gap-2 mt-2">
+          <button type="button" onclick="toggleCompany('Google', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Google</button><button type="button" onclick="toggleCompany('Stripe', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Stripe</button><button type="button" onclick="toggleCompany('Meta', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Meta</button><button type="button" onclick="toggleCompany('Netflix', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Netflix</button><button type="button" onclick="toggleCompany('Amazon', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">Amazon</button><button type="button" onclick="toggleCompany('High-Growth Startups', this)" class="company-chip rounded-full bg-soft px-3 py-2 text-xs font-semibold text-slate-600">High-Growth Startups</button>
+        </div>
+
+        <label class="block text-sm font-semibold mt-6">Preparation Timeline</label>
+        <div class="grid grid-cols-3 gap-3 mt-2">
+          <button type="button" data-value="30 Days Sprint" onclick="selectTimeline('30 Days Sprint')" class="time-card rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="font-semibold text-xs">30 Days Sprint</div></button><button type="button" data-value="3 Months Deep Dive" onclick="selectTimeline('3 Months Deep Dive')" class="time-card rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="font-semibold text-xs">3 Months Deep Dive</div></button><button type="button" data-value="Continuous Growth" onclick="selectTimeline('Continuous Growth')" class="time-card rounded-xl border border-slate-200 bg-white p-3 text-center"><div class="font-semibold text-xs">Continuous Growth</div></button>
+        </div>
+      </div>
+
+      <div id="step-5" class="step-hidden text-center">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-100 text-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-3xl">task_alt</span>
+        </div>
+        <div class="mt-5 text-xs font-mono uppercase tracking-widest text-success font-semibold">Workspace Ready</div>
+        <h1 class="mt-2 text-2xl font-bold">Your profile is saved</h1>
+        <p class="mt-2 text-sm text-slate-500 max-w-lg mx-auto">Your onboarding information is now available to the systems we'll build next: analytics, recommendations, and AI mentoring.</p>
+        <div class="mt-7 rounded-2xl bg-soft p-5 text-left grid grid-cols-2 gap-3">
+          <div><div class="text-xs text-slate-500">Role</div><div id="sum-role" class="font-semibold mt-1 truncate"></div></div>
+          <div><div class="text-xs text-slate-500">Language</div><div id="sum-lang" class="font-semibold mt-1 truncate"></div></div>
+          <div><div class="text-xs text-slate-500">Experience</div><div id="sum-exp" class="font-semibold mt-1 truncate"></div></div>
+          <div><div class="text-xs text-slate-500">LeetCode</div><div id="sum-lc" class="font-semibold mt-1 truncate"></div></div>
+        </div>
+      </div>
+
+      <div id="loading" class="hidden fixed inset-0 bg-white/80 backdrop-blur-sm z-[60] items-center justify-center">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-xl p-7 text-center max-w-sm mx-4">
+          <div class="w-12 h-12 mx-auto rounded-full border-4 border-indigo-100 border-t-primary animate-spin"></div>
+          <div class="mt-4 font-bold">Saving your profile</div>
+          <div id="loading-text" class="mt-1 text-xs text-slate-500">Persisting your onboarding preferences…</div>
+        </div>
+      </div>
+
+      <div id="controls" class="mt-8 pt-6 border-t border-slate-200 flex items-center justify-between">
+        <button id="back-btn" type="button" onclick="back()" class="hidden px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">← Back</button>
+        <div id="back-placeholder" class="w-16"></div>
+        <div class="flex items-center gap-2">
+          <button id="skip-btn" type="button" onclick="skip()" class="hidden px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-900">Skip for now</button>
+          <button id="next-btn" type="button" onclick="next()" class="rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-primaryDark">Continue</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const API_BASE_URL = 'http://127.0.0.1:8000';
+
+const state = {
+  step: 1,
+  name: '',
+  bio: '',
+  experience: '',
+  language: '',
+  languageVersion: '',
+  leetcode: '',
+  role: '',
+  companies: [],
+  timeline: ''
+};
+
+function token() {
+  return localStorage.getItem('codementor_access_token');
+}
+
+function showError(message) {
+  document.getElementById('error-text').textContent = message;
+  document.getElementById('error').classList.remove('hidden');
+}
+
+function clearError() {
+  document.getElementById('error').classList.add('hidden');
+}
+
+function updateView() {
+  clearError();
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('step-' + i);
+    if (el) el.classList.toggle('step-hidden', i !== state.step);
+  }
+  const pct = state.step <= 4 ? state.step * 25 : 100;
+  document.getElementById('progress').style.width = pct + '%';
+  document.getElementById('step-label').textContent = state.step <= 4 ? 'STEP ' + state.step + ' OF 4' : 'SETUP FINALIZED';
+  document.getElementById('percent-label').textContent = state.step <= 4 ? pct + '% COMPLETE' : '100% READY';
+
+  const back = document.getElementById('back-btn');
+  const placeholder = document.getElementById('back-placeholder');
+  const skip = document.getElementById('skip-btn');
+  const next = document.getElementById('next-btn');
+
+  if (state.step === 1) {
+    back.classList.add('hidden'); placeholder.classList.remove('hidden'); skip.classList.add('hidden'); next.textContent = 'Continue to Language';
+  } else if (state.step === 2) {
+    back.classList.remove('hidden'); placeholder.classList.add('hidden'); skip.classList.add('hidden'); next.textContent = 'Continue to LeetCode Sync';
+  } else if (state.step === 3) {
+    back.classList.remove('hidden'); placeholder.classList.add('hidden'); skip.classList.remove('hidden'); next.textContent = 'Continue to Career Goals';
+  } else if (state.step === 4) {
+    back.classList.remove('hidden'); placeholder.classList.add('hidden'); skip.classList.add('hidden'); next.textContent = 'Finish & Personalize';
+  } else {
+    document.getElementById('controls').classList.add('hidden');
+  }
+}
+
+function markSelected(selector, value, activeClasses='border-primary bg-soft') {
+  document.querySelectorAll(selector).forEach(card => {
+    const active = card.dataset.value === value;
+    card.classList.toggle('border-primary', active);
+    card.classList.toggle('bg-soft', active);
+    card.classList.toggle('ring-2', active);
+    card.classList.toggle('ring-indigo-100', active);
+    if (!active) {
+      card.classList.remove('bg-soft', 'ring-2', 'ring-indigo-100');
+      card.classList.add('border-slate-200');
+    }
+  });
+}
+
+function selectExperience(value) { state.experience=value; markSelected('.exp-card', value); }
+function selectLanguage(value, version) {
+  state.language=value; state.languageVersion=version;
+  markSelected('.lang-card', value);
+}
+function selectRole(value) { state.role=value; markSelected('.role-card', value); }
+function selectTimeline(value) { state.timeline=value; markSelected('.time-card', value); }
+
+function toggleCompany(company, button) {
+  if (state.companies.includes(company)) {
+    state.companies = state.companies.filter(x => x !== company);
+    button.classList.remove('bg-primary','text-white');
+    button.classList.add('bg-soft','text-slate-600');
+  } else {
+    state.companies.push(company);
+    button.classList.remove('bg-soft','text-slate-600');
+    button.classList.add('bg-primary','text-white');
+  }
+}
+
+function previewLeetCode() {
+  const value = document.getElementById('leetcode').value.trim();
+  state.leetcode = value;
+  document.getElementById('lc-preview-name').textContent = value || 'No username connected';
+  document.getElementById('lc-preview-detail').textContent = value ? 'Username saved for the upcoming LeetCode sync.' : 'LeetCode analytics will be populated later.';
+  document.getElementById('lc-status').textContent = value ? 'Username saved locally in your onboarding session.' : 'You can skip this step.';
+}
+
+function validateStep() {
+  if (state.step === 1) {
+    state.name = document.getElementById('user-name').value.trim();
+    state.bio = document.getElementById('bio').value.trim();
+    if (!state.name) return 'Please enter your full name or developer handle.';
+    if (!state.experience) return 'Please choose your coding experience level.';
+  }
+  if (state.step === 2 && !state.language) return 'Please choose your primary programming language.';
+  if (state.step === 4 && !state.role) return 'Please choose your target role.';
+  return null;
+}
+
+async function next() {
+  clearError();
+  const problem = validateStep();
+  if (problem) { showError(problem); return; }
+
+  if (state.step < 4) {
+    state.step++;
+    updateView();
+    return;
+  }
+
+  await saveProfile();
+}
+
+function back() {
+  if (state.step > 1) {
+    state.step--;
+    updateView();
+  }
+}
+
+function skip() {
+  if (state.step === 3) {
+    state.leetcode = '';
+    document.getElementById('leetcode').value = '';
+    state.step++;
+    updateView();
+  }
+}
+
+async function saveProfile() {
+  const accessToken = token();
+  if (!accessToken) {
+    window.location.href = 'auth.html';
+    return;
+  }
+
+  document.getElementById('loading').classList.remove('hidden');
+  document.getElementById('loading').classList.add('flex');
+
+  try {
+    const response = await fetch(API_BASE_URL + '/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + accessToken
+      },
+      body: JSON.stringify({
+        full_name: state.name,
+        bio: state.bio || null,
+        leetcode_username: state.leetcode || null,
+        preferred_language: state.language,
+        experience_level: state.experience,
+        target_role: state.role,
+        target_companies: state.companies,
+        preparation_timeline: state.timeline || null
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) {
+      localStorage.removeItem('codementor_access_token');
+      window.location.href = 'auth.html';
+      return;
+    }
+    if (!response.ok) throw new Error(data.detail || 'Unable to save your profile.');
+
+    document.getElementById('loading-text').textContent = 'Profile saved successfully.';
+    document.getElementById('sum-role').textContent = data.target_role || state.role;
+    document.getElementById('sum-lang').textContent = data.preferred_language || state.language;
+    document.getElementById('sum-exp').textContent = data.experience_level || state.experience;
+    document.getElementById('sum-lc').textContent = data.leetcode_username || 'Skipped';
+
+    state.step = 5;
+    document.getElementById('save-state').textContent = 'Profile saved';
+    document.getElementById('save-state').classList.remove('text-slate-400');
+    document.getElementById('save-state').classList.add('text-emerald-600');
+    updateView();
+
+  } catch (error) {
+    showError(error.message || 'Unable to save your profile.');
+  } finally {
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('loading').classList.remove('flex');
+  }
+}
+
+async function loadProfile() {
+  const accessToken = token();
+  if (!accessToken) {
+    window.location.href = 'auth.html';
+    return;
+  }
+
+  try {
+    const response = await fetch(API_BASE_URL + '/profile', {
+      headers: { 'Authorization': 'Bearer ' + accessToken }
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem('codementor_access_token');
+      window.location.href = 'auth.html';
+      return;
+    }
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+    if (data.full_name) {
+      state.name = data.full_name;
+      document.getElementById('user-name').value = data.full_name;
+    }
+    if (data.bio) {
+      state.bio = data.bio;
+      document.getElementById('bio').value = data.bio;
+      document.getElementById('bio-count').textContent = data.bio.length + ' / 180';
+    }
+    if (data.experience_level) selectExperience(data.experience_level);
+    if (data.preferred_language) {
+      const versions = {Python:'3.11','C++':'20',Java:'21',JavaScript:'ES2024',TypeScript:'5.4',Go:'1.22',Rust:'2021',Other:'Custom'};
+      selectLanguage(data.preferred_language, versions[data.preferred_language] || '');
+    }
+    if (data.leetcode_username) {
+      state.leetcode = data.leetcode_username;
+      document.getElementById('leetcode').value = data.leetcode_username;
+      previewLeetCode();
+    }
+    if (data.target_role) selectRole(data.target_role);
+    if (data.preparation_timeline) selectTimeline(data.preparation_timeline);
+    if (Array.isArray(data.target_companies)) {
+      document.querySelectorAll('.company-chip').forEach(button => {
+        const company = button.textContent.trim();
+        if (data.target_companies.includes(company) && !state.companies.includes(company)) toggleCompany(company, button);
+      });
+    }
+  } catch (error) {
+    console.warn('Profile load failed:', error);
+  }
+}
+
+updateView();
+loadProfile();
+</script>
+</body>
+</html>
