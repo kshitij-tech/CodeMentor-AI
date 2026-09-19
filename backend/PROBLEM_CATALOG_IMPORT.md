@@ -46,3 +46,16 @@ From the project root, import it directly with:
     python -m backend.import_problem_package backend/problem_fixtures/hello-world
 
 This fixture is derived from the `hello-world` package in the public `oj-lab/problem-packages` repository. Its source and license notice are retained in the fixture directory.
+
+
+## Default output validator
+
+For packages using the default validator, CodeMentor now supports the standard token-based behavior:
+
+- output is tokenized by whitespace by default
+- ASCII letter case is ignored unless `case_sensitive` is supplied
+- `space_change_sensitive` makes whitespace differences significant
+- `float_tolerance ε` applies ε as both relative and absolute tolerance
+- `float_relative_tolerance ε` and `float_absolute_tolerance ε` can be supplied separately
+
+Validator flags can come from the package's `validator_flags` (legacy format) or `output_validator_args` in `test_group.yaml`. These semantics follow the ICPC default output-validator specification. citeturn681946search0turn137182search3
