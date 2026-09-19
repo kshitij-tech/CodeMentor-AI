@@ -70,10 +70,20 @@ def execute_code(
             cases = sample_cases or cases
 
         try:
+            package_metadata = problem.package_metadata or {}
             outcomes = run_python_stdio_tests(
                 request.code,
                 cases,
                 time_limit_seconds=max(0.1, problem.time_limit_ms / 1000),
+                package_root=package_metadata.get("package_root"),
+                validation_time_seconds=max(
+                    0.1,
+                    float(package_metadata.get("validation_time_ms", 60000)) / 1000,
+                ),
+                validation_output_bytes=max(
+                    1024,
+                    int(package_metadata.get("validation_output_bytes", 8 * 1024 * 1024)),
+                ),
             )
         except CodeRejectedError as exc:
             return {
@@ -98,7 +108,9 @@ def execute_code(
     total = len(outcomes)
     overall = "Accepted" if total and passed == total else "Wrong Answer"
 
-    if any(outcome.status == "Time Limit Exceeded" for outcome in outcomes):
+    if any(outcome.status == "Judge Error" for outcome in outcomes):
+        overall = "Judge Error"
+    elif any(outcome.status == "Time Limit Exceeded" for outcome in outcomes):
         overall = "Time Limit Exceeded"
     elif any(outcome.status == "Output Limit Exceeded" for outcome in outcomes):
         overall = "Output Limit Exceeded"
