@@ -13,6 +13,10 @@ from backend.routers.auth import get_current_user
 router = APIRouter(prefix="/mentor", tags=["AI Mentor"])
 
 
+class DashboardMentorRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+
+
 class MentorRequest(BaseModel):
     problem_slug: str = Field(min_length=1, max_length=120)
     language: str = Field(min_length=1, max_length=50)
@@ -21,6 +25,41 @@ class MentorRequest(BaseModel):
     question: str | None = Field(default=None, max_length=2000)
     hint_level: int = Field(default=1, ge=1, le=4)
     execution: dict | None = None
+
+
+@router.post("/chat")
+def dashboard_chat(
+    request: DashboardMentorRequest,
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        result = mentor_response(
+            problem={
+                "title": "Dashboard mentoring session",
+                "difficulty": "Personalized",
+                "topics": ["DSA", "Interview Preparation"],
+                "description": "The user is asking for general coding and interview coaching from the CodeMentor dashboard.",
+                "constraints": [],
+                "examples": [],
+            },
+            language="Not specified",
+            code="(No code is currently open in the Dashboard mentor.)",
+            execution=None,
+            action="question",
+            question=request.question,
+            hint_level=1,
+        )
+    except AIProviderError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    if not isinstance(result, dict):
+        raise HTTPException(status_code=503, detail="The mentor returned an invalid response.")
+
+    return {
+        "answer": result.get("answer", ""),
+        "error_line": None,
+        "patch": None,
+    }
 
 
 @router.post("/analyze")
