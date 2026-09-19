@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CodeMentor AI — Dashboard</title>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        surface: '#f8f9ff', 'surface-container-lowest':'#ffffff',
+        'surface-container-low':'#eff4ff', 'surface-container':'#e5eeff',
+        'surface-container-high':'#dce9ff', 'surface-container-highest':'#d3e4fe',
+        'on-surface':'#0b1c30','on-surface-variant':'#464554',
+        primary:'#2a14b4','primary-container':'#4338ca','on-primary':'#ffffff',
+        secondary:'#006591','secondary-container':'#39b8fd',
+        tertiary:'#00442d','tertiary-container':'#005e3f',
+        error:'#ba1a1a','error-container':'#ffdad6',
+        'outline-variant':'#c7c4d7'
+      },
+      fontFamily:{ body:['Plus Jakarta Sans'], mono:['JetBrains Mono'] }
+    }
+  }
+};
+</script>
+<style>
+  html,body{margin:0;padding:0}
+  body{overscroll-behavior:none}
+  ::-webkit-scrollbar{width:0;height:0}
+</style>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen">
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-sm">
+  <div class="h-16 px-4 lg:px-8 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-6 min-w-0">
+      <a href="dashboard.html" class="flex items-center gap-3 shrink-0" aria-label="CodeMentor AI dashboard">
+        <div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
+        <span class="font-bold tracking-tight">CodeMentor <span class="text-primary">AI</span></span>
+      </a>
+      <nav class="hidden xl:flex items-center gap-1 p-1 bg-surface-container-low rounded-xl">
+        <button data-nav="dashboard" class="nav-top px-3 py-1.5 rounded-lg bg-primary-container text-on-primary text-sm font-medium">Dashboard</button>
+        <button data-nav="practice" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Practice</button>
+        <button data-nav="analytics" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Analytics</button>
+        <button data-nav="mentor" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">AI Mentor</button>
+        <button data-nav="career" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Career Prep</button>
+      </nav>
+    </div>
+    <div class="flex items-center gap-2 sm:gap-4">
+      <button id="search-btn" class="hidden sm:flex items-center gap-3 px-3 py-2 bg-surface-container-low hover:bg-surface-container-high rounded-lg text-on-surface-variant text-sm" type="button">
+        <span class="material-symbols-outlined text-[18px]">search</span><span>Search challenges, syntax...</span><kbd class="px-1.5 py-0.5 rounded bg-surface-container font-mono text-[10px]">Ctrl+K</kbd>
+      </button>
+      <button id="notification-btn" class="relative p-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant" aria-label="Notifications" type="button">
+        <span class="material-symbols-outlined">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span>
+      </button>
+      <div class="relative">
+        <button id="account-btn" class="flex items-center gap-2 p-1 rounded-lg hover:bg-surface-container-low" aria-expanded="false" aria-haspopup="menu" type="button">
+          <div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">person</span></div>
+          <div class="hidden md:flex flex-col text-left leading-tight">
+            <span id="account-name" class="text-xs font-semibold">CodeMentor User</span>
+            <span id="account-role" class="text-[10px] text-on-surface-variant">Your profile</span>
+          </div>
+          <span class="material-symbols-outlined text-[18px] text-on-surface-variant">expand_more</span>
+        </button>
+        <div id="account-menu" class="hidden absolute right-0 top-12 w-60 rounded-xl bg-surface-container-lowest shadow-xl border border-surface-container-high overflow-hidden">
+          <div class="px-4 py-3 border-b border-surface-container-high">
+            <p id="menu-name" class="font-semibold text-sm truncate">Account</p>
+            <p id="menu-email" class="text-xs text-on-surface-variant truncate">Signed in</p>
+          </div>
+          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="profile" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">person</span>Profile</button>
+          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="onboarding" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">tune</span>Update onboarding</button>
+          <button class="w-full text-left px-4 py-3 hover:bg-error-container/50 text-error text-sm" data-account-action="logout" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">logout</span>Log out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<aside class="fixed left-0 top-16 bottom-10 w-64 bg-surface-container-low z-40 hidden lg:flex flex-col justify-between py-6 px-4">
+  <div class="flex flex-col gap-6">
+    <div class="px-3">
+      <div class="flex items-center justify-between"><span class="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">Workspace</span><span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-container text-primary font-medium">Personal</span></div>
+      <div class="mt-2 font-semibold text-lg">Algorithms Lab</div>
+    </div>
+    <nav class="flex flex-col gap-1">
+      <button data-side="dashboard" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary-container text-on-primary text-sm font-medium text-left"><span class="material-symbols-outlined">space_dashboard</span>Overview</button>
+      <button data-side="practice" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">code</span>Live Practice</button>
+      <button data-side="mentor" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">smart_toy</span>AI Copilot Sessions</button>
+      <button data-side="analytics" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">monitoring</span>Skill Graph</button>
+      <button data-side="career" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">badge</span>Interview Prep</button>
+    </nav>
+  </div>
+  <div class="flex flex-col gap-3 px-3">
+    <div class="p-3 rounded-xl bg-surface-container-lowest shadow-sm">
+      <div class="flex items-center justify-between"><span class="font-mono text-[10px] text-on-surface-variant">Daily Streak</span><span class="material-symbols-outlined text-primary text-[18px]">local_fire_department</span></div>
+      <div class="mt-1"><span class="font-bold text-2xl">—</span><span class="text-xs text-on-surface-variant ml-1">days active</span></div>
+      <p class="text-[10px] text-on-surface-variant mt-1">Practice telemetry will appear here.</p>
+    </div>
+    <button id="preferences-btn" class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">settings</span>Preferences</button>
+  </div>
+</aside>
+
+<div class="lg:pl-64">
+<main class="pt-16 pb-12 min-h-screen bg-surface px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto flex flex-col gap-6 py-6">
+
+<section class="bg-surface-container-lowest rounded-xl shadow-sm p-6 sm:p-8 relative overflow-hidden">
+  <div class="absolute -right-20 -top-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
+  <div class="relative flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+    <div>
+      <div class="flex items-center gap-3"><span class="w-8 h-8 rounded-lg bg-surface-container-high text-primary flex items-center justify-center"><span class="material-symbols-outlined">waving_hand</span></span><h1 id="welcome-title" class="text-2xl sm:text-3xl font-bold tracking-tight">Welcome</h1></div>
+      <p class="text-sm text-on-surface-variant flex flex-wrap items-center gap-2 mt-2">
+        <span id="welcome-role">Complete your profile to personalize this workspace</span><span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span><span id="welcome-language" class="text-primary font-semibold">Language not set</span>
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="px-3.5 py-2 rounded-lg bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Target Role</span><p id="hero-role" class="text-sm font-semibold">Not set</p></div>
+      <div class="px-3.5 py-2 rounded-lg bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Timeline</span><p id="hero-timeline" class="text-sm font-semibold">Not set</p></div>
+      <div class="px-3.5 py-2 rounded-lg bg-surface-container-low flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-on-tertiary-container"></span><div><span class="font-mono text-[10px] uppercase text-on-surface-variant">Profile Sync</span><p class="text-sm font-semibold">Connected</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="flex items-center gap-3 overflow-x-auto pb-1">
+  <button data-action="problem" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold shadow-sm"><span class="material-symbols-outlined text-[18px]">bolt</span>Solve Today's Problem</button>
+  <button data-action="weak" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-error text-[18px]">target</span>Review Weak Topics</button>
+  <button data-action="mentor" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-secondary text-[18px]">smart_toy</span>Ask AI Mentor</button>
+  <button data-action="analytics" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">insights</span>View Detailed Analytics</button>
+</section>
+
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+<div class="xl:col-span-8 flex flex-col gap-6">
+
+<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-low text-primary font-mono text-[10px] uppercase tracking-wide"><span class="material-symbols-outlined text-[14px]">psychology</span>Next recommendation</span>
+    <span class="text-xs text-on-surface-variant font-mono">Personalized after telemetry is available</span>
+  </div>
+  <div class="mt-5 flex flex-wrap items-center gap-3"><h2 class="text-xl font-bold">139. Word Break</h2><span class="px-2.5 py-0.5 rounded bg-surface-container text-xs font-semibold">Medium</span><span class="px-2.5 py-0.5 rounded bg-surface-container text-xs text-on-surface-variant">LeetCode</span></div>
+  <div class="flex flex-wrap gap-2 mt-3"><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">DSA: Dynamic Programming</span><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">Pattern: 1D DP / Trie</span><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">Complexity: O(n²)</span></div>
+  <div class="mt-5 p-4 rounded-xl bg-surface-container-low flex gap-3.5 items-start"><div class="p-2 rounded-lg bg-surface-container-lowest text-primary shadow-sm"><span class="material-symbols-outlined">auto_awesome</span></div><div><span class="font-mono text-[10px] text-primary font-bold uppercase tracking-wider">Diagnostic reasoning</span><p class="text-sm text-on-surface-variant leading-relaxed mt-1">Once your practice telemetry is connected, CodeMentor will use your failed attempts, runtime, hints, and topic history to generate this recommendation.</p></div></div>
+  <div id="hint-box" class="hidden mt-4 p-4 rounded-xl bg-surface-container text-sm"><div class="font-semibold text-primary mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">lightbulb</span>Socratic Scaffold Hint #1</div>Let <code class="font-mono bg-surface-container-high px-1.5 py-0.5 rounded">dp[i]</code> represent whether the prefix can be segmented. What previous state would you inspect before deciding <code class="font-mono">dp[i]</code>?</div>
+  <div class="flex flex-wrap items-center gap-3 mt-5">
+    <button data-action="problem" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold">Start Problem <span class="material-symbols-outlined text-[16px] align-middle">arrow_forward</span></button>
+    <button id="hint-btn" class="px-4 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm"><span class="material-symbols-outlined text-[18px] align-middle">lightbulb</span> Toggle Scaffold Hint</button>
+    <button data-action="mentor" class="text-on-surface-variant hover:text-primary text-sm font-semibold">Review with AI <span class="material-symbols-outlined text-[16px] align-middle">chevron_right</span></button>
+  </div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
+  <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Velocity &amp; Problem Solving Mastery</h3><p class="text-xs text-on-surface-variant">Your real trend will be computed from practice sessions.</p></div><span class="font-mono text-[10px] px-2 py-1 rounded bg-surface-container-low">Awaiting telemetry</span></div>
+  <div class="mt-5 p-5 rounded-xl bg-surface-container-low min-h-56 flex flex-col justify-center items-center text-center"><span class="material-symbols-outlined text-primary text-3xl">monitoring</span><p class="font-semibold mt-2">Analytics will populate after your first practice sessions</p><p class="text-xs text-on-surface-variant mt-1 max-w-lg">The dashboard will track solved volume, acceptance, runtime, hints used, and topic mastery once the execution and submission systems are connected.</p></div>
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Total Solved</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Acceptance</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Velocity Pace</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
+    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">AI Hints</span><p class="text-xl font-bold mt-1">—</p><span class="text-[10px] text-on-surface-variant">Not calculated</span></div>
+  </div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
+  <div class="flex items-center justify-between"><div><h3 class="text-lg font-bold">DSA Skill Mastery Matrix</h3><p class="text-xs text-on-surface-variant">Topic scores will be learned from submissions.</p></div><span class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low">10 tracked topics</span></div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+    <div class="skill-card" data-topic="Arrays & Strings"></div>
+    <div class="skill-card" data-topic="Hashing & Hash Maps"></div>
+    <div class="skill-card" data-topic="Two Pointers"></div>
+    <div class="skill-card" data-topic="Binary Search"></div>
+    <div class="skill-card" data-topic="Linked Lists"></div>
+    <div class="skill-card" data-topic="Trees & BST"></div>
+    <div class="skill-card" data-topic="Graphs (BFS/DFS)"></div>
+    <div class="skill-card" data-topic="Dynamic Programming"></div>
+    <div class="skill-card" data-topic="Backtracking"></div>
+    <div class="skill-card" data-topic="Greedy Algorithms"></div>
+  </div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
+  <div class="flex items-center justify-between"><div><h3 class="text-lg font-bold">Weak Areas &amp; AI Remediation Plan</h3><p class="text-xs text-on-surface-variant">These modules appear once enough attempt history exists.</p></div><span class="material-symbols-outlined text-primary">construction</span></div>
+  <div class="mt-5 p-5 rounded-xl bg-surface-container-low text-sm"><p class="font-semibold">No weak areas detected yet</p><p class="text-xs text-on-surface-variant mt-1">Complete practice sessions and submissions. The recommendation engine will identify recurring patterns and create targeted drills.</p></div>
+</section>
+
+</div>
+
+<div class="xl:col-span-4 flex flex-col gap-6">
+<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+  <div class="p-6 bg-gradient-to-br from-primary-container via-primary to-primary text-on-primary">
+    <div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-surface-container-lowest text-primary flex items-center justify-center"><span class="material-symbols-outlined">smart_toy</span></div><div><h3 class="font-bold">Ask your AI Mentor</h3><span class="font-mono text-[10px] text-on-primary">Mentor engine</span></div></div><span class="px-2.5 py-1 rounded-full bg-white/15 text-xs">Ready</span></div>
+    <p class="text-sm text-on-primary mt-4 opacity-90">Ask about an approach, a bug, an edge case, or what to practice next. The full mentor will become connected to your code and execution context in the practice stage.</p>
+  </div>
+  <div class="p-6">
+    <span class="font-mono text-[10px] uppercase text-on-surface-variant">Suggested inquiries</span>
+    <div class="flex flex-col gap-2 mt-2">
+      <button data-query="Why am I struggling with DP state transitions?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">Why am I struggling with DP state transitions? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
+      <button data-query="How should I analyze my recent graph mistakes?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">How should I analyze my recent graph mistakes? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
+      <button data-query="What should I practice next?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">What should I practice next? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
+    </div>
+    <div class="relative mt-5"><input id="mentor-input" class="w-full pl-3.5 pr-12 py-3 rounded-lg bg-surface-container-low text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ask Socratic Mentor..." type="text"><button id="mentor-send" class="absolute right-2 top-2 p-1.5 rounded-md bg-primary text-on-primary" type="button"><span class="material-symbols-outlined text-[18px]">send</span></button></div>
+    <div id="mentor-response" class="hidden mt-3 p-3 rounded-lg bg-surface-container text-xs text-on-surface-variant"></div>
+  </div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+  <div class="flex items-center justify-between"><h3 class="font-bold">Recent Practice Stream</h3><span class="font-mono text-[10px] text-on-surface-variant">Live telemetry</span></div>
+  <div class="mt-4 p-4 rounded-lg bg-surface-container-low"><p class="font-semibold text-sm">No practice sessions yet</p><p class="text-xs text-on-surface-variant mt-1">Your submitted solutions and mentor sessions will appear here.</p></div>
+  <button data-action="analytics" class="w-full text-center text-sm text-on-surface-variant hover:text-primary mt-4" type="button">View full solution history →</button>
+</section>
+</div>
+</div>
+</div>
+</main>
+</div>
+
+<footer class="fixed bottom-0 left-0 right-0 h-10 z-40 bg-surface-container-lowest/95 backdrop-blur-md shadow-sm flex items-center justify-between px-4 sm:px-6 text-on-surface-variant font-mono text-[10px]">
+  <div class="flex items-center gap-4"><span class="flex items-center gap-1.5 text-tertiary"><span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>System Operational</span><span class="hidden sm:inline">Authenticated session</span></div>
+  <div class="flex items-center gap-4"><span>CodeMentor Engine</span><span class="hidden sm:inline">Telemetry: waiting</span></div>
+</footer>
+
+<div id="notification-panel" class="hidden fixed right-4 top-20 z-[70] w-80 rounded-xl bg-surface-container-lowest shadow-xl border border-surface-container-high p-4">
+  <div class="flex items-center justify-between"><p class="font-semibold text-sm">Notifications</p><button id="close-notifications" class="text-on-surface-variant" type="button"><span class="material-symbols-outlined text-[18px]">close</span></button></div>
+  <div class="mt-3 p-3 rounded-lg bg-surface-container-low text-xs text-on-surface-variant">No new notifications yet. Practice events and mentor updates will appear here.</div>
+</div>
+
+<div id="search-panel" class="hidden fixed inset-0 z-[80] bg-on-surface/20 backdrop-blur-sm items-start justify-center pt-28 px-4">
+  <div class="w-full max-w-xl bg-surface-container-lowest rounded-2xl shadow-2xl p-5">
+    <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">search</span><input id="search-input" autofocus class="flex-1 outline-none text-sm" placeholder="Search problems, topics, syntax..." type="text"><button id="close-search" class="text-on-surface-variant" type="button"><span class="material-symbols-outlined">close</span></button></div>
+    <div id="search-result" class="mt-4 p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Search will connect to the problem index in the next stage.</div>
+  </div>
+</div>
+
+<div id="toast" class="hidden fixed bottom-14 right-4 z-[90] max-w-sm px-4 py-3 rounded-xl bg-on-surface text-white text-sm shadow-xl"></div>
+
+<script>
+const API_BASE_URL = 'http://127.0.0.1:8000';
+const TOKEN_KEY = 'codementor_access_token';
+
+function token(){ return localStorage.getItem(TOKEN_KEY); }
+function toast(message){
+  const el=document.getElementById('toast');
+  el.textContent=message; el.classList.remove('hidden');
+  clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.classList.add('hidden'),2600);
+}
+function requireAuth(){
+  if(!token()){ window.location.replace('auth.html'); return false; }
+  return true;
+}
+function closeAccount(){
+  document.getElementById('account-menu')?.classList.add('hidden');
+  document.getElementById('account-btn')?.setAttribute('aria-expanded','false');
+}
+function toggleAccount(){
+  const menu=document.getElementById('account-menu'); const btn=document.getElementById('account-btn');
+  if(!menu||!btn) return;
+  const opening=menu.classList.contains('hidden');
+  menu.classList.toggle('hidden',!opening); btn.setAttribute('aria-expanded',String(opening));
+}
+function navNotice(area){ toast(area + ' will be connected in the next implementation stage.'); }
+function handleAction(action){
+  if(action==='problem') navNotice('Live Practice');
+  else if(action==='weak') navNotice('Adaptive Weak Areas');
+  else if(action==='mentor') document.getElementById('mentor-input')?.focus();
+  else if(action==='analytics') navNotice('Detailed Analytics');
+}
+function renderSkills(){
+  const topics=['Arrays & Strings','Hashing & Hash Maps','Two Pointers','Binary Search','Linked Lists','Trees & BST','Graphs (BFS/DFS)','Dynamic Programming','Backtracking','Greedy Algorithms'];
+  const host=document.querySelectorAll('.skill-card');
+  host.forEach((el,i)=>{
+    const topic=topics[i];
+    el.className='skill-card p-3.5 rounded-lg bg-surface-container-low';
+    el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+topic+'</span><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">Awaiting data</span></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-outline-variant rounded-full" style="width:0%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>0 solved in app</span><span>Not evaluated</span></div>';
+  });
+}
+async function loadDashboard(){
+  if(!requireAuth()) return;
+  renderSkills();
+  try{
+    const [profileRes, meRes]=await Promise.all([
+      fetch(API_BASE_URL+'/profile',{headers:{Authorization:'Bearer '+token()}}),
+      fetch(API_BASE_URL+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
+    ]);
+    if(profileRes.status===401||meRes.status===401){
+      localStorage.removeItem(TOKEN_KEY); window.location.replace('auth.html'); return;
+    }
+    const profile=profileRes.ok?await profileRes.json():{};
+    const me=meRes.ok?await meRes.json():{};
+    const name=profile.full_name || 'CodeMentor User';
+    const role=profile.target_role || 'Complete your profile';
+    const language=profile.preferred_language || 'Language not set';
+    document.getElementById('welcome-title').textContent='Welcome, '+name;
+    document.getElementById('welcome-role').textContent=role;
+    document.getElementById('welcome-language').textContent=language;
+    document.getElementById('hero-role').textContent=role;
+    document.getElementById('hero-timeline').textContent=profile.preparation_timeline || 'Not set';
+    document.getElementById('account-name').textContent=name;
+    document.getElementById('account-role').textContent=role;
+    document.getElementById('menu-name').textContent=name;
+    document.getElementById('menu-email').textContent=me.email || (profile.leetcode_username ? '@'+profile.leetcode_username : 'Signed in');
+  }catch(err){
+    console.warn('Dashboard profile load failed:',err);
+  }
+}
+document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>handleAction(b.dataset.action)));
+document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>navNotice((b.textContent||'Module').trim())));
+document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
+document.querySelectorAll('.mentor-query').forEach(b=>b.addEventListener('click',()=>{document.getElementById('mentor-input').value=b.dataset.query; document.getElementById('mentor-input').focus();}));
+function sendMentor(){
+  const input=document.getElementById('mentor-input'); const response=document.getElementById('mentor-response');
+  const q=input.value.trim(); if(!q){input.focus();return;}
+  response.textContent='Mentor context is not connected yet. Your question has been captured for the upcoming AI Mentor engine.';
+  response.classList.remove('hidden'); input.value='';
+}
+document.getElementById('mentor-send')?.addEventListener('click',sendMentor);
+document.getElementById('mentor-input')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendMentor();});
+document.getElementById('account-btn')?.addEventListener('click',toggleAccount);
+document.addEventListener('click',e=>{const menu=document.getElementById('account-menu');const btn=document.getElementById('account-btn');if(menu&&!menu.contains(e.target)&&!btn.contains(e.target))closeAccount();});
+document.querySelectorAll('[data-account-action]').forEach(b=>b.addEventListener('click',()=>{
+  const action=b.dataset.accountAction; closeAccount();
+  if(action==='logout'){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');}
+  else if(action==='onboarding') window.location.replace('onboarding.html');
+  else if(action==='profile') toast('Profile details can be updated from onboarding.');
+}));
+document.getElementById('notification-btn')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.toggle('hidden'));
+document.getElementById('close-notifications')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.add('hidden'));
+function openSearch(){const p=document.getElementById('search-panel');p.classList.remove('hidden');p.classList.add('flex');setTimeout(()=>document.getElementById('search-input')?.focus(),50);}
+function closeSearch(){const p=document.getElementById('search-panel');p.classList.add('hidden');p.classList.remove('flex');}
+document.getElementById('search-btn')?.addEventListener('click',openSearch);
+document.getElementById('close-search')?.addEventListener('click',closeSearch);
+document.getElementById('search-panel')?.addEventListener('click',e=>{if(e.target.id==='search-panel')closeSearch();});
+document.getElementById('search-input')?.addEventListener('input',e=>{document.getElementById('search-result').textContent=e.target.value.trim()?'Problem search will connect to the authorized problem provider in the next stage.':'Search will connect to the problem index in the next stage.';});
+document.getElementById('preferences-btn')?.addEventListener('click',()=>window.location.replace('onboarding.html'));
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();} if(e.key==='Escape'){closeSearch();document.getElementById('notification-panel')?.classList.add('hidden');closeAccount();}});
+loadDashboard();
+</script>
+</body>
+</html>
