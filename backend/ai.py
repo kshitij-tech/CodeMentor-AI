@@ -6,8 +6,8 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
-DEFAULT_MODEL = "gpt-5.6-luna"
+GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 class AIProviderError(RuntimeError):
     pass
@@ -92,17 +92,25 @@ Be concise and educational.
 """.strip()
 
     body = {
-        "model": model,
-        "instructions": instructions,
-        "input": context.strip(),
-        "max_output_tokens": 700,
+        "systemInstruction": {
+            "parts": [{"text": instructions}]
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": context.strip()}],
+            }
+        ],
+        "generationConfig": {
+            "maxOutputTokens": 700,
+        },
     }
 
     request = urllib.request.Request(
-        OPENAI_RESPONSES_URL,
+        GEMINI_GENERATE_URL.format(model=model),
         data=json.dumps(body).encode("utf-8"),
         headers={
-            "Authorization": "Bearer " + api_key,
+            "x-goog-api-key": api_key,
             "Content-Type": "application/json",
         },
         method="POST",
@@ -115,4 +123,12 @@ Be concise and educational.
         raise AIProviderError("AI provider request failed ({}): {}".format(exc.code, detail)) from exc
     except (urllib.error.URLError, TimeoutError) as exc:
         raise AIProviderError("Unable to reach the AI provider.") from exc
-    return _extract_text(payload)
+    candidates = payload.get("candidates") or []
+    if not candidates:
+        raise AIProviderError("Gemini returned no candidate response.")
+    parts = (candidates[0].get("content") or {}).get("parts") or []
+    texts = [part.get("text", "") for part in parts if part.get("text")]
+    answer = "\n".join(texts).strip()
+    if not answer:
+        raise AIProviderError("Gemini returned an empty response.")
+    return answer
