@@ -19,6 +19,11 @@ primary:"#2a14b4","primary-container":"#4338ca","surface":"#f8f9ff","surface-con
 <style>
 body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mono",monospace}
 .editor{font-family:"JetBrains Mono",monospace;tab-size:4}
+.scroll-panel{scrollbar-width:thin;scrollbar-color:#475569 transparent;overscroll-behavior:contain}
+.scroll-panel::-webkit-scrollbar{width:9px;height:9px}
+.scroll-panel::-webkit-scrollbar-track{background:transparent}
+.scroll-panel::-webkit-scrollbar-thumb{background:#475569;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
+.scroll-panel::-webkit-scrollbar-thumb:hover{background:#64748b;background-clip:padding-box}
 </style>
 </head>
 <body class="min-h-screen bg-surface text-on-surface">
@@ -42,7 +47,26 @@ body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mon
       <select id="topic" class="w-full rounded-lg bg-surface-container-low border-0 px-3 py-2 text-xs outline-none"><option value="">All topics</option></select>
     </div>
   </div>
-  <div id="problem-list" class="p-2 flex-1 overflow-auto"></div>
+  <div id="problem-list" class="p-2 h-[38%] min-h-[220px] overflow-y-auto scroll-panel border-b border-slate-100"></div>
+  <div id="problem-details" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-4">
+    <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Problem statement</div>
+    <h3 id="problem-description-title" class="font-bold text-base mt-1">Select a problem</h3>
+    <p id="problem-description" class="text-xs leading-5 text-on-surface-variant mt-3">Choose a problem above to load its description, examples, and constraints.</p>
+
+    <div class="mt-5">
+      <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Examples</div>
+      <div id="examples" class="mt-2 space-y-2">
+        <div class="text-xs text-on-surface-variant">Examples will appear here.</div>
+      </div>
+    </div>
+
+    <div class="mt-5">
+      <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Constraints</div>
+      <ul id="constraints" class="mt-2 space-y-2 text-xs leading-5 text-on-surface-variant list-disc pl-4">
+        <li>Constraints will appear here.</li>
+      </ul>
+    </div>
+  </div>
 </aside>
 
 <section class="min-w-0 min-h-0 bg-[#0b1020] text-slate-100 flex flex-col relative">
@@ -77,12 +101,12 @@ body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mon
       <span id="autosave" class="mono text-[10px] text-slate-500">Draft not saved</span>
     </div>
     <div id="code-editor" class="flex-1 min-h-0"></div>
-    <div id="execution-panel" class="hidden max-h-56 overflow-auto bg-[#0b1220] border-t border-white/10 shrink-0">
-      <div class="px-4 py-2 flex items-center justify-between border-b border-white/10 sticky top-0 bg-[#0b1220]">
+    <div id="execution-panel" class="hidden h-64 bg-[#0b1220] border-t border-white/10 shrink-0 flex flex-col overflow-hidden">
+      <div class="px-4 py-2 flex items-center justify-between border-b border-white/10 bg-[#0b1220] shrink-0">
         <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-slate-400">terminal</span><span class="mono text-[10px] uppercase tracking-wider text-slate-400">Execution result</span></div>
         <span id="execution-summary" class="text-xs text-slate-400">—</span>
       </div>
-      <div id="execution-results" class="p-3 space-y-2"></div>
+      <div id="execution-results" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-2"></div>
     </div>
     <div class="h-12 bg-[#111827] border-t border-white/10 flex items-center justify-between px-4 shrink-0">
       <div id="execution-status" class="text-xs text-slate-400">Execution engine will be connected next.</div>
@@ -141,9 +165,9 @@ function renderList(items){
  const host=document.getElementById('problem-list');
  host.innerHTML='';
  items.forEach(p=>{
-  const b=document.createElement('button');b.type='button';b.className='w-full text-left p-3 rounded-xl hover:bg-surface-container-low transition-colors '+(current?.slug===p.slug?'bg-surface-container':'');
+  const b=document.createElement('button');b.type='button';b.className='w-full text-left p-3 rounded-xl border border-transparent hover:bg-surface-container-low hover:border-slate-200 transition-colors '+(current?.slug===p.slug?'bg-surface-container border-slate-200 shadow-sm':'');
   b.innerHTML='<div class="flex items-center justify-between gap-2"><span class="font-semibold text-sm">'+p.title+'</span><span class="mono text-[9px] px-2 py-1 rounded bg-surface-container-highest">'+p.difficulty+'</span></div><div class="text-[10px] text-on-surface-variant mt-1">'+p.topics.join(' • ')+'</div>';
-  b.onclick=()=>selectProblem(p);host.appendChild(b);
+  b.onclick=()=>{selectProblem(p);};host.appendChild(b);
  });
  if(!items.length) host.innerHTML='<div class="p-4 text-xs text-on-surface-variant">No problems match these filters.</div>';
 }
@@ -155,10 +179,16 @@ function selectProblem(p){
  current=p;
  document.getElementById('problem-title').textContent=p.title;
  document.getElementById('problem-difficulty').textContent=p.difficulty;
- document.getElementById('problem-topics').textContent=p.topics.join(' • ');
- document.getElementById('problem-description').textContent=p.description;
- document.getElementById('examples').innerHTML=(p.examples||[]).map((e,i)=>'<div class="rounded-xl bg-surface-container-low p-4"><div class="font-mono text-[10px] uppercase text-on-surface-variant">Example '+(i+1)+'</div><pre class="mt-2 text-xs whitespace-pre-wrap">'+e.input+'</pre><div class="mt-2 text-xs"><strong>Output:</strong> '+e.output+'</div><div class="mt-2 text-xs text-on-surface-variant">'+e.explanation+'</div></div>').join('');
- document.getElementById('constraints').innerHTML=(p.constraints||[]).map(x=>'<li>'+x+'</li>').join('');
+ document.getElementById('problem-topics').textContent=(p.topics||[]).join(' • ');
+ document.getElementById('problem-description-title').textContent=p.title;
+ document.getElementById('problem-description').textContent=p.description||'No description is available for this problem yet.';
+ document.getElementById('examples').innerHTML=(p.examples||[]).length
+   ? (p.examples||[]).map((e,i)=>'<div class="rounded-xl bg-surface-container-low p-3"><div class="mono text-[10px] uppercase text-on-surface-variant">Example '+(i+1)+'</div><pre class="mt-2 text-xs whitespace-pre-wrap break-words">'+escapeHtml(e.input)+'</pre><div class="mt-2 text-xs"><strong>Output:</strong> '+escapeHtml(e.output)+'</div><div class="mt-2 text-xs text-on-surface-variant leading-5">'+escapeHtml(e.explanation)+'</div></div>').join('')
+   : '<div class="text-xs text-on-surface-variant">No examples available.</div>';
+ document.getElementById('constraints').innerHTML=(p.constraints||[]).length
+   ? (p.constraints||[]).map(x=>'<li>'+escapeHtml(x)+'</li>').join('')
+   : '<li>No constraints available.</li>';
+ document.getElementById('problem-details').scrollTop=0;
  const language=document.getElementById('language').value;
  const draftKey='cm_code_draft_'+p.slug+'_'+language;
  const saved=localStorage.getItem(draftKey);
@@ -316,6 +346,8 @@ function renderExecution(data){
      (test.expected!==undefined&&test.actual!==undefined&&!ok?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-[10px]"><div><span class="text-slate-500">Expected</span><pre class="mono text-slate-300 mt-1 whitespace-pre-wrap">'+escapeHtml(resultValue(test.expected))+'</pre></div><div><span class="text-slate-500">Actual</span><pre class="mono text-slate-300 mt-1 whitespace-pre-wrap">'+escapeHtml(resultValue(test.actual))+'</pre></div></div>':'');
    results.appendChild(row);
  });
+ results.scrollTop=0;
+ results.parentElement?.scrollTo(0,0);
 }
 async function execute(mode){
  if(!current){toast('Select a problem first.');return;}
