@@ -29,6 +29,20 @@ body{font-family:"Plus Jakarta Sans",sans-serif;overscroll-behavior:none}
 .workspace-splitter-dragging{user-select:none}
 body.workspace-splitter-dragging *{cursor:col-resize!important}
 body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!important;user-select:none}
+
+.mentor-action{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 5px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#cbd5e1;font-size:10px;font-weight:600;transition:background .15s,border-color .15s}
+.mentor-action:hover:not(:disabled){background:#1e293b;border-color:#4c1d95}
+.mentor-action:disabled{opacity:.5;cursor:not-allowed}
+.mentor-user{display:flex;justify-content:flex-end}
+.mentor-agent{display:flex;justify-content:flex-start}
+.mentor-bubble{max-width:88%;padding:10px 12px;border-radius:14px;font-size:11px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.mentor-user .mentor-bubble{background:#4338ca;color:#fff;border-bottom-right-radius:5px}
+.mentor-agent .mentor-bubble{background:#1b253b;color:#dbe4ef;border:1px solid #334155;border-bottom-left-radius:5px}
+.mentor-label{font-size:9px;line-height:1;margin-bottom:4px;color:#64748b}
+.mentor-typing{display:inline-flex;gap:4px;align-items:center;color:#94a3b8}
+.mentor-typing span{width:4px;height:4px;border-radius:999px;background:#94a3b8;animation:mentorDot 1.2s infinite ease-in-out}
+.mentor-typing span:nth-child(2){animation-delay:.15s}.mentor-typing span:nth-child(3){animation-delay:.3s}
+@keyframes mentorDot{0%,70%,100%{opacity:.25;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}
 </style>
 </head>
 <body class="bg-surface text-on-surface antialiased">
@@ -212,42 +226,50 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
 
 <!-- AI MENTOR -->
 <div class="fixed bottom-16 right-5 z-[70] flex flex-col items-end">
-  <div id="mentor-panel" class="hidden w-[min(380px,calc(100vw-2rem))] h-[min(470px,calc(100vh-6rem))] mb-3 bg-[#0f172a] text-slate-100 rounded-xl shadow-2xl border border-slate-700/80 overflow-hidden flex-col">
+  <div id="mentor-panel" class="hidden w-[min(410px,calc(100vw-2rem))] h-[min(560px,calc(100vh-6rem))] mb-3 bg-[#0f172a] text-slate-100 rounded-xl shadow-2xl border border-slate-700/80 overflow-hidden flex-col">
     <div class="h-12 shrink-0 px-3 bg-[#131d33] border-b border-slate-800 flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <div class="w-7 h-7 rounded-md bg-gradient-to-tr from-primary-container to-indigo-500 flex items-center justify-center">
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-7 h-7 rounded-md bg-gradient-to-tr from-primary-container to-indigo-500 flex items-center justify-center shrink-0">
           <span class="material-symbols-outlined text-[16px]">psychology</span>
         </div>
-        <div>
+        <div class="min-w-0">
           <div class="text-[13px] font-semibold">AI Mentor</div>
-          <div id="mentor-context" class="text-[9px] text-slate-500">Select a problem to begin</div>
+          <div id="mentor-context" class="text-[9px] text-slate-500 truncate">Select a problem to begin</div>
         </div>
       </div>
-      <button id="mentor-close" class="w-7 h-7 rounded hover:bg-slate-800 text-slate-400"><span class="material-symbols-outlined text-[16px]">close</span></button>
-    </div>
-    <div class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-3">
-      <div class="rounded-lg bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">
-        Mentor analysis will use the selected problem, your code, and execution results once the AI analysis service is connected.
+      <div class="flex items-center gap-1">
+        <button id="mentor-clear" type="button" class="px-2 py-1 rounded text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-200">Clear</button>
+        <button id="mentor-close" type="button" class="w-7 h-7 rounded hover:bg-slate-800 text-slate-400" aria-label="Close mentor">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
       </div>
-      <div class="space-y-2">
-        <div class="text-[9px] uppercase tracking-wider text-slate-500 mono font-semibold">Guidance</div>
-        <div class="grid grid-cols-2 gap-2">
-          <button class="mentor-action" data-action="hint"><span class="material-symbols-outlined text-[15px] text-amber-400">lightbulb</span>Hint</button>
-          <button class="mentor-action" data-action="debug"><span class="material-symbols-outlined text-[15px] text-rose-400">bug_report</span>Debug</button>
-          <button class="mentor-action" data-action="complexity"><span class="material-symbols-outlined text-[15px] text-purple-400">speed</span>Complexity</button>
-          <button class="mentor-action" data-action="edge"><span class="material-symbols-outlined text-[15px] text-emerald-400">verified</span>Edge cases</button>
-        </div>
-      </div>
-      <div id="mentor-response" class="hidden rounded-lg bg-[#090d1a] border border-slate-800 p-3 text-[11px] text-slate-300 leading-5"></div>
     </div>
-    <div class="p-2.5 bg-[#131d33] border-t border-slate-800 flex items-center gap-2">
-      <input id="mentor-input" class="flex-1 bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500" placeholder="Ask about this problem...">
-      <button id="mentor-send" class="w-8 h-8 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined text-[15px]">send</span></button>
+
+    <div id="mentor-chat" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-3">
+      <div class="mentor-welcome rounded-xl bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">
+        Ask a question or use one of the guidance actions below. Your conversation stays visible while you work.
+      </div>
+    </div>
+
+    <div class="shrink-0 px-3 pt-2.5 pb-2 bg-[#131d33] border-t border-slate-800">
+      <div class="grid grid-cols-4 gap-1.5 mb-2">
+        <button class="mentor-action" data-action="hint" type="button"><span class="material-symbols-outlined text-[15px] text-amber-400">lightbulb</span>Hint</button>
+        <button class="mentor-action" data-action="debug" type="button"><span class="material-symbols-outlined text-[15px] text-rose-400">bug_report</span>Debug</button>
+        <button class="mentor-action" data-action="complexity" type="button"><span class="material-symbols-outlined text-[15px] text-purple-400">speed</span>Complexity</button>
+        <button class="mentor-action" data-action="edge" type="button"><span class="material-symbols-outlined text-[15px] text-emerald-400">verified</span>Edge</button>
+      </div>
+      <div class="flex items-end gap-2">
+        <textarea id="mentor-input" rows="1" class="flex-1 resize-none bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500" placeholder="Ask about this problem..."></textarea>
+        <button id="mentor-send" type="button" class="w-9 h-9 shrink-0 rounded-lg bg-primary-container text-white flex items-center justify-center hover:bg-primary disabled:opacity-50" aria-label="Send message">
+          <span class="material-symbols-outlined text-[16px]">send</span>
+        </button>
+      </div>
     </div>
   </div>
-  <button id="mentor-trigger" class="h-11 px-4 rounded-full bg-gradient-to-r from-primary-container to-indigo-500 text-white text-[12px] font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-transform">
+  <button id="mentor-trigger" type="button" class="h-11 px-4 rounded-full bg-gradient-to-r from-primary-container to-indigo-500 text-white text-[12px] font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-transform">
     <span class="material-symbols-outlined text-[19px]">psychology</span> AI Mentor
   </button>
+</div>
 </div>
 
 <div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-lg bg-slate-900 text-white text-xs shadow-xl"></div>
@@ -265,6 +287,8 @@ let pendingEditor=null;
 let currentDifficulty='';
 let lastExecution=null;
 let hintLevel=1;
+let mentorMessages=[];
+let mentorRequestId=0;
 
 const $=id=>document.getElementById(id);
 function token(){return localStorage.getItem(TOKEN_KEY)}
@@ -363,6 +387,7 @@ function selectProblem(p){
   $('execution-status').textContent='Ready to run.';
   $('mentor-context').textContent=`${p.title} · ${$('language').value}`;
   loadDraftOrStarter();
+  loadMentorChat();
   renderProblems();
   setProblemExplorer(false);
 }
@@ -650,20 +675,98 @@ document.querySelectorAll('[data-account-action]').forEach(button=>button.addEve
 }));
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccount();});
 
+function mentorStorageKey(){
+  return current ? 'cm_mentor_chat_'+current.slug : 'cm_mentor_chat_none';
+}
+
+function cleanMentorText(value){
+  let text=String(value||'').replace(/\r/g,'');
+  text=text.replace(/\*\*([^*]+)\*\*/g,'$1');
+  text=text.replace(/__([^_]+)__/g,'$1');
+  text=text.replace(/\*([^*]+)\*/g,'$1');
+  text=text.replace(/^#{1,6}\s*/gm,'');
+  text=text.replace(/^\s*[-•]\s+/gm,'');
+  text=text.replace(/^\s*\d+[.)]\s+/gm,'');
+  text=text.replace(/\`\`\`[a-zA-Z0-9_+-]*\n?/g,'');
+  text=text.replace(/\`([^\`]+)\`/g,'$1');
+  text=text.replace(/\[([^\]]+)\]\([^)]*\)/g,'$1');
+  return text.replace(/\n{3,}/g,'\n\n').trim();
+}
+
+function mentorTypingMarkup(){
+  return '<div class="mentor-agent"><div><div class="mentor-label">AI Mentor</div><div class="mentor-bubble"><span class="mentor-typing"><span></span><span></span><span></span>Thinking</span></div></div></div>';
+}
+
+function renderMentorChat(){
+  const chat=$('mentor-chat');
+  if(!chat)return;
+  if(!current){
+    chat.innerHTML='<div class="mentor-welcome rounded-xl bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">Choose a problem to start a mentor conversation.</div>';
+    return;
+  }
+  if(!mentorMessages.length){
+    chat.innerHTML='<div class="mentor-welcome rounded-xl bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">Ask a question or use one of the guidance actions below. Your conversation stays visible while you work.</div>';
+    return;
+  }
+  chat.innerHTML=mentorMessages.map(m=>{
+    const role=m.role==='user'?'user':'agent';
+    const label=role==='user'?'You':'AI Mentor';
+    return '<div class="mentor-'+role+'"><div><div class="mentor-label">'+label+'</div><div class="mentor-bubble">'+esc(cleanMentorText(m.text))+'</div></div></div>';
+  }).join('');
+  chat.scrollTop=chat.scrollHeight;
+}
+
+function saveMentorChat(){
+  if(current)localStorage.setItem(mentorStorageKey(),JSON.stringify(mentorMessages.slice(-50)));
+}
+
+function loadMentorChat(){
+  try{
+    mentorMessages=current?JSON.parse(localStorage.getItem(mentorStorageKey())||'[]'):[],
+    Array.isArray(mentorMessages)||(mentorMessages=[]);
+  }catch(_){mentorMessages=[];}
+  const storedHint=parseInt(localStorage.getItem(current?'cm_mentor_hint_'+current.slug:''),10);
+  hintLevel=Number.isFinite(storedHint)?Math.max(1,Math.min(4,storedHint)):1;
+  renderMentorChat();
+}
+
+function clearMentorChat(){
+  mentorMessages=[];
+  hintLevel=1;
+  if(current){
+    localStorage.removeItem(mentorStorageKey());
+    localStorage.removeItem('cm_mentor_hint_'+current.slug);
+  }
+  renderMentorChat();
+}
+
 function toggleMentor(){
   $('mentor-panel').classList.toggle('hidden');
   $('mentor-panel').classList.toggle('flex');
+  if(!$('mentor-panel').classList.contains('hidden')){
+    renderMentorChat();
+    setTimeout(()=>$('mentor-input')?.focus(),50);
+  }
 }
 $('mentor-trigger').addEventListener('click',toggleMentor);
 $('mentor-close').addEventListener('click',toggleMentor);
+$('mentor-clear').addEventListener('click',clearMentorChat);
+
 async function askMentor(action,question=null){
   if(!current){toast('Select a problem first.');return}
   if(!editor){toast('Code editor is still loading.');return}
-  const response=$('mentor-response');
-  response.classList.remove('hidden');
-  response.textContent='Analyzing your problem and code...';
+  const requestId=++mentorRequestId;
+  const userText=question||({hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity?',edge:'What edge cases should I test?'}[action]||'Help me with this problem.');
+  mentorMessages.push({role:'user',text:userText});
+  saveMentorChat();
+  renderMentorChat();
+  const chat=$('mentor-chat');
+  chat.insertAdjacentHTML('beforeend',mentorTypingMarkup());
+  chat.scrollTop=chat.scrollHeight;
   document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=true);
   $('mentor-send').disabled=true;
+  $('mentor-input').disabled=true;
+
   try{
     const res=await fetch(API+'/mentor/analyze',{
       method:'POST',
@@ -681,26 +784,47 @@ async function askMentor(action,question=null){
     if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
-    response.textContent=data.answer||'The mentor returned no explanation.';
-    if(action==='hint')hintLevel=Math.min(4,hintLevel+1);
+    if(requestId!==mentorRequestId)return;
+    chat.querySelector('.mentor-agent:last-child')?.remove();
+    mentorMessages.push({role:'agent',text:data.answer||'The mentor returned no explanation.'});
+    if(action==='hint'){
+      hintLevel=Math.min(4,hintLevel+1);
+      localStorage.setItem('cm_mentor_hint_'+current.slug,String(hintLevel));
+    }
+    saveMentorChat();
+    renderMentorChat();
   }catch(err){
-    const networkMessage = err instanceof TypeError && (err.message||'').toLowerCase().includes('fetch')
-      ? 'Unable to reach the CodeMentor backend. Make sure FastAPI is running on http://127.0.0.1:8000 and refresh the page.'
+    if(requestId!==mentorRequestId)return;
+    chat.querySelector('.mentor-agent:last-child')?.remove();
+    const networkMessage=err instanceof TypeError && (err.message||'').toLowerCase().includes('fetch')
+      ? 'Unable to reach the CodeMentor backend. Make sure FastAPI is running on http://127.0.0.1:8000.'
       : (err.message||'Unable to contact the AI Mentor.');
-    response.textContent=networkMessage;
+    mentorMessages.push({role:'agent',text:networkMessage});
+    saveMentorChat();
+    renderMentorChat();
   }finally{
-    document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=false);
-    $('mentor-send').disabled=false;
+    if(requestId===mentorRequestId){
+      document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=false);
+      $('mentor-send').disabled=false;
+      $('mentor-input').disabled=false;
+    }
   }
 }
 document.querySelectorAll('.mentor-action').forEach(b=>b.addEventListener('click',()=>askMentor(b.dataset.action)));
 $('mentor-send').addEventListener('click',()=>{
   const q=$('mentor-input').value.trim();
   if(!q){$('mentor-input').focus();return}
-  askMentor('question',q);
   $('mentor-input').value='';
+  askMentor('question',q);
 });
-$('mentor-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('mentor-send').click()}});
+$('mentor-input').addEventListener('input',()=>{
+  const el=$('mentor-input');
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,96)+'px';
+});
+$('mentor-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('mentor-send').click();}
+});
 
 
 async function load(){
