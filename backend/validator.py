@@ -112,12 +112,15 @@ def parse_default_validator_flags(
     return options
 
 
+_WHITESPACE_RE = re.compile(r"[ \f\n\r\t\v]+")
+
+
 def _tokens(value: str) -> list[str]:
-    return value.split()
+    return [token for token in _WHITESPACE_RE.split(value) if token]
 
 
 def _whitespace_parts(value: str) -> list[str]:
-    return re.split(r"\S+", value)
+    return re.split(r"[^ \f\n\r\t\v]+", value)
 
 
 def _ascii_casefold(token: str) -> str:
