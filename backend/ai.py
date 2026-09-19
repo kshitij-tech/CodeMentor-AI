@@ -30,6 +30,20 @@ def mentor_response(*, problem: dict[str, Any], language: str, code: str, execut
     if not api_key:
         raise AIProviderError("GEMINI_API_KEY is not configured. Add your Gemini API key to the backend environment.")
     model = os.getenv("AI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
+    model_aliases = {
+        "2.5 flash": "gemini-2.5-flash",
+        "gemini 2.5 flash": "gemini-2.5-flash",
+        "gemini-2.5-flash": "gemini-2.5-flash",
+        "gemini 2.5 flash lite": "gemini-2.5-flash-lite",
+        "2.5 flash lite": "gemini-2.5-flash-lite",
+        "gemini 2.5 pro": "gemini-2.5-pro",
+        "2.5 pro": "gemini-2.5-pro",
+    }
+    model = model_aliases.get(model.lower(), model)
+    if " " in model:
+        raise AIProviderError(
+            "Invalid AI_MODEL value. Use a Gemini model id such as 'gemini-2.5-flash'."
+        )
     constraints = "\n".join("- " + str(x) for x in (problem.get("constraints") or []))
     execution_text = json.dumps(execution or {"status": "not_run", "results": []}, indent=2)
     context = """
