@@ -47,7 +47,7 @@ def analytics_summary(
 
     runtimes = [
         result.get("runtime_ms")
-        for attempt in attempts
+        for attempt, _ in attempts
         for result in (attempt.results or [])
         if isinstance(result, dict) and isinstance(result.get("runtime_ms"), (int, float))
     ]
