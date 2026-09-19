@@ -209,10 +209,40 @@ function initializeEditor(){
     require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs'}});
     require(['vs/editor/editor.main'],()=>{
       try{
+        monaco.editor.defineTheme('codementor-vibrant',{
+          base:'vs-dark',
+          inherit:true,
+          rules:[
+            {token:'comment',foreground:'6A9955',fontStyle:'italic'},
+            {token:'keyword',foreground:'C586C0'},
+            {token:'string',foreground:'CE9178'},
+            {token:'number',foreground:'B5CEA8'},
+            {token:'type',foreground:'4EC9B0'},
+            {token:'type.identifier',foreground:'4EC9B0'},
+            {token:'identifier',foreground:'DCDCAA'},
+            {token:'delimiter',foreground:'D4D4D4'},
+            {token:'operator',foreground:'D4D4D4'},
+            {token:'regexp',foreground:'D16969'},
+            {token:'function',foreground:'DCDCAA'}
+          ],
+          colors:{
+            'editor.background':'#0b1020',
+            'editor.foreground':'#E6EDF3',
+            'editorLineNumber.foreground':'#475569',
+            'editorLineNumber.activeForeground':'#CBD5E1',
+            'editorCursor.foreground':'#8B5CF6',
+            'editor.selectionBackground':'#3730A344',
+            'editor.inactiveSelectionBackground':'#3730A322',
+            'editor.lineHighlightBackground':'#111827',
+            'editorIndentGuide.background1':'#1E293B',
+            'editorIndentGuide.activeBackground1':'#334155'
+          }
+        });
+        monaco.editor.setTheme('codementor-vibrant');
         editor=monaco.editor.create(document.getElementById('code-editor'),{
           value:'',
           language:'python',
-          theme:'vs-dark',
+          theme:'codementor-vibrant',
           automaticLayout:true,
           fontFamily:'JetBrains Mono, monospace',
           fontSize:14,
@@ -253,10 +283,10 @@ function openMentor(){
  backdrop?.classList.remove('hidden');
 }
 function closeMentor(){
- document.getElementById('mentor-panel')?.classList.add('hidden');
+ const panel=document.getElementById('mentor-panel');
+ panel?.classList.add('hidden','bottom-20','right-5');
+ panel?.classList.remove('inset-0','w-full','h-full','rounded-none');
  document.getElementById('mentor-backdrop')?.classList.add('hidden');
- document.getElementById('mentor-panel')?.classList.remove('fixed','inset-0','w-full','h-full','rounded-none','right-0','bottom-0');
- document.getElementById('mentor-panel')?.classList.add('bottom-20','right-5');
  document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
 }
 function maximizeMentor(){
@@ -264,12 +294,12 @@ function maximizeMentor(){
  if(!panel)return;
  const full=panel.classList.contains('inset-0');
  if(full){
-   panel.classList.remove('fixed','inset-0','w-full','h-full','rounded-none');
-   panel.classList.add('fixed','bottom-20','right-5','w-[min(400px,calc(100vw-2rem))]','h-[min(560px,calc(100vh-6rem))]','rounded-2xl');
+   panel.classList.remove('inset-0','w-full','h-full','rounded-none');
+   panel.classList.add('bottom-20','right-5');
    document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
  }else{
-   panel.classList.remove('bottom-20','right-5','rounded-2xl');
-   panel.classList.add('fixed','inset-0','w-full','h-full','rounded-none');
+   panel.classList.remove('bottom-20','right-5');
+   panel.classList.add('inset-0','w-full','h-full','rounded-none');
    document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">close_fullscreen</span>';
  }
 }
