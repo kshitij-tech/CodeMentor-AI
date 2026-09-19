@@ -280,7 +280,21 @@
             ? 'Your CodeMentor session is authenticated. Redirecting...'
             : 'Your account was created and you are now signed in. Redirecting...';
 
-        window.location.replace('./onboarding.html?from=auth');
+        const profileResponse = await fetch(API_BASE_URL + '/profile', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (profileResponse.status === 401) {
+          localStorage.removeItem('codementor_access_token');
+          throw new Error('Your session could not be verified. Please sign in again.');
+        }
+
+        const profile = profileResponse.ok ? await profileResponse.json() : null;
+        const destination = profile?.onboarding_completed
+          ? './dashboard.html'
+          : './onboarding.html?from=auth';
+
+        window.location.replace(destination);
       } catch (error) {
         showMessage(error.message || 'Unable to connect to the CodeMentor API.');
       } finally {
