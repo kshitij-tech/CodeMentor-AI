@@ -378,11 +378,12 @@ function renderAnalytics(data){
   document.getElementById('metric-hints').textContent=String(data.ai_hints||0);
   document.getElementById('metric-runtime').textContent=data.average_runtime_ms==null?'No runtime data':'Avg runtime '+data.average_runtime_ms+' ms';
   const badge=document.getElementById('telemetry-badge');
-  if(badge) badge.textContent=data.total_attempts ? data.total_attempts+' attempts tracked' : 'No attempts yet';
+  if(badge){
+    badge.textContent=data.total_attempts ? data.total_attempts+' attempts tracked' : 'No attempts yet';
+    badge.classList.remove('text-error');
+  }
   const daily=document.getElementById('daily-telemetry');
   const labels=document.getElementById('daily-labels');
-  const badge=document.getElementById('telemetry-badge');
-  if(badge) badge.classList.remove('text-error');
   if(!daily||!labels)return;
   const points=data.daily||[];
   const max=Math.max(1,...points.map(x=>Number(x.attempts)||0));
