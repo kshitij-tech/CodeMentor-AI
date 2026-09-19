@@ -1,0 +1,351 @@
+from __future__ import annotations
+
+import html
+import io
+import re
+import zipfile
+from dataclasses import dataclass
+from pathlib import PurePosixPath
+from typing import Any
+
+import yaml
+
+
+class ProblemPackageError(ValueError):
+    """Raised when a problem package cannot be imported safely."""
+
+
+@dataclass(frozen=True)
+class PackageTestCase:
+    name: str
+    input_data: str
+    expected_output: str
+    visibility: str
+
+
+def _safe_member_path(name: str) -> PurePosixPath:
+    path = PurePosixPath(name.replace("\\", "/"))
+    if path.is_absolute() or ".." in path.parts:
+        raise ProblemPackageError(f"Unsafe package path: {name}")
+    return path
+
+
+def _slugify(value: str) -> str:
+    value = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
+    return value[:110] or "imported-problem"
+
+
+def _localized_value(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        for key in ("en", "en-US"):
+            if isinstance(value.get(key), str) and value[key].strip():
+                return value[key].strip()
+        for item in value.values():
+            if isinstance(item, str) and item.strip():
+                return item.strip()
+    return ""
+
+
+def _source_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        return " / ".join(str(item).strip() for item in value if str(item).strip())
+    if isinstance(value, dict):
+        return " / ".join(str(item).strip() for item in value.values() if str(item).strip())
+    return ""
+
+
+def _strip_html(value: str) -> str:
+    value = re.sub(r"(?is)<(script|style).*?>.*?</\1>", "", value)
+    value = re.sub(r"(?s)<[^>]+>", " ", value)
+    return html.unescape(re.sub(r"[ \t]+", " ", value)).strip()
+
+
+def _strip_latex(value: str) -> str:
+    value = re.sub(r"(?m)^\s*%.*$", "", value)
+    value = re.sub(r"\\(?:begin|end)\{[^}]+\}", "\n", value)
+    value = re.sub(r"\\(?:textbf|textit|emph|underline|textrm)\{([^{}]*)\}", r"\1", value)
+    value = re.sub(r"\\(?:section|subsection|subsubsection)\*?\{([^{}]*)\}", r"\n\1\n", value)
+    value = re.sub(r"\\(?:paragraph)\*?\{([^{}]*)\}", r"\n\1\n", value)
+    value = re.sub(r"\\[a-zA-Z]+(?:\[[^\]]*\])?\s*", "", value)
+    value = value.replace("~", " ")
+    value = re.sub(r"[{}]", "", value)
+    return re.sub(r"\n{3,}", "\n\n", value).strip()
+
+
+def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
+    candidates = [
+        "problem.html",
+        "problem.md",
+        "problem.txt",
+    ]
+    for candidate in candidates:
+        if candidate in files:
+            raw = files[candidate].decode("utf-8", errors="replace")
+            return (_strip_html(raw) if candidate.endswith(".html") else raw.strip(), candidate)
+
+    statement_files = sorted(
+        path for path in files
+        if path.startswith("problem_statement/")
+        and PathLikeSuffix(path)
+    )
+    preferred = [
+        path for path in statement_files if path.endswith((".md", ".html", ".txt"))
+    ] + [path for path in statement_files if path.endswith(".tex")]
+
+    for path in preferred:
+        raw = files[path].decode("utf-8", errors="replace")
+        if path.endswith(".html"):
+            raw = _strip_html(raw)
+        elif path.endswith(".tex"):
+            raw = _strip_latex(raw)
+        return raw.strip(), path
+
+    pdfs = [path for path in files if path.startswith("problem_statement/") and path.endswith(".pdf")]
+    if "problem.pdf" in files or pdfs:
+        return (
+            "The problem statement is included as a PDF in the imported package. "
+            "PDF rendering will be added to the package viewer.",
+            "problem.pdf" if "problem.pdf" in files else pdfs[0],
+        )
+
+    raise ProblemPackageError("No supported problem statement file was found.")
+
+
+def PathLikeSuffix(path: str) -> bool:
+    return path.endswith((".md", ".html", ".txt", ".tex", ".pdf"))
+
+
+def _parse_domjudge_ini(raw: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
+
+
+def _find_rooted_files(raw_files: dict[str, bytes]) -> dict[str, bytes]:
+    cleaned = {_safe_member_path(name): content for name, content in raw_files.items()}
+    if PurePosixPath("problem.yaml") in cleaned:
+        root = PurePosixPath("")
+    else:
+        problem_paths = [path for path in cleaned if path.name == "problem.yaml"]
+        if not problem_paths:
+            raise ProblemPackageError("Package must contain problem.yaml.")
+        root = problem_paths[0].parent
+
+    result: dict[str, bytes] = {}
+    for path, content in cleaned.items():
+        try:
+            relative = path.relative_to(root)
+        except ValueError:
+            continue
+        if str(relative):
+            result[str(relative)] = content
+    if "problem.yaml" not in result:
+        raise ProblemPackageError("Could not determine package root.")
+    return result
+
+
+def _load_package_bytes(raw_files: dict[str, bytes]) -> dict[str, bytes]:
+    return _find_rooted_files(raw_files)
+
+
+def _extract_test_cases(files: dict[str, bytes]) -> list[PackageTestCase]:
+    test_cases: list[PackageTestCase] = []
+    for path, data in sorted(files.items()):
+        if not path.startswith("data/") or not path.endswith(".in"):
+            continue
+        relative = PurePosixPath(path)
+        parts = relative.parts
+        if len(parts) < 3 or parts[1] not in {"sample", "secret"}:
+            continue
+
+        answer_path = path[:-3] + "ans"
+        if answer_path not in files:
+            raise ProblemPackageError(
+                f"Missing answer file for test case: {path}"
+            )
+
+        test_cases.append(
+            PackageTestCase(
+                name=path[5:-3],
+                input_data=data.decode("utf-8", errors="replace"),
+                expected_output=files[answer_path].decode("utf-8", errors="replace"),
+                visibility=parts[1],
+            )
+        )
+
+    if not test_cases:
+        raise ProblemPackageError(
+            "No sample/secret .in/.ans test cases were found in data/."
+        )
+    return test_cases
+
+
+def _starter_code() -> dict[str, str]:
+    return {
+        "Python": (
+            "import sys\n\n"
+            "def solve():\n"
+            "    # Read from standard input and write the required answer.\n"
+            "    pass\n\n"
+            "if __name__ == '__main__':\n"
+            "    solve()\n"
+        )
+    }
+
+
+def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[str, Any]:
+    files = _load_package_bytes(raw_files)
+
+    try:
+        metadata = yaml.safe_load(files["problem.yaml"].decode("utf-8", errors="replace")) or {}
+    except yaml.YAMLError as exc:
+        raise ProblemPackageError(f"Invalid problem.yaml: {exc}") from exc
+
+    if not isinstance(metadata, dict):
+        raise ProblemPackageError("problem.yaml must contain a YAML mapping.")
+
+    title = _localized_value(metadata.get("name")) or package_name
+    slug = _slugify(title)
+    keywords = metadata.get("keywords") or []
+    if isinstance(keywords, str):
+        keywords = [keywords]
+    topics = [str(item).strip() for item in keywords if str(item).strip()]
+
+    statement, statement_file = _statement_from_files(files)
+    test_cases = _extract_test_cases(files)
+
+    limits = metadata.get("limits") or {}
+    if not isinstance(limits, dict):
+        limits = {}
+
+    time_limit = limits.get("time_limit", 2.0)
+    try:
+        time_limit_ms = max(100, int(float(time_limit) * 1000))
+    except (TypeError, ValueError):
+        time_limit_ms = 2000
+
+    memory_limit = limits.get("memory")
+    try:
+        memory_limit_mb = int(memory_limit) if memory_limit is not None else None
+    except (TypeError, ValueError):
+        memory_limit_mb = None
+
+    validation = metadata.get("validation", "default")
+    if isinstance(validation, dict):
+        validation_name = "custom"
+        validation_metadata = validation
+    else:
+        validation_name = str(validation or "default")
+        validation_metadata = validation_name
+
+    problem_type = metadata.get("type", "pass-fail")
+    if isinstance(problem_type, list):
+        type_values = [str(item) for item in problem_type]
+    else:
+        type_values = [str(problem_type)]
+
+    samples = [
+        {
+            "input": case.input_data,
+            "output": case.expected_output,
+            "name": case.name,
+        }
+        for case in test_cases
+        if case.visibility == "sample"
+    ][:8]
+
+    source_name = _source_text(metadata.get("source")) or "problem-package"
+    source_url = metadata.get("source_url")
+    external_id = str(metadata.get("uuid") or package_name)
+
+    package_metadata = {
+        "problem_format_version": metadata.get("problem_format_version"),
+        "author": metadata.get("author"),
+        "source": metadata.get("source"),
+        "license": metadata.get("license"),
+        "rights_owner": metadata.get("rights_owner"),
+        "keywords": topics,
+        "languages": metadata.get("languages"),
+        "type": type_values,
+        "validation": validation_metadata,
+        "statement_file": statement_file,
+        "test_case_count": len(test_cases),
+        "sample_test_count": sum(case.visibility == "sample" for case in test_cases),
+        "secret_test_count": sum(case.visibility == "secret" for case in test_cases),
+    }
+
+    if "domjudge-problem.ini" in files:
+        package_metadata["domjudge"] = _parse_domjudge_ini(
+            files["domjudge-problem.ini"].decode("utf-8", errors="replace")
+        )
+
+    return {
+        "slug": slug,
+        "title": title[:180],
+        "difficulty": "Unknown",
+        "topics": topics,
+        "description": statement,
+        "constraints": [],
+        "examples": samples,
+        "test_cases": [
+            {
+                "name": case.name,
+                "input": case.input_data,
+                "expected_output": case.expected_output,
+                "visibility": case.visibility,
+            }
+            for case in test_cases
+        ],
+        "starter_code": _starter_code(),
+        "source": "problem-package" if len(source_name) > 40 else source_name,
+        "external_id": external_id[:120],
+        "external_url": str(source_url)[:500] if source_url else None,
+        "execution_mode": "stdio",
+        "time_limit_ms": time_limit_ms,
+        "memory_limit_mb": memory_limit_mb,
+        "validation": validation_name[:30],
+        "package_metadata": package_metadata,
+        "judge_supported": (
+            "pass-fail" in type_values
+            and validation_name == "default"
+            and "interactive" not in type_values
+            and "multi-pass" not in type_values
+            and "submit-answer" not in type_values
+            and "scoring" not in type_values
+        ),
+    }
+
+
+def load_problem_package(path: str) -> dict[str, Any]:
+    package = PurePosixPath(path)
+    if str(package) != path:
+        # The path may contain platform-specific separators; runtime loading below
+        # uses the normal filesystem APIs.
+        pass
+
+    import pathlib
+
+    filesystem_path = pathlib.Path(path)
+    if filesystem_path.is_dir():
+        raw_files = {}
+        for file_path in filesystem_path.rglob("*"):
+            if file_path.is_file():
+                raw_files[file_path.relative_to(filesystem_path).as_posix()] = file_path.read_bytes()
+        package_name = filesystem_path.name
+    elif filesystem_path.is_file() and filesystem_path.suffix.lower() == ".zip":
+        with zipfile.ZipFile(filesystem_path, "r") as archive:
+            raw_files = {info.filename: archive.read(info) for info in archive.infolist() if not info.is_dir()}
+        package_name = filesystem_path.stem
+    else:
+        raise ProblemPackageError("Input must be a problem package directory or .zip file.")
+
+    return package_to_problem(raw_files, package_name)
