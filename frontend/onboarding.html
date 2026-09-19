@@ -522,4 +522,458 @@
 </div>
 </div>
 </div>
-</main><footer class="w-full bg-surface-container-lowest shadow-[0_-1px_8px_rgba(0,0,0,0.02)]"><div class="max-w-[1440px] mx-auto px-margin-mobile lg:px-margin py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm"><span class="material-symbols-outlined text-[18px] text-tertiary">verified_user</span><span>Secure account session · Personalized settings</span></div><div class="flex items-center gap-space-lg font-body-sm text-body-sm text-on-surface-variant"><span>© 2026 CodeMentor AI</span><a class="hover:text-on-surface transition-colors" data-path="privacy" href="#">Privacy Policy</a><a class="hover:text-on-surface transition-colors" data-path="security" href="#">Security Overview</a></div></div></footer></body></html>
+</main><footer class="w-full bg-surface-container-lowest shadow-[0_-1px_8px_rgba(0,0,0,0.02)]"><div class="max-w-[1440px] mx-auto px-margin-mobile lg:px-margin py-space-lg flex flex-col md:flex-row items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm text-on-surface-variant font-body-sm text-body-sm"><span class="material-symbols-outlined text-[18px] text-tertiary">verified_user</span><span>Secure account session · Personalized settings</span></div><div class="flex items-center gap-space-lg font-body-sm text-body-sm text-on-surface-variant"><span>© 2026 CodeMentor AI</span><a class="hover:text-on-surface transition-colors" data-path="privacy" href="#">Privacy Policy</a><a class="hover:text-on-surface transition-colors" data-path="security" href="#">Security Overview</a></div></div></footer><script>
+const API_BASE_URL = 'http://127.0.0.1:8000';
+const wizardState = {
+  currentStep: 1,
+  name: '',
+  bio: '',
+  experience: '',
+  language: '',
+  langVersion: '',
+  leetcodeUser: '',
+  leetcodeSynced: false,
+  targetRole: '',
+  companies: [],
+  timeline: ''
+};
+
+function getToken() {
+  return localStorage.getItem('codementor_access_token');
+}
+
+function requireAuth() {
+  if (!getToken()) {
+    window.location.href = 'auth.html';
+    return false;
+  }
+  return true;
+}
+
+function showError(message) {
+  const banner = document.getElementById('error-banner');
+  const text = document.getElementById('error-text');
+  if (text) text.textContent = message;
+  if (banner) banner.classList.remove('hidden');
+}
+
+function hideError() {
+  document.getElementById('error-banner')?.classList.add('hidden');
+}
+
+function setCardState(card, active) {
+  if (!card) return;
+
+  if (active) {
+    card.classList.remove('bg-surface-container-low');
+    card.classList.add('bg-surface-container', 'shadow-sm', 'active-card');
+  } else {
+    card.classList.remove('bg-surface-container', 'shadow-sm', 'active-card');
+    card.classList.add('bg-surface-container-low');
+  }
+}
+
+function updateView() {
+  hideError();
+
+  for (let i = 1; i <= 5; i++) {
+    const step = document.getElementById('step-' + i);
+    if (step) step.classList.toggle('hidden', i !== wizardState.currentStep);
+  }
+
+  const pct = wizardState.currentStep <= 4 ? wizardState.currentStep * 25 : 100;
+  const progress = document.getElementById('progress-bar-fill');
+  const stepText = document.getElementById('step-indicator-text');
+  const pctText = document.getElementById('step-percentage-text');
+  const footer = document.getElementById('card-footer-controls');
+
+  if (progress) progress.style.width = pct + '%';
+  if (stepText) stepText.textContent = wizardState.currentStep <= 4
+    ? `Step ${wizardState.currentStep} of 4`
+    : 'Setup Finalized';
+  if (pctText) pctText.textContent = wizardState.currentStep <= 4
+    ? `${pct}% Complete`
+    : '100% Ready';
+  if (footer) footer.classList.toggle('hidden', wizardState.currentStep === 5);
+
+  const back = document.getElementById('btn-back');
+  const placeholder = document.getElementById('btn-back-placeholder');
+  const skip = document.getElementById('btn-skip');
+  const nextLabel = document.getElementById('btn-next-label');
+
+  if (wizardState.currentStep === 1) {
+    back?.classList.add('hidden');
+    placeholder?.classList.remove('hidden');
+    skip?.classList.add('hidden');
+    if (nextLabel) nextLabel.textContent = 'Continue to Language';
+  } else if (wizardState.currentStep === 2) {
+    back?.classList.remove('hidden');
+    placeholder?.classList.add('hidden');
+    skip?.classList.add('hidden');
+    if (nextLabel) nextLabel.textContent = 'Continue to LeetCode Sync';
+  } else if (wizardState.currentStep === 3) {
+    back?.classList.remove('hidden');
+    placeholder?.classList.add('hidden');
+    skip?.classList.remove('hidden');
+    if (nextLabel) nextLabel.textContent = 'Continue to Career Goals';
+  } else if (wizardState.currentStep === 4) {
+    back?.classList.remove('hidden');
+    placeholder?.classList.add('hidden');
+    skip?.classList.add('hidden');
+    if (nextLabel) nextLabel.textContent = 'Finish & Personalize AI Workspace';
+  }
+
+  if (wizardState.currentStep === 5) {
+    syncSummaryState();
+  }
+}
+
+function goToStep(step) {
+  if (step >= 1 && step <= 5) {
+    wizardState.currentStep = step;
+    updateView();
+  }
+}
+
+function validateStep() {
+  if (wizardState.currentStep === 1) {
+    wizardState.name = document.getElementById('user-name')?.value.trim() || '';
+    wizardState.bio = document.getElementById('user-bio')?.value.trim() || '';
+
+    if (!wizardState.name) return 'Please enter your name or developer handle.';
+    if (!wizardState.experience) return 'Please choose your DSA & coding depth.';
+  }
+
+  if (wizardState.currentStep === 2 && !wizardState.language) {
+    return 'Please choose your interview programming language.';
+  }
+
+  if (wizardState.currentStep === 4 && !wizardState.targetRole) {
+    return 'Please choose your target role.';
+  }
+
+  return null;
+}
+
+function stepForward() {
+  const error = validateStep();
+  if (error) {
+    showError(error);
+    return;
+  }
+
+  if (wizardState.currentStep === 4) {
+    saveProfile();
+    return;
+  }
+
+  wizardState.currentStep += 1;
+  updateView();
+}
+
+function stepBack() {
+  if (wizardState.currentStep > 1 && wizardState.currentStep <= 4) {
+    wizardState.currentStep -= 1;
+    updateView();
+  }
+}
+
+function skipStep() {
+  if (wizardState.currentStep !== 3) return;
+
+  wizardState.leetcodeUser = '';
+  wizardState.leetcodeSynced = false;
+  const input = document.getElementById('leetcode-input');
+  if (input) input.value = '';
+
+  wizardState.currentStep = 4;
+  updateView();
+}
+
+function selectExperience(exp) {
+  wizardState.experience = exp;
+
+  document.querySelectorAll('.exp-card').forEach(card => {
+    const active = card.getAttribute('data-exp') === exp;
+    setCardState(card, active);
+
+    const icon = card.querySelector('.exp-check');
+    if (icon) {
+      icon.classList.toggle('opacity-0', !active);
+      icon.classList.toggle('opacity-100', active);
+    }
+  });
+}
+
+function selectLanguage(lang, version) {
+  wizardState.language = lang;
+  wizardState.langVersion = version;
+
+  const selected = document.getElementById('selected-lang-pill');
+  if (selected) selected.textContent = lang;
+
+  document.querySelectorAll('.lang-card').forEach(card => {
+    const active = card.getAttribute('data-lang') === lang;
+    setCardState(card, active);
+
+    const icon = card.querySelector('.lang-check');
+    if (icon) {
+      icon.classList.toggle('opacity-0', !active);
+      icon.classList.toggle('opacity-100', active);
+    }
+  });
+}
+
+function selectRole(role) {
+  wizardState.targetRole = role;
+
+  document.querySelectorAll('.role-card').forEach(card => {
+    const active = card.getAttribute('data-role') === role;
+    setCardState(card, active);
+
+    const icon = card.querySelector('.material-symbols-outlined');
+    if (icon) {
+      icon.classList.toggle('text-primary', active);
+      icon.classList.toggle('text-outline', !active);
+    }
+  });
+}
+
+function selectTimeline(time) {
+  wizardState.timeline = time;
+
+  document.querySelectorAll('.time-card').forEach(card => {
+    setCardState(card, card.getAttribute('data-time') === time);
+  });
+}
+
+function toggleCompanyTag(button) {
+  const firstSpan = button.querySelector('span:first-child');
+  const company = firstSpan ? firstSpan.textContent.trim() : '';
+  if (!company) return;
+
+  const active = button.classList.contains('bg-primary');
+
+  if (active) {
+    button.classList.remove('bg-primary', 'text-on-primary', 'active-tag');
+    button.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+    button.querySelector('.material-symbols-outlined')?.remove();
+    wizardState.companies = wizardState.companies.filter(item => item !== company);
+    return;
+  }
+
+  button.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+  button.classList.add('bg-primary', 'text-on-primary', 'active-tag');
+
+  if (!button.querySelector('.material-symbols-outlined')) {
+    const check = document.createElement('span');
+    check.className = 'material-symbols-outlined text-[14px]';
+    check.textContent = 'check';
+    button.appendChild(check);
+  }
+
+  if (!wizardState.companies.includes(company)) wizardState.companies.push(company);
+}
+
+function handleNameInput(value) {
+  wizardState.name = value.trim();
+  const valid = wizardState.name.length >= 2;
+  document.getElementById('name-check-icon')?.classList.toggle('hidden', !valid);
+  document.getElementById('name-status')?.classList.toggle('hidden', !valid);
+}
+
+function updateBioCounter(textarea) {
+  const counter = document.getElementById('bio-counter');
+  if (counter) counter.textContent = textarea.value.length + ' / 180';
+}
+
+function simulateLeetcodeSync() {
+  const input = document.getElementById('leetcode-input');
+  const preview = document.getElementById('lc-preview-name');
+  const button = document.getElementById('sync-profile-btn');
+  const username = input?.value.trim() || '';
+
+  if (!username) {
+    showError('Please enter a LeetCode username.');
+    return;
+  }
+
+  wizardState.leetcodeUser = username;
+  wizardState.leetcodeSynced = true;
+
+  if (preview) preview.textContent = username;
+  if (button) {
+    button.innerHTML = '<span class="material-symbols-outlined text-[16px]">done</span><span>Username Saved</span>';
+  }
+}
+
+function syncSummaryState() {
+  const role = document.getElementById('summary-role');
+  const lang = document.getElementById('summary-lang');
+  const exp = document.getElementById('summary-exp');
+  const lc = document.getElementById('summary-lc');
+
+  if (role) role.textContent = wizardState.targetRole || 'Not set';
+  if (lang) lang.textContent = wizardState.language
+    ? wizardState.language + (wizardState.langVersion ? ' ' + wizardState.langVersion : '')
+    : 'Not set';
+  if (exp) exp.textContent = wizardState.experience || 'Not set';
+  if (lc) lc.textContent = wizardState.leetcodeUser || 'Skipped';
+}
+
+async function saveProfile() {
+  if (!requireAuth()) return;
+
+  const overlay = document.getElementById('loading-overlay');
+  const loadingText = document.getElementById('loading-subtext');
+  overlay?.classList.remove('hidden');
+  if (loadingText) loadingText.textContent = 'Saving your personalized profile...';
+
+  try {
+    const response = await fetch(API_BASE_URL + '/profile', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + getToken()
+      },
+      body: JSON.stringify({
+        full_name: wizardState.name,
+        bio: wizardState.bio || null,
+        leetcode_username: wizardState.leetcodeUser || null,
+        preferred_language: wizardState.language,
+        experience_level: wizardState.experience,
+        target_role: wizardState.targetRole,
+        target_companies: wizardState.companies,
+        preparation_timeline: wizardState.timeline || null
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+      localStorage.removeItem('codementor_access_token');
+      window.location.href = 'auth.html';
+      return;
+    }
+
+    if (!response.ok) {
+      throw new Error(data.detail || 'Unable to save your profile.');
+    }
+
+    if (loadingText) loadingText.textContent = 'Profile saved successfully.';
+    wizardState.currentStep = 5;
+    updateView();
+  } catch (error) {
+    showError(error.message || 'Unable to save your profile.');
+  } finally {
+    overlay?.classList.add('hidden');
+  }
+}
+
+async function loadExistingProfile() {
+  if (!requireAuth()) return;
+
+  try {
+    const response = await fetch(API_BASE_URL + '/profile', {
+      headers: { 'Authorization': 'Bearer ' + getToken() }
+    });
+
+    if (response.status === 401) {
+      localStorage.removeItem('codementor_access_token');
+      window.location.href = 'auth.html';
+      return;
+    }
+
+    if (!response.ok) return;
+
+    const profile = await response.json();
+
+    if (profile.full_name) {
+      wizardState.name = profile.full_name;
+      const input = document.getElementById('user-name');
+      if (input) input.value = profile.full_name;
+      handleNameInput(profile.full_name);
+    }
+
+    if (profile.bio) {
+      wizardState.bio = profile.bio;
+      const bio = document.getElementById('user-bio');
+      if (bio) {
+        bio.value = profile.bio;
+        updateBioCounter(bio);
+      }
+    }
+
+    if (profile.experience_level) selectExperience(profile.experience_level);
+
+    if (profile.preferred_language) {
+      const versions = {
+        Python: '3.11',
+        'C++': '20',
+        Java: '21',
+        JavaScript: 'ES2024',
+        TypeScript: '5.4',
+        Go: '1.22',
+        Rust: '2021',
+        Other: 'Custom'
+      };
+      selectLanguage(profile.preferred_language, versions[profile.preferred_language] || '');
+    }
+
+    if (profile.leetcode_username) {
+      wizardState.leetcodeUser = profile.leetcode_username;
+      wizardState.leetcodeSynced = true;
+      const input = document.getElementById('leetcode-input');
+      const preview = document.getElementById('lc-preview-name');
+      if (input) input.value = profile.leetcode_username;
+      if (preview) preview.textContent = profile.leetcode_username;
+    }
+
+    if (profile.target_role) selectRole(profile.target_role);
+    if (profile.preparation_timeline) selectTimeline(profile.preparation_timeline);
+
+    if (Array.isArray(profile.target_companies)) {
+      profile.target_companies.forEach(company => {
+        const button = Array.from(document.querySelectorAll('.tag-chip')).find(
+          item => item.querySelector('span:first-child')?.textContent.trim() === company
+        );
+        if (button && !button.classList.contains('bg-primary')) toggleCompanyTag(button);
+      });
+    }
+  } catch (error) {
+    console.warn('Profile load failed:', error);
+  }
+}
+
+function toggleErrorState() {
+  const banner = document.getElementById('error-banner');
+  if (banner?.classList.contains('hidden')) {
+    showError('Please complete the required fields before continuing.');
+  } else {
+    hideError();
+  }
+}
+
+function triggerLoadingSimulation() {
+  saveProfile();
+}
+
+function launchWorkspace() {
+  alert('Onboarding complete. The dashboard will be connected in the next stage.');
+}
+
+document.querySelectorAll('.tag-chip').forEach(button => {
+  button.classList.remove('bg-primary', 'text-on-primary', 'active-tag');
+  button.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+  button.querySelector('.material-symbols-outlined')?.remove();
+});
+
+document.querySelectorAll('.exp-card, .lang-card, .role-card, .time-card').forEach(card => {
+  card.classList.remove('active-card', 'bg-surface-container', 'shadow-sm');
+  card.classList.add('bg-surface-container-low');
+});
+
+updateView();
+loadExistingProfile();
+</script>
+</body></html>
