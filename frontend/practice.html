@@ -45,6 +45,9 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
       </div>
       <span class="text-slate-300">/</span>
       <span class="text-sm font-medium text-slate-700">Live Practice</span>
+      <button id="problem-browser-toggle" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-surface-container-high hover:text-slate-800" title="Open problem list" aria-label="Open problem list" aria-expanded="false" type="button">
+        <span id="problem-browser-icon" class="material-symbols-outlined text-[18px]">menu_open</span>
+      </button>
       <span class="hidden md:inline text-xs text-slate-400 truncate" id="header-problem">Select a problem</span>
     </div>
 
@@ -87,7 +90,7 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
   <div id="workspace-grid" class="h-[calc(100vh-3.5rem)] overflow-hidden" style="display:grid;grid-template-columns:300px var(--statement-width) 6px minmax(0,1fr);--statement-width:410px;">
 
     <!-- PROBLEM EXPLORER -->
-    <aside class="bg-white border-r border-slate-200/80 flex flex-col min-h-0">
+    <aside id="problem-explorer" class="bg-white border-r border-slate-200/80 flex flex-col min-h-0">
       <div class="p-3 border-b border-slate-100 shrink-0">
         <div class="flex items-center justify-between mb-2.5">
           <div class="flex items-center gap-2">
@@ -289,6 +292,30 @@ function difficultyClass(d){
   if(d==='Medium')return 'bg-amber-100 text-amber-900';
   return 'bg-rose-100 text-rose-800';
 }
+function setProblemExplorer(open){
+  const aside=$('problem-explorer');
+  const grid=$('workspace-grid');
+  const toggle=$('problem-browser-toggle');
+  const icon=$('problem-browser-icon');
+  if(!aside||!grid||!toggle||!icon)return;
+  if(open){
+    grid.style.gridTemplateColumns='300px var(--statement-width) 6px minmax(0,1fr)';
+    aside.classList.remove('hidden');
+    toggle.setAttribute('aria-expanded','true');
+    toggle.title='Hide problem list';
+    toggle.setAttribute('aria-label','Hide problem list');
+    icon.textContent='menu';
+  }else{
+    aside.classList.add('hidden');
+    grid.style.gridTemplateColumns='var(--statement-width) 6px minmax(0,1fr)';
+    toggle.setAttribute('aria-expanded','false');
+    toggle.title='Open problem list';
+    toggle.setAttribute('aria-label','Open problem list');
+    icon.textContent='menu_open';
+  }
+  if(editor)editor.layout();
+}
+
 function renderProblems(){
   const q=$('problem-search').value.trim().toLowerCase();
   const filtered=problems.filter(p=>p.slug!==current?.slug&&(!currentDifficulty||p.difficulty===currentDifficulty)&&(!q||(`${p.title} ${(p.topics||[]).join(' ')}`).toLowerCase().includes(q)));
@@ -335,6 +362,7 @@ function selectProblem(p){
   $('mentor-context').textContent=`${p.title} · ${$('language').value}`;
   loadDraftOrStarter();
   renderProblems();
+  setProblemExplorer(false);
 }
 
 function initMonaco(){
@@ -561,6 +589,9 @@ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.addEventListener('
   btn.classList.add('active','bg-primary-container','text-white');
   renderProblems();
 }));
+$('problem-browser-toggle').addEventListener('click',()=>{
+  setProblemExplorer(document.getElementById('problem-explorer').classList.contains('hidden'));
+});
 $('language').addEventListener('change',()=>{
   $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
   if(current){$('mentor-context').textContent=`${current.title} · ${$('language').value}`;loadDraftOrStarter();}
@@ -654,8 +685,14 @@ async function load(){
     $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
     renderProblems();
     const requested=new URLSearchParams(location.search).get('problem')||localStorage.getItem('cm_current_problem');
-    const chosen=problems.find(p=>p.slug===requested)||problems[0];
-    if(chosen)selectProblem(chosen);
+    const chosen=requested?problems.find(p=>p.slug===requested):null;
+    if(chosen){
+      selectProblem(chosen);
+    }else{
+      $('header-problem').textContent='Choose a problem';
+      $('execution-status').textContent='Choose a problem to begin.';
+      setProblemExplorer(true);
+    }
   }catch(err){
     $('problem-list').innerHTML=`<div class="p-4 text-xs text-rose-600">${esc(err.message||'Unable to load problems.')}</div>`;
   }
@@ -664,6 +701,7 @@ async function load(){
 initMonaco();
 initWorkspaceSplitter();
 initResultsResizer();
+setProblemExplorer(true);
 load();
 </script>
 </body>
