@@ -187,7 +187,7 @@ def _extract_test_cases(files: dict[str, bytes]) -> list[PackageTestCase]:
         if len(parts) < 3 or parts[1] not in {"sample", "secret"}:
             continue
 
-        answer_path = path[:-3] + "ans"
+        answer_path = path[:-3] + ".ans"
         if answer_path not in files:
             raise ProblemPackageError(
                 f"Missing answer file for test case: {path}"
