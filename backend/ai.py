@@ -26,9 +26,9 @@ def _extract_text(payload: dict[str, Any]) -> str:
     return text
 
 def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int) -> str:
-    api_key = os.getenv("AI_API_KEY", "").strip()
+    api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
     if not api_key:
-        raise AIProviderError("AI_API_KEY is not configured. Add your provider API key to the backend environment.")
+        raise AIProviderError("GEMINI_API_KEY is not configured. Add your Gemini API key to the backend environment.")
     model = os.getenv("AI_MODEL", DEFAULT_MODEL).strip() or DEFAULT_MODEL
     constraints = "\n".join("- " + str(x) for x in (problem.get("constraints") or []))
     execution_text = json.dumps(execution or {"status": "not_run", "results": []}, indent=2)
