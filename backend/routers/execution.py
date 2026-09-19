@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,7 +8,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Problem, User, CodingAttempt
 from backend.routers.auth import get_current_user
-from backend.execution import CodeRejectedError, run_python_tests
+from backend.execution import CodeRejectedError, extract_error_line, run_python_tests
 
 
 router = APIRouter(prefix="/execution", tags=["Execution"])
@@ -30,6 +31,7 @@ def execute_code(
         return {
             "status": "Unsupported Language",
             "summary": "Python execution is available in this stage. Other language runtimes will be added next.",
+            "error_line": None,
             "results": [],
         }
 
@@ -47,6 +49,7 @@ def execute_code(
         return {
             "status": "Rejected",
             "summary": str(exc),
+            "error_line": extract_error_line(str(exc)),
             "results": [],
         }
 
@@ -69,9 +72,15 @@ def execute_code(
             "actual": outcome.actual,
             "runtime_ms": outcome.runtime_ms,
             "message": outcome.message,
+            "error_line": extract_error_line(outcome.message),
         }
         for outcome in outcomes
     ]
+
+    error_line = next(
+        (result["error_line"] for result in results if result["error_line"] is not None),
+        None,
+    )
 
     attempt = CodingAttempt(
         user_id=current_user.id,
@@ -92,5 +101,6 @@ def execute_code(
         "status": overall,
         "summary": summary,
         "mode": request.mode,
+        "error_line": error_line,
         "results": results,
     }
