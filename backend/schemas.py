@@ -28,10 +28,13 @@ class LoginRequest(BaseModel):
 
 class UserProfileUpsert(BaseModel):
     full_name: str
+    bio: str | None = None
     leetcode_username: str | None = None
     preferred_language: str
     experience_level: str
     target_role: str
+    target_companies: list[str] = []
+    preparation_timeline: str | None = None
 
 
 class UserProfileResponse(BaseModel):
@@ -44,3 +47,6 @@ class UserProfileResponse(BaseModel):
     preferred_language: str | None
     experience_level: str | None
     target_role: str | None
+    bio: str | None
+    target_companies: list[str] | None
+    preparation_timeline: str | None
