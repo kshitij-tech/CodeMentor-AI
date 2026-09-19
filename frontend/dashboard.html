@@ -479,7 +479,6 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
-document.getElementById('recommendation-start')?.addEventListener('click',startRecommendation);
 const dashboardMentorMessages=[];
 let dashboardMentorSessionId=null;
 function cleanDashboardMentorText(value){
