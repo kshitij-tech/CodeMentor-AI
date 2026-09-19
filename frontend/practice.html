@@ -55,9 +55,13 @@ body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mon
       <h1 id="problem-title" class="font-semibold text-sm sm:text-base truncate">Select a problem</h1>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-      <select id="language" class="rounded-lg bg-[#1f2937] text-slate-200 border border-white/10 px-3 py-2 text-xs outline-none">
-        <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
-      </select>
+      <div class="relative">
+        <span class="material-symbols-outlined pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[16px] text-slate-400">code</span>
+        <select id="language" class="appearance-none min-w-[142px] rounded-lg bg-[#182235] text-slate-100 border border-white/10 pl-8 pr-8 py-2 text-xs font-medium outline-none hover:bg-[#202c41] focus:border-primary/70 focus:ring-2 focus:ring-primary/20 cursor-pointer transition-colors">
+          <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
+        </select>
+        <span class="material-symbols-outlined pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[16px] text-slate-400">expand_more</span>
+      </div>
       <button id="reset-code" class="w-9 h-9 rounded-lg bg-[#1f2937] hover:bg-[#273449] text-slate-200 flex items-center justify-center" type="button" title="Reset code" aria-label="Reset code">
         <span class="material-symbols-outlined text-[18px]">restart_alt</span>
       </button>
@@ -82,7 +86,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mon
     </div>
   </div>
 
-  <button id="mentor-fab" class="fixed bottom-6 right-6 z-[65] w-12 h-12 rounded-full bg-primary text-white shadow-xl hover:scale-105 transition-transform flex items-center justify-center" type="button" title="Open AI Mentor" aria-label="Open AI Mentor">
+  <button id="mentor-fab" class="fixed bottom-20 right-6 z-[65] w-12 h-12 rounded-full bg-primary text-white shadow-xl hover:scale-105 transition-transform flex items-center justify-center" type="button" title="Open AI Mentor" aria-label="Open AI Mentor">
     <span class="material-symbols-outlined text-[22px]">smart_toy</span>
   </button>
 
@@ -284,7 +288,7 @@ function openMentor(){
 }
 function closeMentor(){
  const panel=document.getElementById('mentor-panel');
- panel?.classList.add('hidden','bottom-20','right-5');
+ panel?.classList.add('hidden','bottom-28','right-5');
  panel?.classList.remove('inset-0','w-full','h-full','rounded-none');
  document.getElementById('mentor-backdrop')?.classList.add('hidden');
  document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
@@ -295,10 +299,10 @@ function maximizeMentor(){
  const full=panel.classList.contains('inset-0');
  if(full){
    panel.classList.remove('inset-0','w-full','h-full','rounded-none');
-   panel.classList.add('bottom-20','right-5');
+   panel.classList.add('bottom-28','right-5');
    document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">open_in_full</span>';
  }else{
-   panel.classList.remove('bottom-20','right-5');
+   panel.classList.remove('bottom-28','right-5');
    panel.classList.add('inset-0','w-full','h-full','rounded-none');
    document.getElementById('mentor-maximize').innerHTML='<span class="material-symbols-outlined text-[18px]">close_fullscreen</span>';
  }
