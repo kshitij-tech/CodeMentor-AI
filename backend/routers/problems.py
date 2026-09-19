@@ -18,12 +18,16 @@ def serialize(problem: Problem) -> dict:
         "constraints": problem.constraints,
         "examples": problem.examples,
         "starter_code": problem.starter_code,
+        "source": problem.source,
+        "external_id": problem.external_id,
+        "external_url": problem.external_url,
     }
 
 @router.get("")
 def list_problems(
     topic: str | None = Query(default=None),
     difficulty: str | None = Query(default=None),
+    source: str | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -32,6 +36,8 @@ def list_problems(
         problems = [p for p in problems if topic in (p.topics or [])]
     if difficulty:
         problems = [p for p in problems if p.difficulty.lower() == difficulty.lower()]
+    if source:
+        problems = [p for p in problems if p.source.lower() == source.lower()]
     return {"items": [serialize(problem) for problem in problems]}
 
 @router.get("/{slug}")
