@@ -26,8 +26,9 @@ body{font-family:"Plus Jakarta Sans",sans-serif;overscroll-behavior:none}
 .scroll-panel::-webkit-scrollbar-thumb{background:#475569;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
 .scroll-panel::-webkit-scrollbar-thumb:hover{background:#64748b;background-clip:padding-box}
 .problem-item{border-left:3px solid transparent}
-.workspace-splitter-dragging{user-select:none;cursor:col-resize!important}
+.workspace-splitter-dragging{user-select:none}
 body.workspace-splitter-dragging *{cursor:col-resize!important}
+body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!important;user-select:none}
 </style>
 </head>
 <body class="bg-surface text-on-surface antialiased">
@@ -531,7 +532,7 @@ function initResultsResizer(){
   const stop=()=>{
     if(!dragging)return;
     dragging=false;
-    document.body.classList.remove('workspace-splitter-dragging');
+    document.body.classList.remove('workspace-row-dragging');
     const height=parseInt(drawer.style.height,10)||256;
     drawer.style.setProperty('--results-height',height+'px');
     localStorage.setItem('cm_results_height',height+'px');
@@ -543,7 +544,7 @@ function initResultsResizer(){
     event.preventDefault();
     dragging=true;startY=event.clientY;
     startHeight=parseInt(drawer.getBoundingClientRect().height,10)||256;
-    document.body.classList.add('workspace-splitter-dragging');
+    document.body.classList.add('workspace-row-dragging');
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',stop);
   });
