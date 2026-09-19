@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from backend.custom_validator import CustomValidatorError, run_custom_validator
 from backend.validator import UnsupportedValidatorError, validate_default_output
 
 import ast
@@ -140,6 +141,10 @@ def run_python_stdio_tests(
     source: str,
     test_cases: list[dict[str, Any]],
     time_limit_seconds: float = 2.0,
+    *,
+    package_root: str | None = None,
+    validation_time_seconds: float = 60.0,
+    validation_output_bytes: int = 8 * 1024 * 1024,
 ) -> list[TestOutcome]:
     validate_code(source, stdio=True)
     outcomes: list[TestOutcome] = []
@@ -222,26 +227,80 @@ def run_python_stdio_tests(
                 )
                 continue
 
-            try:
-                validation = validate_default_output(
-                    stdout,
-                    expected,
-                    case.get("validator_flags"),
-                )
-            except UnsupportedValidatorError as exc:
-                raise CodeRejectedError(str(exc)) from exc
+            validator_name = case.get("validator_name")
 
-            outcomes.append(
-                TestOutcome(
-                    index=index,
-                    passed=validation.passed,
-                    status="Passed" if validation.passed else "Wrong Answer",
-                    expected=expected,
-                    actual=stdout,
-                    runtime_ms=runtime_ms,
-                    message=None if validation.passed else validation.message,
+            if validator_name:
+                if not package_root:
+                    outcomes.append(
+                        TestOutcome(
+                            index=index,
+                            passed=False,
+                            status="Judge Error",
+                            expected=expected,
+                            actual=stdout,
+                            runtime_ms=runtime_ms,
+                            message="The imported package has no persisted validator files.",
+                        )
+                    )
+                    continue
+
+                try:
+                    validation = run_custom_validator(
+                        package_root=package_root,
+                        validator_name=str(validator_name),
+                        input_data=input_data,
+                        answer_data=expected,
+                        team_output=stdout,
+                        validator_args=case.get("validator_flags") or [],
+                        timeout_seconds=validation_time_seconds,
+                        output_limit_bytes=validation_output_bytes,
+                    )
+                except CustomValidatorError as exc:
+                    outcomes.append(
+                        TestOutcome(
+                            index=index,
+                            passed=False,
+                            status="Judge Error",
+                            expected=expected,
+                            actual=stdout,
+                            runtime_ms=runtime_ms,
+                            message=str(exc),
+                        )
+                    )
+                    continue
+
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=validation.passed,
+                        status=validation.status,
+                        expected=expected,
+                        actual=stdout,
+                        runtime_ms=runtime_ms,
+                        message=validation.message,
+                    )
                 )
-            )
+            else:
+                try:
+                    validation = validate_default_output(
+                        stdout,
+                        expected,
+                        case.get("validator_flags"),
+                    )
+                except UnsupportedValidatorError as exc:
+                    raise CodeRejectedError(str(exc)) from exc
+
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=validation.passed,
+                        status="Passed" if validation.passed else "Wrong Answer",
+                        expected=expected,
+                        actual=stdout,
+                        runtime_ms=runtime_ms,
+                        message=None if validation.passed else validation.message,
+                    )
+                )
 
     return outcomes
 
