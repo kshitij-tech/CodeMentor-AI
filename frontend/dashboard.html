@@ -307,7 +307,7 @@ function handleAction(action){
   if(action==='problem') window.location.replace('practice.html');
   else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
   else if(action==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
-  else if(action==='analytics') document.querySelector('[data-side="analytics"]')?.scrollIntoView({behavior:'smooth',block:'center'}) || document.getElementById('daily-telemetry')?.scrollIntoView({behavior:'smooth',block:'center'});
+  else if(action==='analytics') document.getElementById('daily-telemetry')?.scrollIntoView({behavior:'smooth',block:'center'});
 }
 const skillCatalog = {
   'Arrays & Strings': {focus:'Array traversal, strings, prefix techniques, sliding windows, and in-place transformations.', next:'Start with array/string problems and let the mentor identify recurring edge-case mistakes.'},
@@ -430,7 +430,7 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
   const target=b.dataset.nav||b.dataset.side;
   if(target==='practice') window.location.replace('practice.html');
   else if(target==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
-  else if(target==='analytics') document.querySelector('[data-topic-section]')?.scrollIntoView({behavior:'smooth',block:'center'}) || document.getElementById('daily-telemetry')?.scrollIntoView({behavior:'smooth',block:'center'});
+  else if(target==='analytics') document.getElementById('daily-telemetry')?.scrollIntoView({behavior:'smooth',block:'center'});
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
