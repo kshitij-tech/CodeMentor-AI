@@ -16,6 +16,7 @@ router = APIRouter(prefix="/mentor", tags=["AI Mentor"])
 
 class DashboardMentorRequest(BaseModel):
     question: str = Field(min_length=1, max_length=2000)
+    session_id: int | None = Field(default=None, ge=1)
 
 
 class MentorRequest(BaseModel):
@@ -193,6 +194,7 @@ def delete_session(
     )
     if session is None:
         raise HTTPException(status_code=404, detail="Mentor session not found.")
+    db.query(MentorMessage).filter(MentorMessage.session_id == session.id).delete(synchronize_session=False)
     db.delete(session)
     db.commit()
     return {"deleted": True}
@@ -204,7 +206,12 @@ def dashboard_chat(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    session = _get_or_create_session(db, current_user, scope="dashboard")
+    session = _get_or_create_session(
+        db,
+        current_user,
+        scope="dashboard",
+        session_id=request.session_id,
+    )
 
     prior_history = _history(db, session.id)
     user_message = MentorMessage(
@@ -307,7 +314,7 @@ def analyze(
             history=prior_history,
         )
     except AIProviderError as exc:
-
+        db.rollback()
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     if not isinstance(result, dict):
