@@ -92,6 +92,7 @@ class Problem(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False)
     constraints: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     examples: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
+    test_cases: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
     starter_code: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
