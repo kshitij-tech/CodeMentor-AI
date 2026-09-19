@@ -1,3 +1,4 @@
+import json
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,14 +12,16 @@ from backend.routers.auth import get_current_user
 
 router = APIRouter(prefix="/mentor", tags=["AI Mentor"])
 
+
 class MentorRequest(BaseModel):
     problem_slug: str = Field(min_length=1, max_length=120)
     language: str = Field(min_length=1, max_length=50)
     code: str = Field(min_length=1, max_length=40000)
-    action: Literal["hint", "debug", "complexity", "edge", "question"] = "question"
+    action: Literal["hint", "debug", "complexity", "edge", "question", "modify"] = "question"
     question: str | None = Field(default=None, max_length=2000)
     hint_level: int = Field(default=1, ge=1, le=4)
     execution: dict | None = None
+
 
 @router.post("/analyze")
 def analyze(
@@ -29,8 +32,9 @@ def analyze(
     problem = db.query(Problem).filter(Problem.slug == request.problem_slug).first()
     if problem is None:
         raise HTTPException(status_code=404, detail="Problem not found.")
+
     try:
-        answer = mentor_response(
+        result = mentor_response(
             problem={
                 "title": problem.title,
                 "difficulty": problem.difficulty,
@@ -48,4 +52,15 @@ def analyze(
         )
     except AIProviderError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return {"problem_slug": problem.slug, "action": request.action, "hint_level": request.hint_level, "answer": answer}
+
+    if not isinstance(result, dict):
+        raise HTTPException(status_code=503, detail="The mentor returned an invalid response.")
+
+    return {
+        "problem_slug": problem.slug,
+        "action": request.action,
+        "hint_level": request.hint_level,
+        "answer": result.get("answer", ""),
+        "error_line": result.get("error_line"),
+        "patch": result.get("patch"),
+    }
