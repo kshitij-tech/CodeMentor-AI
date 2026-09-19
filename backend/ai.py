@@ -98,7 +98,7 @@ def _normalize_model(model: str) -> str:
     normalized = model_aliases.get(normalized.lower(), normalized)
     if " " in normalized:
         raise AIProviderError(
-            "Invalid AI_MODEL value. Use a Gemini model id such as 'gemini-2.5-flash'.'
+            "Invalid AI_MODEL value. Use a Gemini model id such as 'gemini-2.5-flash'."
         )
     return normalized
 
