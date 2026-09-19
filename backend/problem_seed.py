@@ -36,10 +36,10 @@ PROBLEMS = [
             {"input": "nums = [1, 2, 3]", "output": "-1", "explanation": "No value occurs twice."},
         ],
         "test_cases": [
-            {"args": [[[4, 7, 2, 7, 9]]], "expected": 7},
-            {"args": [[[1, 2, 3]]], "expected": -1},
-            {"args": [[[5, 5]]], "expected": 5},
-            {"args": [[[9, 2, 9, 2]]], "expected": 9},
+            {"args": [[4, 7, 2, 7, 9]], "expected": 7},
+            {"args": [[1, 2, 3]], "expected": -1},
+            {"args": [[5, 5]], "expected": 5},
+            {"args": [[9, 2, 9, 2]], "expected": 9},
         ],
         "starter_code": {
             "Python": "def solve(nums):\n    # Return the first repeated value, or -1.\n    pass\n",
@@ -105,10 +105,10 @@ PROBLEMS = [
             {"input": "cost = [1, 100, 1, 1, 1, 100, 1, 1, 100, 1]", "output": "6", "explanation": "Choose the lower-cost path through the staircase."},
         ],
         "test_cases": [
-            {"args": [[[10, 15, 20]]], "expected": 15},
-            {"args": [[[1, 100, 1, 1, 1, 100, 1, 1, 100, 1]]], "expected": 6},
-            {"args": [[[1, 2]]], "expected": 1},
-            {"args": [[[5, 5, 5, 5]]], "expected": 10},
+            {"args": [[10, 15, 20]], "expected": 15},
+            {"args": [[1, 100, 1, 1, 1, 100, 1, 1, 100, 1]], "expected": 6},
+            {"args": [[1, 2]], "expected": 1},
+            {"args": [[5, 5, 5, 5]], "expected": 10},
         ],
         "starter_code": {
             "Python": "def solve(cost):\n    # Return the minimum cost to reach the top.\n    pass\n",
