@@ -287,8 +287,8 @@ function toggleAccount(){
 }
 function navNotice(area){ toast(area + ' will be connected in the next implementation stage.'); }
 function handleAction(action){
-  if(action==='problem') navNotice('Live Practice');
-  else if(action==='weak') navNotice('Adaptive Weak Areas');
+  if(action==='problem') window.location.replace('practice.html');
+  else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
   else if(action==='mentor') document.getElementById('mentor-input')?.focus();
   else if(action==='analytics') navNotice('Detailed Analytics');
 }
@@ -375,7 +375,11 @@ document.getElementById('close-skill-modal')?.addEventListener('click',closeSkil
 document.getElementById('skill-modal')?.addEventListener('click',event=>{if(event.target.id==='skill-modal')closeSkillModal();});
 
 document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>handleAction(b.dataset.action)));
-document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>navNotice((b.textContent||'Module').trim())));
+document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>{
+  const target=b.dataset.nav||b.dataset.side;
+  if(target==='practice') window.location.replace('practice.html');
+  else navNotice((b.textContent||'Module').trim());
+}));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
 document.querySelectorAll('.mentor-query').forEach(b=>b.addEventListener('click',()=>{document.getElementById('mentor-input').value=b.dataset.query; document.getElementById('mentor-input').focus();}));
 function sendMentor(){
