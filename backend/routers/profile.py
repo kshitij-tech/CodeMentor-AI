@@ -43,14 +43,20 @@ def update_profile(
         db.add(profile)
 
     profile.full_name = profile_data.full_name.strip()
+    if len(profile_data.bio or "") > 180:
+        profile_data.bio = profile_data.bio[:180]
+
     profile.leetcode_username = (
         profile_data.leetcode_username.strip()
         if profile_data.leetcode_username
         else None
     )
+    profile.bio = profile_data.bio.strip() if profile_data.bio else None
     profile.preferred_language = profile_data.preferred_language.strip()
     profile.experience_level = profile_data.experience_level.strip()
     profile.target_role = profile_data.target_role.strip()
+    profile.target_companies = profile_data.target_companies
+    profile.preparation_timeline = profile_data.preparation_timeline
 
     db.commit()
     db.refresh(profile)
