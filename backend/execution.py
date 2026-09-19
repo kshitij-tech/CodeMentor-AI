@@ -4,6 +4,7 @@ import ast
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -72,6 +73,22 @@ def validate_code(source: str) -> None:
         elif isinstance(node, ast.Call):
             if isinstance(node.func, ast.Name) and node.func.id in BLOCKED_CALLS:
                 raise CodeRejectedError(f"Call '{node.func.id}' is not allowed in the local runner.")
+
+
+def extract_error_line(message: str | None) -> int | None:
+    if not message:
+        return None
+
+    patterns = [
+        r'<user_code>["\']?,\s*line\s+(\d+)',
+        r'<user_code>.*?line\s+(\d+)',
+        r'line\s+(\d+)\b',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, message)
+        if match:
+            return int(match.group(1))
+    return None
 
 
 def _runner_source(user_code: str, args: list[Any]) -> str:
