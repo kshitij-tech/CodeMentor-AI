@@ -21,6 +21,7 @@ class PackageTestCase:
     input_data: str
     expected_output: str
     visibility: str
+    validator_flags: list[str]
 
 
 def _safe_member_path(name: str) -> PurePosixPath:
@@ -177,6 +178,47 @@ def _load_package_bytes(raw_files: dict[str, bytes]) -> dict[str, bytes]:
     return _find_rooted_files(raw_files)
 
 
+
+def _validator_flags(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, dict):
+        value = value.get("flags", [])
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            return [str(item) for item in value]
+    return []
+
+
+def _test_group_config(files: dict[str, bytes], input_path: str) -> dict[str, Any]:
+    path = PurePosixPath(input_path)
+    candidates = [str(path.with_suffix(".yaml"))]
+
+    parent = path.parent
+    while True:
+        candidates.append(str(parent / "test_group.yaml"))
+        if str(parent) == ".":
+            break
+        parent = parent.parent
+
+    for candidate in candidates:
+        if candidate not in files:
+            continue
+        try:
+            data = yaml.safe_load(files[candidate].decode("utf-8", errors="replace")) or {}
+        except yaml.YAMLError as exc:
+            raise ProblemPackageError(f"Invalid YAML in {candidate}: {exc}") from exc
+        if not isinstance(data, dict):
+            raise ProblemPackageError(f"{candidate} must contain a YAML mapping.")
+        return data
+
+    return {}
+
 def _extract_test_cases(files: dict[str, bytes]) -> list[PackageTestCase]:
     test_cases: list[PackageTestCase] = []
     for path, data in sorted(files.items()):
@@ -193,12 +235,14 @@ def _extract_test_cases(files: dict[str, bytes]) -> list[PackageTestCase]:
                 f"Missing answer file for test case: {path}"
             )
 
+        config = _test_group_config(files, path)
         test_cases.append(
             PackageTestCase(
                 name=path[5:-3],
                 input_data=data.decode("utf-8", errors="replace"),
                 expected_output=files[answer_path].decode("utf-8", errors="replace"),
                 visibility=parts[1],
+                validator_flags=_validator_flags(config.get("output_validator_args")),
             )
         )
 
@@ -267,6 +311,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         memory_limit_mb = None
 
     validation = metadata.get("validation", "default")
+    problem_validator_flags = _validator_flags(metadata.get("validator_flags"))
     if isinstance(validation, dict):
         validation_name = "custom"
         validation_metadata = validation
@@ -308,6 +353,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "languages": metadata.get("languages"),
         "type": type_values,
         "validation": validation_metadata,
+        "validator_flags": problem_validator_flags,
         "statement_file": statement_file,
         "test_case_count": len(test_cases),
         "sample_test_count": sum(case.visibility == "sample" for case in test_cases),
@@ -343,6 +389,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
                 "input": case.input_data,
                 "expected_output": case.expected_output,
                 "visibility": case.visibility,
+                "validator_flags": case.validator_flags or problem_validator_flags,
             }
             for case in test_cases
         ],
