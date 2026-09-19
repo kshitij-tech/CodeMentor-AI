@@ -24,3 +24,23 @@ class TokenResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class UserProfileUpsert(BaseModel):
+    full_name: str
+    leetcode_username: str | None = None
+    preferred_language: str
+    experience_level: str
+    target_role: str
+
+
+class UserProfileResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    full_name: str | None
+    leetcode_username: str | None
+    preferred_language: str | None
+    experience_level: str | None
+    target_role: str | None
