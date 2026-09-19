@@ -60,11 +60,20 @@ def initialize_database() -> None:
 
     if inspector.has_table("problems"):
         problem_columns = {column["name"] for column in inspector.get_columns("problems")}
-        if "test_cases" not in problem_columns:
-            with engine.begin() as connection:
-                connection.execute(
-                    text('ALTER TABLE problems ADD COLUMN "test_cases" JSON')
-                )
+        problem_migrations = {
+            "test_cases": "JSON",
+            "source": "VARCHAR(40) NOT NULL DEFAULT 'local'",
+            "external_id": "VARCHAR(120)",
+            "external_url": "VARCHAR(500)",
+        }
+        with engine.begin() as connection:
+            for column_name, column_type in problem_migrations.items():
+                if column_name not in problem_columns:
+                    connection.execute(
+                        text(
+                            f'ALTER TABLE problems ADD COLUMN "{column_name}" {column_type}'
+                        )
+                    )
 
     return
 
