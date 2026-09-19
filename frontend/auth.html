@@ -277,8 +277,12 @@
         document.getElementById('success-title').textContent = isSignin ? 'Welcome back!' : 'Account created!';
         document.getElementById('success-desc').textContent =
           isSignin
-            ? 'Your CodeMentor session is authenticated.'
-            : 'Your account was created and you are now signed in.';
+            ? 'Your CodeMentor session is authenticated. Taking you to onboarding...'
+            : 'Your account was created and you are now signed in. Taking you to onboarding...';
+
+        setTimeout(() => {
+          window.location.href = 'onboarding.html';
+        }, 600);
       } catch (error) {
         showMessage(error.message || 'Unable to connect to the CodeMentor API.');
       } finally {
