@@ -234,7 +234,9 @@ def run_python_stdio_tests(
             )
 
     return outcomes
-\n\ndef run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[TestOutcome]:
+
+
+def run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[TestOutcome]:
     validate_code(source)
 
     outcomes: list[TestOutcome] = []
