@@ -11,6 +11,11 @@ env/
 .env.*
 !.env.example
 
+# Local database
+*.db
+*.sqlite
+*.sqlite3
+
 # Testing / tooling
 .pytest_cache/
 .mypy_cache/
