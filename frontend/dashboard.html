@@ -31,7 +31,13 @@ tailwind.config = {
 <style>
   html,body{margin:0;padding:0}
   body{overscroll-behavior:none}
-  ::-webkit-scrollbar{width:0;height:0}
+  ::-webkit-scrollbar{width:7px;height:7px}
+  ::-webkit-scrollbar-thumb{background:#c7c4d7;border-radius:999px}
+  .dashboard-mentor-chat{max-height:320px;overflow-y:auto;scrollbar-width:thin}
+  .dashboard-mentor-message{max-width:90%;padding:10px 12px;border-radius:12px;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
+  .dashboard-mentor-user{align-self:flex-end;background:#4338ca;color:#fff;border-bottom-right-radius:4px}
+  .dashboard-mentor-ai{align-self:flex-start;background:#eff4ff;color:#0b1c30;border-bottom-left-radius:4px}
+  .dashboard-mentor-label{font-size:9px;color:#777586;margin-bottom:3px}
 </style>
 </head>
 <body class="bg-surface font-body text-on-surface min-h-screen">
@@ -193,10 +199,10 @@ tailwind.config = {
 </div>
 
 <div class="xl:col-span-4 flex flex-col gap-6">
-<section class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<section id="dashboard-mentor-card" class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
   <div class="p-6 bg-gradient-to-br from-primary-container via-primary to-primary text-on-primary">
     <div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-surface-container-lowest text-primary flex items-center justify-center"><span class="material-symbols-outlined">smart_toy</span></div><div><h3 class="font-bold">Ask your AI Mentor</h3><span class="font-mono text-[10px] text-on-primary">Mentor engine</span></div></div><span class="px-2.5 py-1 rounded-full bg-white/15 text-xs">Ready</span></div>
-    <p class="text-sm text-on-primary mt-4 opacity-90">Ask about an approach, a bug, an edge case, or what to practice next. The full mentor will become connected to your code and execution context in the practice stage.</p>
+    <p class="text-sm text-on-primary mt-4 opacity-90">Ask about an approach, a bug, an edge case, or what to practice next. Get the answer directly here, then continue into Live Practice when you want to work on code.</p>
   </div>
   <div class="p-6">
     <span class="font-mono text-[10px] uppercase text-on-surface-variant">Suggested inquiries</span>
@@ -205,8 +211,11 @@ tailwind.config = {
       <button data-query="How should I analyze my recent graph mistakes?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">How should I analyze my recent graph mistakes? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
       <button data-query="What should I practice next?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">What should I practice next? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
     </div>
-    <div class="relative mt-5"><input id="mentor-input" class="w-full pl-3.5 pr-12 py-3 rounded-lg bg-surface-container-low text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ask Socratic Mentor..." type="text"><button id="mentor-send" class="absolute right-2 top-2 p-1.5 rounded-md bg-primary text-on-primary" type="button"><span class="material-symbols-outlined text-[18px]">send</span></button></div>
-    <div id="mentor-response" class="hidden mt-3 p-3 rounded-lg bg-surface-container text-xs text-on-surface-variant"></div>
+    <div id="dashboard-mentor-chat" class="dashboard-mentor-chat mt-5 flex flex-col gap-3"></div>
+    <div class="relative mt-5">
+      <input id="mentor-input" class="w-full pl-3.5 pr-12 py-3 rounded-lg bg-surface-container-low text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ask your AI Mentor..." type="text">
+      <button id="mentor-send" class="absolute right-2 top-2 p-1.5 rounded-md bg-primary text-on-primary" type="button" aria-label="Send to AI Mentor"><span class="material-symbols-outlined text-[18px]">send</span></button>
+    </div>
   </div>
 </section>
 
@@ -289,7 +298,7 @@ function navNotice(area){ toast(area + ' will be connected in the next implement
 function handleAction(action){
   if(action==='problem') window.location.replace('practice.html');
   else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
-  else if(action==='mentor') window.location.replace('practice.html?mentor=1');
+  else if(action==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
   else if(action==='analytics') navNotice('Detailed Analytics');
 }
 const skillCatalog = {
@@ -378,19 +387,56 @@ document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click'
 document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>{
   const target=b.dataset.nav||b.dataset.side;
   if(target==='practice') window.location.replace('practice.html');
-  else if(target==='mentor') window.location.replace('practice.html?mentor=1');
+  else if(target==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
-document.querySelectorAll('.mentor-query').forEach(b=>b.addEventListener('click',()=>{
-  const q=encodeURIComponent(b.dataset.query||'');
-  window.location.replace('practice.html?mentor=1&question='+q);
-}));
+const dashboardMentorMessages=[];
+function cleanDashboardMentorText(value){
+  return String(value||'').replace(/\r/g,'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/__([^_]+)__/g,'$1').replace(/\*([^*]+)\*/g,'$1').replace(/^#{1,6}\s*/gm,'').replace(/^\s*[-•]\s+/gm,'').replace(/^\s*\d+[.)]\s+/gm,'').replace(/\`\`\`[a-zA-Z0-9_+-]*\n?/g,'').replace(/\`([^\`]+)\`/g,'$1').trim();
+}
+function renderDashboardMentor(){
+  const chat=document.getElementById('dashboard-mentor-chat');
+  if(!chat)return;
+  chat.innerHTML=dashboardMentorMessages.map(m=>{
+    const cls=m.role==='user'?'dashboard-mentor-user':'dashboard-mentor-ai';
+    const label=m.role==='user'?'You':'AI Mentor';
+    return '<div class="flex flex-col '+(m.role==='user'?'items-end':'items-start')+'"><div class="dashboard-mentor-label">'+label+'</div><div class="dashboard-mentor-message '+cls+'">'+esc(cleanDashboardMentorText(m.text))+'</div></div>';
+  }).join('');
+  chat.scrollTop=chat.scrollHeight;
+}
+async function askDashboardMentor(question){
+  const input=document.getElementById('mentor-input');
+  const q=(question||'').trim();
+  if(!q){input.focus();return;}
+  dashboardMentorMessages.push({role:'user',text:q});
+  renderDashboardMentor();
+  const responseButton=document.getElementById('mentor-send');
+  input.disabled=true; responseButton.disabled=true;
+  const chat=document.getElementById('dashboard-mentor-chat');
+  chat.insertAdjacentHTML('beforeend','<div class="flex flex-col items-start"><div class="dashboard-mentor-label">AI Mentor</div><div class="dashboard-mentor-message dashboard-mentor-ai">Thinking...</div></div>');
+  chat.scrollTop=chat.scrollHeight;
+  try{
+    const res=await fetch(API_BASE_URL+'/mentor/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
+      body:JSON.stringify({question:q})
+    });
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');return;}
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
+    dashboardMentorMessages.push({role:'ai',text:data.answer||'The mentor returned no explanation.'});
+  }catch(err){
+    dashboardMentorMessages.push({role:'ai',text:err.message||'Unable to contact the AI Mentor.'});
+  }finally{
+    input.disabled=false; responseButton.disabled=false; input.value=''; input.focus();
+    renderDashboardMentor();
+  }
+}
+document.querySelectorAll('.mentor-query').forEach(b=>b.addEventListener('click',()=>askDashboardMentor(b.dataset.query||'')));
 function sendMentor(){
   const input=document.getElementById('mentor-input');
-  const q=input.value.trim();
-  if(!q){input.focus();return;}
-  window.location.replace('practice.html?mentor=1&question='+encodeURIComponent(q));
+  askDashboardMentor(input.value);
 }
 document.getElementById('mentor-send')?.addEventListener('click',sendMentor);
 document.getElementById('mentor-input')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendMentor();});
