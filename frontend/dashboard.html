@@ -167,18 +167,21 @@ tailwind.config = {
 </section>
 
 <section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
-  <div class="flex items-center justify-between"><div><h3 class="text-lg font-bold">DSA Skill Mastery Matrix</h3><p class="text-xs text-on-surface-variant">Topic scores will be learned from submissions.</p></div><span class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low">10 tracked topics</span></div>
+  <div class="flex items-center justify-between gap-3">
+    <div><h3 class="text-lg font-bold">DSA Skill Mastery Matrix</h3><p class="text-xs text-on-surface-variant">Click any topic to inspect its current mastery state and recommended next action.</p></div>
+    <span class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low">10 tracked topics</span>
+  </div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-    <div class="skill-card" data-topic="Arrays & Strings"></div>
-    <div class="skill-card" data-topic="Hashing & Hash Maps"></div>
-    <div class="skill-card" data-topic="Two Pointers"></div>
-    <div class="skill-card" data-topic="Binary Search"></div>
-    <div class="skill-card" data-topic="Linked Lists"></div>
-    <div class="skill-card" data-topic="Trees & BST"></div>
-    <div class="skill-card" data-topic="Graphs (BFS/DFS)"></div>
-    <div class="skill-card" data-topic="Dynamic Programming"></div>
-    <div class="skill-card" data-topic="Backtracking"></div>
-    <div class="skill-card" data-topic="Greedy Algorithms"></div>
+    <button class="skill-card w-full text-left" data-topic="Arrays & Strings" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Hashing & Hash Maps" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Two Pointers" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Binary Search" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Linked Lists" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Trees & BST" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Graphs (BFS/DFS)" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Dynamic Programming" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Backtracking" type="button"></button>
+    <button class="skill-card w-full text-left" data-topic="Greedy Algorithms" type="button"></button>
   </div>
 </section>
 
@@ -236,6 +239,27 @@ tailwind.config = {
 </div>
 
 <div id="toast" class="hidden fixed bottom-14 right-4 z-[90] max-w-sm px-4 py-3 rounded-xl bg-on-surface text-white text-sm shadow-xl"></div>
+<div id="skill-modal" class="hidden fixed inset-0 z-[95] bg-on-surface/25 backdrop-blur-sm items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="skill-modal-title">
+  <div class="w-full max-w-xl bg-surface-container-lowest rounded-2xl shadow-2xl border border-surface-container-high overflow-hidden">
+    <div class="flex items-start justify-between gap-4 px-6 py-5 border-b border-surface-container-high">
+      <div><div class="font-mono text-[10px] uppercase tracking-wider text-primary">Skill diagnostics</div><h3 id="skill-modal-title" class="text-xl font-bold mt-1">DSA Topic</h3></div>
+      <button id="close-skill-modal" class="w-9 h-9 rounded-lg hover:bg-surface-container-low text-on-surface-variant flex items-center justify-center" type="button" aria-label="Close skill details"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="px-6 py-5 space-y-5">
+      <div class="grid grid-cols-3 gap-3">
+        <div class="p-3 rounded-xl bg-surface-container-low"><span class="font-mono text-[9px] uppercase text-on-surface-variant">Mastery</span><p id="skill-modal-mastery" class="font-bold text-lg mt-1">Awaiting data</p></div>
+        <div class="p-3 rounded-xl bg-surface-container-low"><span class="font-mono text-[9px] uppercase text-on-surface-variant">Solved</span><p id="skill-modal-solved" class="font-bold text-lg mt-1">0</p></div>
+        <div class="p-3 rounded-xl bg-surface-container-low"><span class="font-mono text-[9px] uppercase text-on-surface-variant">Status</span><p id="skill-modal-status" class="font-bold text-sm mt-1">Not evaluated</p></div>
+      </div>
+      <div><p class="font-semibold text-sm">What this topic covers</p><p id="skill-modal-focus" class="text-sm text-on-surface-variant mt-1">—</p></div>
+      <div><p class="font-semibold text-sm">Suggested next step</p><p id="skill-modal-next" class="text-sm text-on-surface-variant mt-1">Complete practice sessions in this topic so CodeMentor can calculate mastery.</p></div>
+    </div>
+    <div class="px-6 py-4 bg-surface-container-low border-t border-surface-container-high flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <p class="text-[11px] text-on-surface-variant">Mastery becomes data-driven after the execution and submission engine is connected.</p>
+      <button id="skill-modal-action" class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-semibold" type="button">Practice this topic</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -268,13 +292,50 @@ function handleAction(action){
   else if(action==='mentor') document.getElementById('mentor-input')?.focus();
   else if(action==='analytics') navNotice('Detailed Analytics');
 }
+const skillCatalog = {
+  'Arrays & Strings': {focus:'Array traversal, strings, prefix techniques, sliding windows, and in-place transformations.', next:'Start with array/string problems and let the mentor identify recurring edge-case mistakes.'},
+  'Hashing & Hash Maps': {focus:'Frequency maps, membership checks, grouping, counting, and hash-based lookups.', next:'Practice a small set of frequency/counting problems and compare brute force with hash-based solutions.'},
+  'Two Pointers': {focus:'Opposing pointers, same-direction scans, partitioning, and sorted-array pair techniques.', next:'Practice pointer movement decisions and explicitly identify the invariant you preserve.'},
+  'Binary Search': {focus:'Sorted searches, boundary handling, answer-space search, and monotonic predicates.', next:'Practice writing the search invariant before coding to reduce off-by-one errors.'},
+  'Linked Lists': {focus:'Pointer manipulation, reversal, cycle detection, merging, and fast/slow pointer patterns.', next:'Work through pointer diagrams before implementing mutation-heavy solutions.'},
+  'Trees & BST': {focus:'DFS/BFS traversal, recursion, tree invariants, BST ordering, and path problems.', next:'Practice identifying whether the problem is traversal-based, subtree-based, or BST-invariant-based.'},
+  'Graphs (BFS/DFS)': {focus:'Graph traversal, connected components, shortest unweighted paths, and visited-state design.', next:'Practice choosing BFS vs DFS and defining visited state before writing traversal code.'},
+  'Dynamic Programming': {focus:'State definition, transitions, base cases, memoization, tabulation, and optimization.', next:'Start by writing the state in one sentence, then derive the transition from smaller subproblems.'},
+  'Backtracking': {focus:'Search-space exploration, choices, constraints, pruning, and recursive state restoration.', next:'Practice identifying the decision tree and the exact state that must be undone after each branch.'},
+  'Greedy Algorithms': {focus:'Local-choice strategies, exchange arguments, sorting by the right key, and feasibility checks.', next:'Practice proving why a local choice is safe before coding the greedy implementation.'}
+};
+
+function openSkillModal(topic){
+  const modal=document.getElementById('skill-modal');
+  const meta=skillCatalog[topic] || {focus:'Topic diagnostics will be learned from your submissions.',next:'Complete practice sessions in this topic so CodeMentor can calculate mastery.'};
+  if(!modal) return;
+  document.getElementById('skill-modal-title').textContent=topic;
+  document.getElementById('skill-modal-focus').textContent=meta.focus;
+  document.getElementById('skill-modal-next').textContent=meta.next;
+  document.getElementById('skill-modal-mastery').textContent='Awaiting data';
+  document.getElementById('skill-modal-solved').textContent='0';
+  document.getElementById('skill-modal-status').textContent='Not evaluated';
+  const action=document.getElementById('skill-modal-action');
+  action.onclick=()=>{ closeSkillModal(); toast(topic + ' practice will open when Live Practice is connected.'); };
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+  document.body.classList.add('overflow-hidden');
+}
+
+function closeSkillModal(){
+  const modal=document.getElementById('skill-modal');
+  modal?.classList.add('hidden'); modal?.classList.remove('flex');
+  document.body.classList.remove('overflow-hidden');
+}
+
 function renderSkills(){
   const topics=['Arrays & Strings','Hashing & Hash Maps','Two Pointers','Binary Search','Linked Lists','Trees & BST','Graphs (BFS/DFS)','Dynamic Programming','Backtracking','Greedy Algorithms'];
   const host=document.querySelectorAll('.skill-card');
   host.forEach((el,i)=>{
     const topic=topics[i];
-    el.className='skill-card p-3.5 rounded-lg bg-surface-container-low';
-    el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+topic+'</span><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">Awaiting data</span></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-outline-variant rounded-full" style="width:0%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>0 solved in app</span><span>Not evaluated</span></div>';
+    el.className='skill-card w-full text-left p-3.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all focus:outline-none focus:ring-2 focus:ring-primary/20';
+    el.setAttribute('aria-label','Open '+topic+' skill details');
+    el.setAttribute('title','Open '+topic+' skill details');
+    el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+topic+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">Awaiting data</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-outline-variant rounded-full" style="width:0%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>0 solved in app</span><span>Not evaluated</span></div>';
   });
 }
 async function loadDashboard(){
@@ -306,6 +367,13 @@ async function loadDashboard(){
     console.warn('Dashboard profile load failed:',err);
   }
 }
+document.querySelectorAll('.skill-card').forEach(card=>{
+  card.addEventListener('click',()=>openSkillModal(card.dataset.topic));
+  card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openSkillModal(card.dataset.topic);}});
+});
+document.getElementById('close-skill-modal')?.addEventListener('click',closeSkillModal);
+document.getElementById('skill-modal')?.addEventListener('click',event=>{if(event.target.id==='skill-modal')closeSkillModal();});
+
 document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>handleAction(b.dataset.action)));
 document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>navNotice((b.textContent||'Module').trim())));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
@@ -337,7 +405,7 @@ document.getElementById('search-panel')?.addEventListener('click',e=>{if(e.targe
 document.getElementById('search-input')?.addEventListener('input',e=>{document.getElementById('search-result').textContent=e.target.value.trim()?'Problem search will connect to the authorized problem provider in the next stage.':'Search will connect to the problem index in the next stage.';});
 document.getElementById('preferences-btn')?.addEventListener('click',()=>window.location.replace('preferences.html'));
 document.getElementById('settings-btn')?.addEventListener('click',()=>window.location.replace('settings.html'));
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();} if(e.key==='Escape'){closeSearch();document.getElementById('notification-panel')?.classList.add('hidden');closeAccount();}});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();} if(e.key==='Escape'){closeSearch();document.getElementById('notification-panel')?.classList.add('hidden');closeAccount();closeSkillModal();}});
 loadDashboard();
 </script>
 </body>
