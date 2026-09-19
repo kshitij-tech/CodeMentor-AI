@@ -132,7 +132,7 @@ def execute_code(
         )
 
     error_line = next(
-        (result["error_line"] for result in results if result["error_line"] is not None),
+        (result["error_line"] for result in public_results if result["error_line"] is not None),
         None,
     )
 
