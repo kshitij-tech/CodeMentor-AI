@@ -1,6 +1,6 @@
-from backend.validator import UnsupportedValidatorError, validate_default_output
-
 from __future__ import annotations
+
+from backend.validator import UnsupportedValidatorError, validate_default_output
 
 import ast
 import base64
