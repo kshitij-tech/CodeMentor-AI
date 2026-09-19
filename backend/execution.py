@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -49,7 +50,7 @@ class TestOutcome:
     message: str | None = None
 
 
-def validate_code(source: str) -> None:
+def validate_code(source: str, *, stdio: bool = False) -> None:
     if len(source) > MAX_CODE_LENGTH:
         raise CodeRejectedError(f"Code exceeds the {MAX_CODE_LENGTH} character limit.")
 
@@ -59,6 +60,13 @@ def validate_code(source: str) -> None:
         raise CodeRejectedError(
             f"Syntax Error: {exc.msg} (line {exc.lineno})."
         ) from exc
+
+    blocked_imports = set(BLOCKED_IMPORTS)
+    blocked_calls = set(BLOCKED_CALLS)
+    if stdio:
+        # Standard contest programs commonly use sys.stdin/stdout and input().
+        blocked_imports.discard("sys")
+        blocked_calls.discard("input")
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -120,7 +128,113 @@ def _truncate(value: str) -> str:
     return value if len(value) <= MAX_OUTPUT_LENGTH else value[:MAX_OUTPUT_LENGTH] + "\n[output truncated]"
 
 
-def run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[TestOutcome]:
+
+
+def _normalize_output(value: str) -> str:
+    return " ".join(value.strip().split())
+
+
+def run_python_stdio_tests(
+    source: str,
+    test_cases: list[dict[str, Any]],
+    time_limit_seconds: float = 2.0,
+) -> list[TestOutcome]:
+    validate_code(source, stdio=True)
+    outcomes: list[TestOutcome] = []
+
+    with tempfile.TemporaryDirectory(prefix="codementor-stdio-") as workdir:
+        script_path = os.path.join(workdir, "solution.py")
+        with open(script_path, "w", encoding="utf-8") as script:
+            script.write(source)
+
+        env = {
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PATH": os.environ.get("PATH", ""),
+        }
+
+        for index, case in enumerate(test_cases, start=1):
+            input_data = str(case.get("input", ""))
+            expected = str(case.get("expected_output", ""))
+            started = time.perf_counter()
+
+            try:
+                completed = subprocess.run(
+                    [sys.executable, "-I", script_path],
+                    cwd=workdir,
+                    env=env,
+                    input=input_data,
+                    capture_output=True,
+                    text=True,
+                    timeout=max(0.1, float(time_limit_seconds)),
+                    check=False,
+                )
+                runtime_ms = int((time.perf_counter() - started) * 1000)
+            except subprocess.TimeoutExpired:
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Time Limit Exceeded",
+                        expected=expected,
+                        actual=None,
+                        runtime_ms=int(max(0.1, float(time_limit_seconds)) * 1000),
+                        message=(
+                            f"Test exceeded the {max(0.1, float(time_limit_seconds)):.2f}s "
+                            "execution limit."
+                        ),
+                    )
+                )
+                continue
+
+            stderr = _truncate((completed.stderr or "").strip())
+            stdout_raw = completed.stdout or ""
+            stdout = _truncate(stdout_raw)
+
+            if len(stdout_raw) > MAX_OUTPUT_LENGTH:
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Output Limit Exceeded",
+                        expected=expected,
+                        actual=stdout,
+                        runtime_ms=runtime_ms,
+                        message=f"Program output exceeded {MAX_OUTPUT_LENGTH} characters.",
+                    )
+                )
+                continue
+
+            if completed.returncode != 0:
+                message = stderr or stdout or "Program exited with a non-zero status."
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Runtime Error",
+                        expected=expected,
+                        actual=stdout,
+                        runtime_ms=runtime_ms,
+                        message=message,
+                    )
+                )
+                continue
+
+            passed = _normalize_output(stdout) == _normalize_output(expected)
+            outcomes.append(
+                TestOutcome(
+                    index=index,
+                    passed=passed,
+                    status="Passed" if passed else "Wrong Answer",
+                    expected=expected,
+                    actual=stdout,
+                    runtime_ms=runtime_ms,
+                    message=None if passed else "Output does not match the expected answer.",
+                )
+            )
+
+    return outcomes
+\n\ndef run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[TestOutcome]:
     validate_code(source)
 
     outcomes: list[TestOutcome] = []
