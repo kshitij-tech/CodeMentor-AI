@@ -590,6 +590,8 @@ function updateView() {
     : '100% Ready';
   if (footer) footer.classList.toggle('hidden', wizardState.currentStep === 5);
 
+  updateStepperState();
+
   const back = document.getElementById('btn-back');
   const placeholder = document.getElementById('btn-back-placeholder');
   const skip = document.getElementById('btn-skip');
@@ -608,7 +610,7 @@ function updateView() {
   } else if (wizardState.currentStep === 3) {
     back?.classList.remove('hidden');
     placeholder?.classList.add('hidden');
-    skip?.classList.remove('hidden');
+    skip?.classList.add('hidden');
     if (nextLabel) nextLabel.textContent = 'Continue to Career Goals';
   } else if (wizardState.currentStep === 4) {
     back?.classList.remove('hidden');
@@ -623,9 +625,71 @@ function updateView() {
 }
 
 function goToStep(step) {
-  if (step >= 1 && step <= 5) {
-    wizardState.currentStep = step;
-    updateView();
+  if (step < 1 || step > 5) return;
+
+  // Users may move backward to review completed sections, or stay on the
+  // current step. Forward jumps are blocked until the current step is valid.
+  if (step > wizardState.currentStep) {
+    const error = validateStep();
+    if (error) {
+      showError(error);
+      return;
+    }
+
+    if (step > wizardState.currentStep + 1) {
+      showError('Please complete the current step before moving ahead.');
+      return;
+    }
+  }
+
+  if (step === 5 && wizardState.currentStep < 4) {
+    showError('Please complete the onboarding steps in order.');
+    return;
+  }
+
+  wizardState.currentStep = step;
+  updateView();
+}
+
+function updateStepperState() {
+  const current = wizardState.currentStep;
+
+  for (let i = 1; i <= 4; i++) {
+    const crumb = document.getElementById('crumb-' + i);
+    if (!crumb) continue;
+
+    const circle = crumb.querySelector('span:first-child');
+    const label = crumb.querySelector('span:nth-child(2)');
+    const isCurrent = i === current;
+    const isCompleted = i < current;
+
+    crumb.classList.remove('opacity-60', 'opacity-100');
+    crumb.classList.add(isCurrent ? 'opacity-100' : 'opacity-60');
+
+    if (circle) {
+      circle.classList.remove('bg-primary-container', 'text-on-primary', 'bg-surface-container-highest', 'text-on-surface-variant');
+      if (isCurrent) {
+        circle.classList.add('bg-primary-container', 'text-on-primary');
+      } else {
+        circle.classList.add('bg-surface-container-highest', 'text-on-surface-variant');
+      }
+    }
+
+    if (label) {
+      label.classList.remove('text-primary', 'text-on-surface-variant', 'font-semibold', 'font-medium');
+      if (isCurrent) {
+        label.classList.add('text-primary', 'font-semibold');
+      } else {
+        label.classList.add('text-on-surface-variant', 'font-medium');
+      }
+    }
+
+    crumb.setAttribute('aria-current', isCurrent ? 'step' : 'false');
+    crumb.title = isCurrent
+      ? 'Current step'
+      : isCompleted
+        ? 'Completed step — click to review'
+        : 'Complete the current step first';
   }
 }
 
@@ -640,6 +704,12 @@ function validateStep() {
 
   if (wizardState.currentStep === 2 && !wizardState.language) {
     return 'Please choose your interview programming language.';
+  }
+
+  if (wizardState.currentStep === 3) {
+    const username = document.getElementById('leetcode-input')?.value.trim() || wizardState.leetcodeUser;
+    if (!username) return 'Please enter your LeetCode username before continuing.';
+    wizardState.leetcodeUser = username;
   }
 
   if (wizardState.currentStep === 4 && !wizardState.targetRole) {
@@ -673,15 +743,9 @@ function stepBack() {
 }
 
 function skipStep() {
-  if (wizardState.currentStep !== 3) return;
-
-  wizardState.leetcodeUser = '';
-  wizardState.leetcodeSynced = false;
-  const input = document.getElementById('leetcode-input');
-  if (input) input.value = '';
-
-  wizardState.currentStep = 4;
-  updateView();
+  // Skipping is intentionally disabled: every onboarding stage must be
+  // completed before the next stage becomes available.
+  showError('Please complete the current step before continuing.');
 }
 
 function selectExperience(exp) {
@@ -966,6 +1030,13 @@ document.querySelectorAll('.exp-card, .lang-card, .role-card, .time-card').forEa
   card.classList.remove('active-card', 'bg-surface-container', 'shadow-sm');
   card.classList.add('bg-surface-container-low');
 });
+
+// Remove any prototype-only active state from the static Stitch markup.
+document.querySelectorAll('.exp-card, .lang-card, .role-card, .time-card').forEach(card => {
+  card.classList.remove('active-card', 'bg-surface-container', 'shadow-sm');
+});
+
+document.getElementById('btn-skip')?.classList.add('hidden');
 
 updateView();
 loadExistingProfile();
