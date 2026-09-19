@@ -116,6 +116,10 @@ def _tokens(value: str) -> list[str]:
     return value.split()
 
 
+def _whitespace_parts(value: str) -> list[str]:
+    return re.split(r"\S+", value)
+
+
 def _ascii_casefold(token: str) -> str:
     return token.translate(
         str.maketrans(
@@ -168,9 +172,7 @@ def validate_default_output(
 ) -> ValidationResult:
     options = parse_default_validator_flags(flags)
 
-    if options["space_change_sensitive"] and actual != expected:
-        # Still report a token-level mismatch below when possible, but reject
-        # immediately because whitespace itself is significant in this mode.
+    if options["space_change_sensitive"] and _whitespace_parts(actual) != _whitespace_parts(expected):
         return ValidationResult(
             False,
             "Output whitespace differs from the expected output.",
