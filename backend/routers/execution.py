@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.models import Problem, User
+from backend.models import Problem, User, CodingAttempt
 from backend.routers.auth import get_current_user
 from backend.execution import CodeRejectedError, run_python_tests
 
@@ -59,20 +59,38 @@ def execute_code(
     elif any(outcome.status == "Runtime Error" for outcome in outcomes):
         overall = "Runtime Error"
 
+    summary = f"{passed}/{total} tests passed."
+    results = [
+        {
+            "test": outcome.index,
+            "passed": outcome.passed,
+            "status": outcome.status,
+            "expected": outcome.expected,
+            "actual": outcome.actual,
+            "runtime_ms": outcome.runtime_ms,
+            "message": outcome.message,
+        }
+        for outcome in outcomes
+    ]
+
+    attempt = CodingAttempt(
+        user_id=current_user.id,
+        problem_id=problem.id,
+        language=request.language,
+        mode=request.mode,
+        code=request.code,
+        status=overall,
+        summary=summary,
+        results=results,
+    )
+    db.add(attempt)
+    db.commit()
+    db.refresh(attempt)
+
     return {
+        "attempt_id": attempt.id,
         "status": overall,
-        "summary": f"{passed}/{total} tests passed.",
+        "summary": summary,
         "mode": request.mode,
-        "results": [
-            {
-                "test": outcome.index,
-                "passed": outcome.passed,
-                "status": outcome.status,
-                "expected": outcome.expected,
-                "actual": outcome.actual,
-                "runtime_ms": outcome.runtime_ms,
-                "message": outcome.message,
-            }
-            for outcome in outcomes
-        ],
+        "results": results,
     }
