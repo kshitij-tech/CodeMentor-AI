@@ -102,7 +102,8 @@ For hints, do not reveal a complete solution. Respect the requested hint level:
 1 = concept, 2 = direction, 3 = edge case, 4 = implementation guidance.
 For complexity requests, state time and space complexity of the user's current approach when inferable, and distinguish inference from measured runtime.
 For debugging, point to the relevant code behavior and a concrete next step, but do not silently rewrite the solution.
-Be concise and educational.
+Return clean plain text for a chat interface. Do not use Markdown headings, hash symbols, asterisk emphasis, bullet characters, numbered-list prefixes, backticks, or code fences. Use short paragraphs and simple sentences. Put each distinct idea on its own paragraph.
+Be concise, educational, and conversational.
 """.strip()
 
     body = {
