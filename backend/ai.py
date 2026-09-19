@@ -25,7 +25,58 @@ def _extract_text(payload: dict[str, Any]) -> str:
         raise AIProviderError("The AI provider returned no text.")
     return text
 
-def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int) -> str:
+def _parse_mentor_response(raw: str) -> dict[str, Any]:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.strip("`").strip()
+        if text.lower().startswith("json"):
+            text = text[4:].lstrip()
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise AIProviderError("The mentor returned invalid structured output.") from exc
+
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("answer"), str):
+        raise AIProviderError("The mentor returned an invalid response structure.")
+
+    error_line = parsed.get("error_line")
+    if error_line is not None:
+        try:
+            error_line = int(error_line)
+        except (TypeError, ValueError):
+            error_line = None
+        if error_line is not None and error_line < 1:
+            error_line = None
+
+    patch = parsed.get("patch")
+    if patch is not None:
+        if not isinstance(patch, dict):
+            patch = None
+        else:
+            try:
+                start_line = int(patch.get("start_line"))
+                end_line = int(patch.get("end_line"))
+                replacement = str(patch.get("replacement", ""))
+                if start_line < 1 or end_line < start_line:
+                    patch = None
+                else:
+                    patch = {
+                        "start_line": start_line,
+                        "end_line": end_line,
+                        "replacement": replacement,
+                    }
+            except (TypeError, ValueError):
+                patch = None
+
+    return {
+        "answer": parsed["answer"].strip(),
+        "error_line": error_line,
+        "patch": patch,
+    }
+
+
+def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int) -> dict[str, Any]:
     api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
     if not api_key:
         raise AIProviderError("GEMINI_API_KEY is not configured. Add your Gemini API key to the backend environment.")
@@ -102,8 +153,14 @@ For hints, do not reveal a complete solution. Respect the requested hint level:
 1 = concept, 2 = direction, 3 = edge case, 4 = implementation guidance.
 For complexity requests, state time and space complexity of the user's current approach when inferable, and distinguish inference from measured runtime.
 For debugging, point to the relevant code behavior and a concrete next step, but do not silently rewrite the solution.
-Return clean plain text for a chat interface. Do not use Markdown headings, hash symbols, asterisk emphasis, bullet characters, numbered-list prefixes, backticks, or code fences. Use short paragraphs and simple sentences. Put each distinct idea on its own paragraph.
-Be concise, educational, and conversational.
+Return JSON only with exactly these fields:
+answer: a clean plain-text conversational response with no Markdown.
+error_line: the 1-based line number in the user code that is most directly responsible for the error, or null if no specific line can be identified.
+patch: null unless the request type is modify and a small local code change would help. When present, patch must contain start_line, end_line, and replacement. The replacement must be only the minimal lines needed to demonstrate or fix the issue, not a complete solution.
+
+The mentor must prioritize teaching. Do not solve the entire problem for the user. Explain what to inspect and what concept to apply. Only produce a patch when the user explicitly asks for a code modification or the request type is modify. Even then, keep it minimal and tell the user to understand and try the change themselves before applying it.
+Never silently rewrite the user code. The UI will require explicit user action before a patch is applied.
+Keep the answer concise, educational, and conversational.
 """.strip()
 
     body = {
@@ -117,7 +174,8 @@ Be concise, educational, and conversational.
             }
         ],
         "generationConfig": {
-            "maxOutputTokens": 700,
+            "maxOutputTokens": 900,
+            "responseMimeType": "application/json",
         },
     }
 
@@ -146,4 +204,4 @@ Be concise, educational, and conversational.
     answer = "\n".join(texts).strip()
     if not answer:
         raise AIProviderError("Gemini returned an empty response.")
-    return answer
+    return _parse_mentor_response(answer)
