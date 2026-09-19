@@ -72,7 +72,8 @@ tailwind.config = {
             <p id="menu-email" class="text-xs text-on-surface-variant truncate">Signed in</p>
           </div>
           <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="profile" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">person</span>Profile</button>
-          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="onboarding" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">tune</span>Update onboarding</button>
+          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="preferences" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">tune</span>Preferences</button>
+          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="settings" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">settings</span>Settings</button>
           <button class="w-full text-left px-4 py-3 hover:bg-error-container/50 text-error text-sm" data-account-action="logout" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">logout</span>Log out</button>
         </div>
       </div>
@@ -100,7 +101,10 @@ tailwind.config = {
       <div class="mt-1"><span class="font-bold text-2xl">—</span><span class="text-xs text-on-surface-variant ml-1">days active</span></div>
       <p class="text-[10px] text-on-surface-variant mt-1">Practice telemetry will appear here.</p>
     </div>
-    <button id="preferences-btn" class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">settings</span>Preferences</button>
+    <div class="flex flex-col gap-1">
+      <button id="preferences-btn" class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">tune</span>Preferences</button>
+      <button id="settings-btn" class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">settings</span>Settings</button>
+    </div>
   </div>
 </aside>
 
@@ -319,8 +323,9 @@ document.addEventListener('click',e=>{const menu=document.getElementById('accoun
 document.querySelectorAll('[data-account-action]').forEach(b=>b.addEventListener('click',()=>{
   const action=b.dataset.accountAction; closeAccount();
   if(action==='logout'){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');}
-  else if(action==='onboarding') window.location.replace('onboarding.html');
-  else if(action==='profile') toast('Profile details can be updated from onboarding.');
+  else if(action==='preferences') window.location.replace('preferences.html');
+  else if(action==='settings') window.location.replace('settings.html');
+  else if(action==='profile') window.location.replace('preferences.html');
 }));
 document.getElementById('notification-btn')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.toggle('hidden'));
 document.getElementById('close-notifications')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.add('hidden'));
@@ -330,7 +335,8 @@ document.getElementById('search-btn')?.addEventListener('click',openSearch);
 document.getElementById('close-search')?.addEventListener('click',closeSearch);
 document.getElementById('search-panel')?.addEventListener('click',e=>{if(e.target.id==='search-panel')closeSearch();});
 document.getElementById('search-input')?.addEventListener('input',e=>{document.getElementById('search-result').textContent=e.target.value.trim()?'Problem search will connect to the authorized problem provider in the next stage.':'Search will connect to the problem index in the next stage.';});
-document.getElementById('preferences-btn')?.addEventListener('click',()=>window.location.replace('onboarding.html'));
+document.getElementById('preferences-btn')?.addEventListener('click',()=>window.location.replace('preferences.html'));
+document.getElementById('settings-btn')?.addEventListener('click',()=>window.location.replace('settings.html'));
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();} if(e.key==='Escape'){closeSearch();document.getElementById('notification-panel')?.classList.add('hidden');closeAccount();}});
 loadDashboard();
 </script>
