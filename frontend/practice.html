@@ -25,8 +25,9 @@ body{font-family:"Plus Jakarta Sans",sans-serif;overscroll-behavior:none}
 .scroll-panel::-webkit-scrollbar-track{background:transparent}
 .scroll-panel::-webkit-scrollbar-thumb{background:#475569;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
 .scroll-panel::-webkit-scrollbar-thumb:hover{background:#64748b;background-clip:padding-box}
-.problem-item.active{background:#eff4ff;border-left:3px solid #4338ca}
 .problem-item{border-left:3px solid transparent}
+.workspace-splitter-dragging{user-select:none;cursor:col-resize!important}
+body.workspace-splitter-dragging *{cursor:col-resize!important}
 </style>
 </head>
 <body class="bg-surface text-on-surface antialiased">
@@ -54,15 +55,35 @@ body{font-family:"Plus Jakarta Sans",sans-serif;overscroll-behavior:none}
       <button id="settings-btn" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-surface-container-high hover:text-slate-800" title="Settings">
         <span class="material-symbols-outlined text-[19px]">settings</span>
       </button>
-      <button id="account-btn" class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center" title="Account">
-        <span class="material-symbols-outlined text-[17px]">person</span>
-      </button>
+      <div class="relative">
+        <button id="account-btn" class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center hover:ring-2 hover:ring-primary/20" title="Account" aria-expanded="false" aria-haspopup="menu" type="button">
+          <span class="material-symbols-outlined text-[17px]">person</span>
+        </button>
+        <div id="account-menu" class="hidden absolute right-0 top-10 w-56 rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden z-[80]">
+          <div class="px-4 py-3 border-b border-slate-100">
+            <p id="account-name" class="font-semibold text-sm truncate">CodeMentor User</p>
+            <p id="account-email" class="text-xs text-slate-500 truncate">Signed in</p>
+          </div>
+          <button type="button" data-account-action="profile" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm">
+            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">person</span>Profile
+          </button>
+          <button type="button" data-account-action="preferences" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm">
+            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">tune</span>Preferences
+          </button>
+          <button type="button" data-account-action="settings" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm">
+            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">settings</span>Settings
+          </button>
+          <button type="button" data-account-action="logout" class="w-full text-left px-4 py-2.5 hover:bg-rose-50 text-rose-600 text-sm">
+            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">logout</span>Log out
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </header>
 
 <main class="pt-14 h-screen">
-  <div class="h-[calc(100vh-3.5rem)] grid grid-cols-[300px_410px_minmax(0,1fr)] overflow-hidden">
+  <div id="workspace-grid" class="h-[calc(100vh-3.5rem)] overflow-hidden" style="display:grid;grid-template-columns:300px var(--statement-width) 6px minmax(0,1fr);--statement-width:410px;">
 
     <!-- PROBLEM EXPLORER -->
     <aside class="bg-white border-r border-slate-200/80 flex flex-col min-h-0">
@@ -119,6 +140,11 @@ body{font-family:"Plus Jakarta Sans",sans-serif;overscroll-behavior:none}
         </div>
       </div>
     </section>
+
+    <!-- RESIZABLE DIVIDER -->
+    <div id="workspace-splitter" class="relative h-full bg-slate-200/80 hover:bg-primary/60 active:bg-primary transition-colors cursor-col-resize" role="separator" aria-label="Resize problem statement and code editor" aria-orientation="vertical" tabindex="0" title="Drag to resize">
+      <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-slate-300/70"></div>
+    </div>
 
     <!-- CODE / EXECUTION -->
     <section class="min-w-0 min-h-0 bg-[#0b1020] text-slate-100 flex flex-col">
@@ -263,7 +289,7 @@ function difficultyClass(d){
 }
 function renderProblems(){
   const q=$('problem-search').value.trim().toLowerCase();
-  const filtered=problems.filter(p=>(!currentDifficulty||p.difficulty===currentDifficulty)&&(!q||(`${p.title} ${(p.topics||[]).join(' ')}`).toLowerCase().includes(q)));
+  const filtered=problems.filter(p=>p.slug!==current?.slug&&(!currentDifficulty||p.difficulty===currentDifficulty)&&(!q||(`${p.title} ${(p.topics||[]).join(' ')}`).toLowerCase().includes(q)));
   $('problem-count').textContent=filtered.length;
   $('problem-list').innerHTML=filtered.map(p=>`
     <button type="button" class="problem-item w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-surface-container-low transition-colors" data-slug="${esc(p.slug)}">
@@ -276,7 +302,7 @@ function renderProblems(){
   $('problem-list').querySelectorAll('[data-slug]').forEach(btn=>btn.addEventListener('click',()=>{
     const p=problems.find(x=>x.slug===btn.dataset.slug);if(p)selectProblem(p);
   }));
-  $('problem-list').querySelectorAll('[data-slug]').forEach(btn=>btn.classList.toggle('active',btn.dataset.slug===current?.slug));
+  // The currently selected problem is intentionally removed from the list.
 }
 function renderExamples(examples){
   return (examples||[]).map((e,i)=>`<div class="bg-surface-container-low rounded-xl p-3 border border-slate-100">
@@ -389,6 +415,70 @@ function renderResults(data){
   }).join(''):'<div class="h-full flex items-center justify-center text-xs text-slate-500">No test results.</div>';
   $('results-body').scrollTop=0;
 }
+
+function initWorkspaceSplitter(){
+  const grid=$('workspace-grid'), splitter=$('workspace-splitter');
+  if(!grid||!splitter)return;
+  const saved=parseInt(localStorage.getItem('cm_statement_width')||'',10);
+  if(Number.isFinite(saved)) grid.style.setProperty('--statement-width', saved+'px');
+
+  let dragging=false;
+  let startX=0;
+  let startWidth=0;
+
+  const clampWidth=(width)=>{
+    const total=grid.getBoundingClientRect().width;
+    const min=280;
+    const max=Math.max(min,total-300-6-420);
+    return Math.max(min,Math.min(width,max));
+  };
+
+  const onMove=(event)=>{
+    if(!dragging)return;
+    const next=clampWidth(startWidth+(event.clientX-startX));
+    grid.style.setProperty('--statement-width',next+'px');
+    if(editor)editor.layout();
+  };
+
+  const stop=()=>{
+    if(!dragging)return;
+    dragging=false;
+    document.body.classList.remove('workspace-splitter-dragging');
+    localStorage.setItem('cm_statement_width',parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10));
+    window.removeEventListener('pointermove',onMove);
+    window.removeEventListener('pointerup',stop);
+  };
+
+  splitter.addEventListener('pointerdown',event=>{
+    if(window.innerWidth<1000)return;
+    event.preventDefault();
+    dragging=true;
+    startX=event.clientX;
+    startWidth=parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10)||410;
+    document.body.classList.add('workspace-splitter-dragging');
+    splitter.setPointerCapture?.(event.pointerId);
+    window.addEventListener('pointermove',onMove);
+    window.addEventListener('pointerup',stop);
+  });
+
+  splitter.addEventListener('keydown',event=>{
+    if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
+    event.preventDefault();
+    const currentWidth=parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10)||410;
+    const next=clampWidth(currentWidth+(event.key==='ArrowRight'?20:-20));
+    grid.style.setProperty('--statement-width',next+'px');
+    localStorage.setItem('cm_statement_width',next);
+    if(editor)editor.layout();
+  });
+
+  window.addEventListener('resize',()=>{
+    const currentWidth=parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10)||410;
+    const next=clampWidth(currentWidth);
+    grid.style.setProperty('--statement-width',next+'px');
+    if(editor)editor.layout();
+  });
+}
+
 async function execute(mode){
   if(!current){toast('Select a problem first.');return}
   if(!editor){toast('Editor is still loading.');return}
@@ -453,6 +543,33 @@ $('clear-results').addEventListener('click',()=>{
 $('home-btn').addEventListener('click',()=>location.href='dashboard.html');
 $('settings-btn').addEventListener('click',()=>location.href='settings.html');
 
+function toggleAccount(){
+  const menu=$('account-menu');
+  const btn=$('account-btn');
+  const open=!menu.classList.contains('hidden');
+  menu.classList.toggle('hidden',open);
+  btn.setAttribute('aria-expanded',String(!open));
+}
+function closeAccount(){
+  const menu=$('account-menu');
+  if(!menu)return;
+  menu.classList.add('hidden');
+  $('account-btn')?.setAttribute('aria-expanded','false');
+}
+$('account-btn').addEventListener('click',e=>{e.stopPropagation();toggleAccount();});
+document.addEventListener('click',e=>{
+  const menu=$('account-menu');
+  if(menu&&!menu.contains(e.target)&&!$('account-btn').contains(e.target))closeAccount();
+});
+document.querySelectorAll('[data-account-action]').forEach(button=>button.addEventListener('click',()=>{
+  const action=button.dataset.accountAction;
+  closeAccount();
+  if(action==='logout'){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');}
+  else if(action==='preferences'||action==='profile')location.replace('preferences.html');
+  else if(action==='settings')location.replace('settings.html');
+}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAccount();});
+
 function toggleMentor(){
   $('mentor-panel').classList.toggle('hidden');
   $('mentor-panel').classList.toggle('flex');
@@ -475,14 +592,18 @@ $('mentor-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('mentor-se
 async function load(){
   if(!requireAuth())return;
   try{
-    const [problemsRes,profileRes]=await Promise.all([
+    const [problemsRes,profileRes,userRes]=await Promise.all([
       fetch(API+'/problems',{headers:{Authorization:'Bearer '+token()}}),
-      fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}})
+      fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
+      fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
     ]);
-    if(problemsRes.status===401||profileRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+    if(problemsRes.status===401||profileRes.status===401||userRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
     if(!problemsRes.ok)throw new Error('Unable to load problems.');
     const data=await problemsRes.json();problems=data.items||[];
     const profile=profileRes.ok?await profileRes.json():{};
+    const user=userRes.ok?await userRes.json():{};
+    $('account-name').textContent=profile.full_name||'CodeMentor User';
+    $('account-email').textContent=user.email||'Signed in';
     if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language))$('language').value=profile.preferred_language;
     $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
     renderProblems();
@@ -495,6 +616,7 @@ async function load(){
 }
 
 initMonaco();
+initWorkspaceSplitter();
 load();
 </script>
 </body>
