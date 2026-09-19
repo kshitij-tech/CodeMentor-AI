@@ -97,6 +97,11 @@ class Problem(Base):
     source: Mapped[str] = mapped_column(String(40), nullable=False, default="local")
     external_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     external_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    execution_mode: Mapped[str] = mapped_column(String(20), nullable=False, default="function")
+    time_limit_ms: Mapped[int] = mapped_column(nullable=False, default=2000)
+    memory_limit_mb: Mapped[int | None] = mapped_column(nullable=True)
+    validation: Mapped[str] = mapped_column(String(30), nullable=False, default="default")
+    package_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
