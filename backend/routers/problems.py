@@ -21,6 +21,11 @@ def serialize(problem: Problem) -> dict:
         "source": problem.source,
         "external_id": problem.external_id,
         "external_url": problem.external_url,
+        "execution_mode": problem.execution_mode,
+        "time_limit_ms": problem.time_limit_ms,
+        "memory_limit_mb": problem.memory_limit_mb,
+        "validation": problem.validation,
+        "package_metadata": problem.package_metadata,
     }
 
 @router.get("")
