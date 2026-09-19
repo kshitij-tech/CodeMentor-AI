@@ -34,3 +34,6 @@ build/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Imported problem package cache
+.codementor_problem_packages/
