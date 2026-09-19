@@ -1,0 +1,12 @@
+name: Permutation Output
+uuid: codementor-permutation-output
+type: pass-fail
+validation: custom
+keywords:
+  - arrays
+  - sorting
+  - custom-validator
+limits:
+  time_limit: 1
+  validation_time: 2
+  validation_output: 1
