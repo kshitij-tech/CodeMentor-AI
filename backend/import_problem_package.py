@@ -51,7 +51,7 @@ def import_package(path: Path) -> tuple[bool, dict]:
             "slug": values["slug"],
             "title": values["title"],
             "test_cases": len(values["test_cases"]),
-            "judge_supported": values["judge_supported"],
+            "judge_supported": values["package_metadata"]["judge_supported"],
             "time_limit_ms": values["time_limit_ms"],
             "memory_limit_mb": values["memory_limit_mb"],
         }
