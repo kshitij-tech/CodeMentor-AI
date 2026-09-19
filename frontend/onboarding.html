@@ -290,52 +290,46 @@
 <div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-sm shadow-sm transition-all duration-300" id="leetcode-preview">
 <div class="flex items-center justify-between">
 <div class="flex items-center gap-space-sm">
-<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-primary font-bold">
-<span class="material-symbols-outlined text-[22px]">terminal</span>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-outline font-bold">
+<span class="material-symbols-outlined text-[22px]">lock</span>
 </div>
 <div>
 <div class="flex items-center gap-space-xs">
-<span class="font-headline-sm text-[15px] font-bold text-on-surface" id="lc-preview-name">No username connected</span>
-<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-on-tertiary-fixed-variant font-label-sm text-label-sm font-semibold flex items-center gap-1">
-<span class="material-symbols-outlined text-[12px]">check</span> Verified
-                    </span>
+<span class="font-headline-sm text-[15px] font-bold text-on-surface" id="lc-preview-name">No profile synced</span>
+<span id="lc-preview-status" class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm font-semibold">Awaiting sync</span>
 </div>
-<p class="font-label-sm text-label-sm text-on-surface-variant">Global Rank: #48,210 • 78.4% Acceptance</p>
+<p id="lc-preview-detail" class="font-label-sm text-label-sm text-on-surface-variant">Your LeetCode statistics will appear here after a successful sync.</p>
 </div>
 </div>
 <div class="text-right hidden sm:block">
-<span class="font-headline-md text-headline-md font-bold text-primary">—</span>
-<span class="font-label-sm text-label-sm block text-on-surface-variant uppercase">Pending sync</span>
+<span class="font-headline-md text-headline-md font-bold text-outline">—</span>
+<span class="font-label-sm text-label-sm block text-on-surface-variant uppercase">Not synced</span>
 </div>
 </div>
-<!-- Breakdown Stats Bar -->
 <div class="grid grid-cols-3 gap-space-xs pt-space-xs">
 <div class="p-2 rounded-lg bg-surface-container-lowest text-center">
 <span class="font-label-sm text-label-sm text-tertiary block font-semibold">Easy</span>
-<span class="font-headline-sm text-[16px] font-bold text-on-surface">112</span>
+<span class="font-headline-sm text-[16px] font-bold text-outline">—</span>
 </div>
 <div class="p-2 rounded-lg bg-surface-container-lowest text-center">
 <span class="font-label-sm text-label-sm text-secondary block font-semibold">Medium</span>
-<span class="font-headline-sm text-[16px] font-bold text-on-surface">117</span>
+<span class="font-headline-sm text-[16px] font-bold text-outline">—</span>
 </div>
 <div class="p-2 rounded-lg bg-surface-container-lowest text-center">
 <span class="font-label-sm text-label-sm text-error block font-semibold">Hard</span>
-<span class="font-headline-sm text-[16px] font-bold text-on-surface">14</span>
+<span class="font-headline-sm text-[16px] font-bold text-outline">—</span>
 </div>
 </div>
-<!-- Identified Diagnostic Areas -->
-<div class="flex items-center gap-2 pt-1 font-body-sm text-body-sm text-on-surface-variant flex-wrap">
-<span class="font-label-sm text-label-sm font-semibold uppercase text-outline">Identified Weak Spots:</span>
-<span class="px-2 py-0.5 rounded-md bg-error-container text-on-error-container font-label-sm text-label-sm font-medium">Interval DP</span>
-<span class="px-2 py-0.5 rounded-md bg-error-container text-on-error-container font-label-sm text-label-sm font-medium">Monotonic Queue</span>
-<span class="px-2 py-0.5 rounded-md bg-secondary-fixed text-on-secondary-fixed-variant font-label-sm text-label-sm font-medium">Union-Find</span>
+<div id="lc-weak-spots" class="flex items-center gap-2 pt-1 font-body-sm text-body-sm text-on-surface-variant flex-wrap">
+<span class="font-label-sm text-label-sm font-semibold uppercase text-outline">Diagnostic areas:</span>
+<span class="text-outline">Available after sync.</span>
 </div>
 </div>
 <!-- Explanation Callout -->
 <div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-sm">
 <span class="material-symbols-outlined text-[20px] text-tertiary shrink-0">history_edu</span>
 <p class="font-body-sm text-body-sm text-on-surface-variant">
-              Connecting your LeetCode username lets CodeMentor AI avoid repeating problems you've already conquered, and immediately surfaces target variations you struggled with.
+              After a successful LeetCode sync, CodeMentor AI will use your available history to avoid unnecessary repeats and personalize future recommendations.
             </p>
 </div>
 </section>
@@ -799,7 +793,7 @@ function simulateLeetcodeSync() {
   }
 
   wizardState.leetcodeUser = username;
-  wizardState.leetcodeSynced = true;
+  wizardState.leetcodeSynced = false;
 
   if (preview) preview.textContent = username;
   if (button) {
