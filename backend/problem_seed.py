@@ -123,4 +123,8 @@ def seed_problems(db):
         existing = db.query(Problem).filter(Problem.slug == item["slug"]).first()
         if existing is None:
             db.add(Problem(**item))
+        else:
+            # Backfill execution tests for problems created by an earlier schema version.
+            if not existing.test_cases:
+                existing.test_cases = item.get("test_cases", [])
     db.commit()
