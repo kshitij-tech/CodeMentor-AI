@@ -360,6 +360,12 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "secret_test_count": sum(case.visibility == "secret" for case in test_cases),
     }
 
+    has_custom_output_validator = any(
+        path.startswith("output_validator/") or path.startswith("output_validators/")
+        for path in files
+    )
+    package_metadata["has_custom_output_validator"] = has_custom_output_validator
+
     judge_supported = (
         "pass-fail" in type_values
         and validation_name == "default"
@@ -375,12 +381,6 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         package_metadata["domjudge"] = _parse_domjudge_ini(
             files["domjudge-problem.ini"].decode("utf-8", errors="replace")
         )
-
-    has_custom_output_validator = any(
-        path.startswith("output_validator/") or path.startswith("output_validators/")
-        for path in files
-    )
-    package_metadata["has_custom_output_validator"] = has_custom_output_validator
 
     return {
         "slug": slug,
