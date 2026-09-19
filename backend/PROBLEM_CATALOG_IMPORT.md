@@ -35,3 +35,14 @@ For default judging, CodeMentor currently compares normalized whitespace-separat
 Package archives are checked for unsafe paths before files are read.
 
 Do not populate this catalog by crawling, scraping, or spidering sites whose terms prohibit those activities. Use content you are authorized to store and redistribute.
+## Built-in compatibility fixture
+
+A small public MIT-licensed compatibility fixture is included at:
+
+    backend/problem_fixtures/hello-world
+
+From the project root, import it directly with:
+
+    python -m backend.import_problem_package backend/problem_fixtures/hello-world
+
+This fixture is derived from the `hello-world` package in the public `oj-lab/problem-packages` repository. Its source and license notice are retained in the fixture directory.
