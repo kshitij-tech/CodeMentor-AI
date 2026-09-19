@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String
+from sqlalchemy import DateTime, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -77,5 +77,24 @@ class UserProfile(Base):
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class Problem(Base):
+    __tablename__ = "problems"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(180), nullable=False)
+    difficulty: Mapped[str] = mapped_column(String(30), nullable=False)
+    topics: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    constraints: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    examples: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
+    starter_code: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
