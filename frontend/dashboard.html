@@ -355,6 +355,7 @@ function renderSkills(){
 async function loadDashboard(){
   if(!requireAuth()) return;
   renderSkills();
+  void loadDashboardMentor();
   try{
     const [profileRes, meRes]=await Promise.all([
       fetch(API_BASE_URL+'/profile',{headers:{Authorization:'Bearer '+token()}}),
@@ -397,18 +398,52 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
 const dashboardMentorMessages=[];
+let dashboardMentorSessionId=null;
 function cleanDashboardMentorText(value){
   return String(value||'').replace(/\r/g,'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/__([^_]+)__/g,'$1').replace(/\*([^*]+)\*/g,'$1').replace(/^#{1,6}\s*/gm,'').replace(/^\s*[-•]\s+/gm,'').replace(/^\s*\d+[.)]\s+/gm,'').replace(/\`\`\`[a-zA-Z0-9_+-]*\n?/g,'').replace(/\`([^\`]+)\`/g,'$1').trim();
 }
 function renderDashboardMentor(){
   const chat=document.getElementById('dashboard-mentor-chat');
   if(!chat)return;
+  if(!dashboardMentorMessages.length){
+    chat.innerHTML='';
+    return;
+  }
   chat.innerHTML=dashboardMentorMessages.map(m=>{
     const cls=m.role==='user'?'dashboard-mentor-user':'dashboard-mentor-ai';
     const label=m.role==='user'?'You':'AI Mentor';
     return '<div class="flex flex-col '+(m.role==='user'?'items-end':'items-start')+'"><div class="dashboard-mentor-label">'+label+'</div><div class="dashboard-mentor-message '+cls+'">'+esc(cleanDashboardMentorText(m.text))+'</div></div>';
   }).join('');
   chat.scrollTop=chat.scrollHeight;
+}
+
+async function loadDashboardMentor(){
+  dashboardMentorSessionId=null;
+  dashboardMentorMessages.length=0;
+  renderDashboardMentor();
+  if(!token())return;
+  try{
+    const listRes=await fetch(API_BASE_URL+'/mentor/sessions?scope=dashboard',{
+      headers:{Authorization:'Bearer '+token()}
+    });
+    if(!listRes.ok)return;
+    const sessions=await listRes.json();
+    if(!sessions.length)return;
+
+    const sessionRes=await fetch(API_BASE_URL+'/mentor/sessions/'+sessions[0].id,{
+      headers:{Authorization:'Bearer '+token()}
+    });
+    if(!sessionRes.ok)return;
+    const session=await sessionRes.json();
+    dashboardMentorSessionId=session.id;
+    dashboardMentorMessages.push(...(session.messages||[]).map(m=>({
+      role:m.role==='user'?'user':'ai',
+      text:m.content
+    })));
+    renderDashboardMentor();
+  }catch(err){
+    console.warn('Dashboard Mentor history load failed:',err);
+  }
 }
 async function askDashboardMentor(question){
   const input=document.getElementById('mentor-input');
@@ -425,11 +460,12 @@ async function askDashboardMentor(question){
     const res=await fetch(API_BASE_URL+'/mentor/chat',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
-      body:JSON.stringify({question:q})
+      body:JSON.stringify({question:q,session_id:dashboardMentorSessionId})
     });
     if(res.status===401){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');return;}
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
+    dashboardMentorSessionId=data.session_id||dashboardMentorSessionId;
     dashboardMentorMessages.push({role:'ai',text:data.answer||'The mentor returned no explanation.'});
   }catch(err){
     dashboardMentorMessages.push({role:'ai',text:err.message||'Unable to contact the AI Mentor.'});
