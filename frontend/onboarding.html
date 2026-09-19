@@ -1121,6 +1121,11 @@ async function loadExistingProfile() {
 
     const profile = await response.json();
 
+    if (profile.onboarding_completed) {
+      window.location.replace('dashboard.html');
+      return;
+    }
+
     const accountName = document.getElementById('account-menu-name');
     const accountEmail = document.getElementById('account-menu-email');
     if (accountName) accountName.textContent = profile.full_name || 'CodeMentor user';
