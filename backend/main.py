@@ -1,12 +1,41 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from backend.database import Base, engine
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
 
 
-Base.metadata.create_all(bind=engine)
+def initialize_database() -> None:
+    Base.metadata.create_all(bind=engine)
+
+    # Development-only schema upgrade for the existing SQLite database.
+    if engine.dialect.name != "sqlite":
+        return
+
+    inspector = inspect(engine)
+    if not inspector.has_table("user_profiles"):
+        return
+
+    columns = {column["name"] for column in inspector.get_columns("user_profiles")}
+    new_columns = {
+        "bio": "VARCHAR(180)",
+        "target_companies": "JSON",
+        "preparation_timeline": "VARCHAR(100)",
+    }
+
+    with engine.begin() as connection:
+        for column_name, column_type in new_columns.items():
+            if column_name not in columns:
+                connection.execute(
+                    text(
+                        f'ALTER TABLE user_profiles ADD COLUMN "{column_name}" {column_type}'
+                    )
+                )
+
+
+initialize_database()
 
 
 app = FastAPI(
