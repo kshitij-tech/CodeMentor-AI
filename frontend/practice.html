@@ -45,6 +45,12 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
 .mentor-panel-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;margin:0!important;border-radius:0!important;z-index:100!important}
 .mentor-panel-fullscreen .mentor-bubble{max-width:min(760px,88vw);font-size:12px}
 .mentor-panel-fullscreen .mentor-user .mentor-bubble{font-size:14px}
+.cm-error-line{background:rgba(239,68,68,.20)!important;border-left:3px solid #ef4444}
+.cm-error-glyph{border-left:3px solid #ef4444;margin-left:3px}
+.mentor-patch{margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#cbd5e1;font-size:10px}
+.mentor-patch button{padding:5px 8px;border-radius:6px;background:#4338ca;color:#fff;font-size:10px;font-weight:600}
+.mentor-patch button:hover{background:#4f46e5}
+.mentor-patch-note{color:#94a3b8;line-height:1.4}
 @keyframes mentorDot{0%,70%,100%{opacity:.25;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}
 </style>
 </head>
@@ -263,6 +269,7 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
         <button class="mentor-action" data-action="debug" type="button"><span class="material-symbols-outlined text-[15px] text-rose-400">bug_report</span>Debug</button>
         <button class="mentor-action" data-action="complexity" type="button"><span class="material-symbols-outlined text-[15px] text-purple-400">speed</span>Complexity</button>
         <button class="mentor-action" data-action="edge" type="button"><span class="material-symbols-outlined text-[15px] text-emerald-400">verified</span>Edge</button>
+        <button class="mentor-action col-span-2" data-action="modify" type="button"><span class="material-symbols-outlined text-[15px] text-sky-400">edit</span>Suggest Fix</button>
       </div>
       <div class="flex items-end gap-2">
         <textarea id="mentor-input" rows="1" class="flex-1 resize-none overflow-y-hidden max-h-24 bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500" placeholder="Ask about this problem..."></textarea>
@@ -295,6 +302,7 @@ let lastExecution=null;
 let hintLevel=1;
 let mentorMessages=[];
 let mentorRequestId=0;
+let errorLineDecorationIds=[];
 
 const $=id=>document.getElementById(id);
 function token(){return localStorage.getItem(TOKEN_KEY)}
@@ -377,6 +385,8 @@ function renderExamples(examples){
 }
 function selectProblem(p){
   current=p;
+  lastExecution=null;
+  clearErrorLineHighlight();
   $('header-problem').textContent=p.title;
   $('problem-title').textContent=p.title;
   $('problem-difficulty').textContent=p.difficulty;
@@ -432,12 +442,43 @@ function initMonaco(){
     });
     editor.onDidChangeModelContent(()=>{
       if(!current)return;
+      clearErrorLineHighlight();
       localStorage.setItem(draftKey(),editor.getValue());
       $('header-save').textContent='Draft saved';
     });
     if(pendingEditor){setEditorValue(pendingEditor.value,pendingEditor.langId);pendingEditor=null;}
     if(current)loadDraftOrStarter();
   },err=>{console.error(err);$('execution-status').textContent='Editor failed to load. Refresh to retry.';});
+}
+
+function clearErrorLineHighlight(){
+  if(!editor||!window.monaco)return;
+  errorLineDecorationIds=editor.deltaDecorations(errorLineDecorationIds,[]);
+}
+
+function highlightErrorLine(line){
+  clearErrorLineHighlight();
+  if(!editor||!window.monaco)return;
+  const lineNumber=Number(line);
+  if(!Number.isInteger(lineNumber)||lineNumber<1||lineNumber>editor.getModel().getLineCount())return;
+  errorLineDecorationIds=editor.deltaDecorations([],[
+    {
+      range:new monaco.Range(lineNumber,1,lineNumber,1),
+      options:{
+        isWholeLine:true,
+        className:'cm-error-line',
+        linesDecorationsClassName:'cm-error-glyph',
+        hoverMessage:{value:'**Error line** — inspect this line and the surrounding logic.'}
+      }
+    }
+  ]);
+  editor.revealLineInCenter(lineNumber);
+}
+
+function executionErrorLine(data){
+  if(Number.isInteger(Number(data?.error_line)))return Number(data.error_line);
+  const result=(data?.results||[]).find(item=>item?.error_line!=null);
+  return result?Number(result.error_line):null;
 }
 
 function setExecutionBadge(status,summary){
@@ -480,6 +521,8 @@ function renderResults(data){
   }).join(''):'<div class="h-full flex items-center justify-center text-xs text-slate-500">No test results.</div>';
   $('results-body').scrollTop=0;
   lastExecution=data;
+  const line=executionErrorLine(data);
+  if(line)highlightErrorLine(line);else if(data.status==='Accepted')clearErrorLineHighlight();
 }
 
 function initWorkspaceSplitter(){
@@ -719,11 +762,17 @@ function renderMentorChat(){
     chat.innerHTML='<div class="mentor-welcome rounded-xl bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">Ask a question or use one of the guidance actions below. Your conversation stays visible while you work.</div>';
     return;
   }
-  chat.innerHTML=mentorMessages.map(m=>{
+  chat.innerHTML=mentorMessages.map((m,index)=>{
     const role=m.role==='user'?'user':'agent';
     const label=role==='user'?'You':'AI Mentor';
-    return '<div class="mentor-'+role+'"><div><div class="mentor-label">'+label+'</div><div class="mentor-bubble">'+esc(cleanMentorText(m.text))+'</div></div></div>';
+    const patch=m.patch&&role==='agent'
+      ? '<div class="mentor-patch"><div class="mentor-patch-note">Small suggested change only. Understand it and try the fix yourself first.</div><button type="button" data-mentor-apply="'+index+'">Apply suggested change</button></div>'
+      : '';
+    return '<div class="mentor-'+role+'"><div><div class="mentor-label">'+label+'</div><div class="mentor-bubble">'+esc(cleanMentorText(m.text))+patch+'</div></div></div>';
   }).join('');
+  chat.querySelectorAll('[data-mentor-apply]').forEach(button=>{
+    button.addEventListener('click',()=>applyMentorPatch(Number(button.dataset.mentorApply)));
+  });
   chat.scrollTop=chat.scrollHeight;
 }
 
@@ -739,6 +788,31 @@ function loadMentorChat(){
   const storedHint=parseInt(localStorage.getItem(current?'cm_mentor_hint_'+current.slug:''),10);
   hintLevel=Number.isFinite(storedHint)?Math.max(1,Math.min(4,storedHint)):1;
   renderMentorChat();
+}
+
+function applyMentorPatch(index){
+  const message=mentorMessages[index];
+  const patch=message?.patch;
+  if(!editor||!patch){toast('No suggested code change is available.');return;}
+  const model=editor.getModel();
+  const start=Number(patch.start_line);
+  const end=Number(patch.end_line);
+  if(!model||!Number.isInteger(start)||!Number.isInteger(end)||start<1||end<start||end>model.getLineCount()){
+    toast('The suggested change no longer matches the current code.');
+    return;
+  }
+  const range=new monaco.Range(start,1,end,model.getLineMaxColumn(end));
+  editor.pushUndoStop();
+  editor.executeEdits('ai-mentor',[
+    {range,text:String(patch.replacement||''),forceMoveMarkers:true}
+  ]);
+  editor.pushUndoStop();
+  localStorage.setItem(draftKey(),editor.getValue());
+  $('header-save').textContent='Draft saved';
+  clearErrorLineHighlight();
+  editor.revealLineInCenter(start);
+  editor.focus();
+  toast('Suggested change applied. Review it and run the tests.');
 }
 
 function clearMentorChat(){
@@ -788,7 +862,7 @@ async function askMentor(action,question=null){
   if(!current){toast('Select a problem first.');return}
   if(!editor){toast('Code editor is still loading.');return}
   const requestId=++mentorRequestId;
-  const userText=question||({hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity?',edge:'What edge cases should I test?'}[action]||'Help me with this problem.');
+  const userText=question||({hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity?',edge:'What edge cases should I test?',modify:'Show me the minimal code change needed to fix the issue. Do not give me the full solution.'}[action]||'Help me with this problem.');
   mentorMessages.push({role:'user',text:userText});
   saveMentorChat();
   renderMentorChat();
@@ -818,7 +892,8 @@ async function askMentor(action,question=null){
     if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
     if(requestId!==mentorRequestId)return;
     chat.querySelector('.mentor-agent:last-child')?.remove();
-    mentorMessages.push({role:'agent',text:data.answer||'The mentor returned no explanation.'});
+    if(data.error_line)highlightErrorLine(data.error_line);
+    mentorMessages.push({role:'agent',text:data.answer||'The mentor returned no explanation.',patch:data.patch||null});
     if(action==='hint'){
       hintLevel=Math.min(4,hintLevel+1);
       localStorage.setItem('cm_mentor_hint_'+current.slug,String(hintLevel));
