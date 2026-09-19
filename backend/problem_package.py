@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import html
-import io
 import re
+import shlex
 import zipfile
 from dataclasses import dataclass
 from pathlib import PurePosixPath
@@ -21,7 +21,9 @@ class PackageTestCase:
     input_data: str
     expected_output: str
     visibility: str
+    validator_name: str | None
     validator_flags: list[str]
+    group: str
 
 
 def _safe_member_path(name: str) -> PurePosixPath:
@@ -60,21 +62,21 @@ def _source_text(value: Any) -> str:
 
 
 def _strip_html(value: str) -> str:
-    value = re.sub(r"(?is)<(script|style).*?>.*?</\1>", "", value)
+    value = re.sub(r"(?is)<(script|style).*?>.*?</\\1>", "", value)
     value = re.sub(r"(?s)<[^>]+>", " ", value)
-    return html.unescape(re.sub(r"[ \t]+", " ", value)).strip()
+    return html.unescape(re.sub(r"[ \\t]+", " ", value)).strip()
 
 
 def _strip_latex(value: str) -> str:
-    value = re.sub(r"(?m)^\s*%.*$", "", value)
-    value = re.sub(r"\\(?:begin|end)\{[^}]+\}", "\n", value)
-    value = re.sub(r"\\(?:textbf|textit|emph|underline|textrm)\{([^{}]*)\}", r"\1", value)
-    value = re.sub(r"\\(?:section|subsection|subsubsection)\*?\{([^{}]*)\}", r"\n\1\n", value)
-    value = re.sub(r"\\(?:paragraph)\*?\{([^{}]*)\}", r"\n\1\n", value)
-    value = re.sub(r"\\[a-zA-Z]+(?:\[[^\]]*\])?\s*", "", value)
+    value = re.sub(r"(?m)^\\s*%.*$", "", value)
+    value = re.sub(r"\\\\(?:begin|end)\\{[^}]+\\}", "\\n", value)
+    value = re.sub(r"\\\\(?:textbf|textit|emph|underline|textrm)\\{([^{}]*)\\}", r"\\1", value)
+    value = re.sub(r"\\\\(?:section|subsection|subsubsection)\\*?\\{([^{}]*)\\}", r"\\n\\1\\n", value)
+    value = re.sub(r"\\\\(?:paragraph)\\*?\\{([^{}]*)\\}", r"\\n\\1\\n", value)
+    value = re.sub(r"\\\\[a-zA-Z]+(?:\\[[^\\]]*\\])?\\s*", "", value)
     value = value.replace("~", " ")
-    value = re.sub(r"[{}]", "", value)
-    return re.sub(r"\n{3,}", "\n\n", value).strip()
+    value = re.sub(r"\\n{3,}", "\\n\\n", value)
+    return value.strip()
 
 
 def _metadata_mapping(value: Any) -> dict[str, Any]:
@@ -82,7 +84,7 @@ def _metadata_mapping(value: Any) -> dict[str, Any]:
 
 
 def _extract_statement_title(statement: str) -> str | None:
-    match = re.search(r"(?m)^#\s+(.+?)\s*$", statement)
+    match = re.search(r"(?m)^#\\s+(.+?)\\s*$", statement)
     return match.group(1).strip() if match else None
 
 
@@ -98,11 +100,7 @@ def _read_time_limit(files: dict[str, bytes], limits: dict[str, Any]) -> float:
 
 
 def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
-    candidates = [
-        "problem.html",
-        "problem.md",
-        "problem.txt",
-    ]
+    candidates = ["problem.html", "problem.md", "problem.txt"]
     for candidate in candidates:
         if candidate in files:
             raw = files[candidate].decode("utf-8", errors="replace")
@@ -110,34 +108,23 @@ def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
 
     statement_files = sorted(
         path for path in files
-        if path.startswith("problem_statement/")
-        and PathLikeSuffix(path)
+        if path.startswith("problem_statement/") and path.endswith((".md", ".html", ".txt", ".tex", ".pdf"))
     )
-    preferred = [
-        path for path in statement_files if path.endswith((".md", ".html", ".txt"))
-    ] + [path for path in statement_files if path.endswith(".tex")]
 
-    for path in preferred:
+    for path in statement_files:
         raw = files[path].decode("utf-8", errors="replace")
         if path.endswith(".html"):
             raw = _strip_html(raw)
         elif path.endswith(".tex"):
             raw = _strip_latex(raw)
+        elif path.endswith(".pdf"):
+            raw = (
+                "The problem statement is included as a PDF in the imported package. "
+                "PDF rendering will be added to the package viewer."
+            )
         return raw.strip(), path
 
-    pdfs = [path for path in files if path.startswith("problem_statement/") and path.endswith(".pdf")]
-    if "problem.pdf" in files or pdfs:
-        return (
-            "The problem statement is included as a PDF in the imported package. "
-            "PDF rendering will be added to the package viewer.",
-            "problem.pdf" if "problem.pdf" in files else pdfs[0],
-        )
-
     raise ProblemPackageError("No supported problem statement file was found.")
-
-
-def PathLikeSuffix(path: str) -> bool:
-    return path.endswith((".md", ".html", ".txt", ".tex", ".pdf"))
 
 
 def _parse_domjudge_ini(raw: str) -> dict[str, str]:
@@ -169,80 +156,155 @@ def _find_rooted_files(raw_files: dict[str, bytes]) -> dict[str, bytes]:
             continue
         if str(relative):
             result[str(relative)] = content
+
     if "problem.yaml" not in result:
         raise ProblemPackageError("Could not determine package root.")
     return result
 
 
-def _load_package_bytes(raw_files: dict[str, bytes]) -> dict[str, bytes]:
-    return _find_rooted_files(raw_files)
-
-
-
 def _validator_flags(value: Any) -> list[str]:
-    if value is None:
+    if value is None or value == "":
         return []
     if isinstance(value, str):
-        return [value]
+        return shlex.split(value)
     if isinstance(value, list):
         return [str(item) for item in value]
     if isinstance(value, dict):
-        value = value.get("flags", [])
-        if isinstance(value, str):
-            return [value]
-        if isinstance(value, list):
-            return [str(item) for item in value]
+        return _validator_flags(value.get("flags"))
     return []
 
 
-def _test_group_config(files: dict[str, bytes], input_path: str) -> dict[str, Any]:
+def _validator_programs(files: dict[str, bytes]) -> dict[str, str]:
+    programs: dict[str, str] = {}
+
+    for root_name in ("output_validator", "output_validators"):
+        if root_name in files:
+            programs[root_name] = root_name
+
+        prefix = root_name + "/"
+        for path in files:
+            if path.startswith(prefix):
+                relative = path[len(prefix):]
+                name = relative.split("/", 1)[0]
+                programs.setdefault(
+                    name if root_name == "output_validators" else root_name,
+                    prefix + name if "/" in relative else prefix + relative,
+                )
+
+    return programs
+
+
+def _group_config(files: dict[str, bytes], input_path: str) -> dict[str, Any]:
     path = PurePosixPath(input_path)
-    candidates = [str(path.with_suffix(".yaml"))]
-
     parent = path.parent
-    while True:
-        candidates.append(str(parent / "test_group.yaml"))
-        if str(parent) == ".":
-            break
-        parent = parent.parent
+    parts = parent.parts
 
-    for candidate in candidates:
-        if candidate not in files:
+    ancestors: list[str] = ["data"]
+    for index in range(2, len(parts) + 1):
+        ancestors.append("/".join(parts[:index]))
+
+    merged: dict[str, Any] = {}
+    for group in ancestors:
+        config_path = f"{group}/testdata.yaml"
+        raw = files.get(config_path)
+        if raw is None:
             continue
         try:
-            data = yaml.safe_load(files[candidate].decode("utf-8", errors="replace")) or {}
+            config = yaml.safe_load(raw.decode("utf-8", errors="replace")) or {}
         except yaml.YAMLError as exc:
-            raise ProblemPackageError(f"Invalid YAML in {candidate}: {exc}") from exc
-        if not isinstance(data, dict):
-            raise ProblemPackageError(f"{candidate} must contain a YAML mapping.")
-        return data
+            raise ProblemPackageError(f"Invalid YAML in {config_path}: {exc}") from exc
+        if not isinstance(config, dict):
+            raise ProblemPackageError(f"{config_path} must contain a YAML mapping.")
+        merged.update(config)
 
-    return {}
+    return merged
 
-def _extract_test_cases(files: dict[str, bytes]) -> list[PackageTestCase]:
+
+def _select_validator(
+    config: dict[str, Any],
+    *,
+    root_validator_name: str | None,
+    root_flags: list[str],
+    available_names: set[str],
+) -> tuple[str | None, list[str]]:
+    raw = config.get("output_validator_flags")
+    if raw is None:
+        raw = config.get("output_validator_args")
+
+    if raw is None or raw == "":
+        return root_validator_name, list(root_flags)
+
+    if isinstance(raw, dict):
+        name = raw.get("name")
+        flags = _validator_flags(raw.get("flags"))
+        return (str(name) if name else root_validator_name), flags
+
+    if isinstance(raw, list):
+        return root_validator_name, _validator_flags(raw)
+
+    if isinstance(raw, str):
+        tokens = shlex.split(raw)
+        if len(tokens) == 1 and tokens[0] in available_names:
+            return tokens[0], []
+        return root_validator_name, tokens
+
+    return root_validator_name, list(root_flags)
+
+
+def _supported_validator_program(path: str, files: dict[str, bytes]) -> bool:
+    normalized = path.rstrip("/")
+    if normalized in files:
+        suffix = PurePosixPath(normalized).suffix.lower()
+        return suffix in {".py", ".py3", ".exe", ".cmd", ".bat", ".sh", ".cpp", ".cc", ".cxx"} or suffix == ""
+
+    prefix = normalized + "/"
+    package_files = [p for p in files if p.startswith(prefix)]
+    if any(p == prefix + "run" for p in package_files):
+        return True
+    if any(PurePosixPath(p).suffix.lower() in {".py", ".py3", ".cpp", ".cc", ".cxx"} for p in package_files):
+        return True
+    return False
+
+
+def _extract_test_cases(
+    files: dict[str, bytes],
+    *,
+    root_validator_name: str | None,
+    root_flags: list[str],
+    available_validator_names: set[str],
+) -> list[PackageTestCase]:
     test_cases: list[PackageTestCase] = []
+
     for path, data in sorted(files.items()):
         if not path.startswith("data/") or not path.endswith(".in"):
             continue
+
         relative = PurePosixPath(path)
-        parts = relative.parts
-        if len(parts) < 3 or parts[1] not in {"sample", "secret"}:
+        if len(relative.parts) < 3 or relative.parts[1] not in {"sample", "secret"}:
             continue
 
         answer_path = path[:-3] + ".ans"
         if answer_path not in files:
-            raise ProblemPackageError(
-                f"Missing answer file for test case: {path}"
-            )
+            raise ProblemPackageError(f"Missing answer file for test case: {path}")
 
-        config = _test_group_config(files, path)
+        config = _group_config(files, path)
+        validator_name, validator_flags = _select_validator(
+            config,
+            root_validator_name=root_validator_name,
+            root_flags=root_flags,
+            available_names=available_validator_names,
+        )
+
+        group = "/".join(relative.parts[1:-1])
         test_cases.append(
             PackageTestCase(
                 name=path[5:-3],
                 input_data=data.decode("utf-8", errors="replace"),
                 expected_output=files[answer_path].decode("utf-8", errors="replace"),
-                visibility=parts[1],
-                validator_flags=_validator_flags(config.get("output_validator_args")),
+                visibility=relative.parts[1],
+                validator_name=validator_name,
+                validator_flags=validator_flags,
+                group=group,
             )
         )
 
@@ -250,6 +312,7 @@ def _extract_test_cases(files: dict[str, bytes]) -> list[PackageTestCase]:
         raise ProblemPackageError(
             "No sample/secret .in/.ans test cases were found in data/."
         )
+
     return test_cases
 
 
@@ -267,7 +330,7 @@ def _starter_code() -> dict[str, str]:
 
 
 def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[str, Any]:
-    files = _load_package_bytes(raw_files)
+    files = _find_rooted_files(raw_files)
 
     try:
         metadata = yaml.safe_load(files["problem.yaml"].decode("utf-8", errors="replace")) or {}
@@ -292,7 +355,6 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         title = statement_title
     title = title.replace("%s", "").strip(" -") or statement_title or package_name
     slug = _slugify(title)
-    test_cases = _extract_test_cases(files)
 
     limits = metadata.get("limits") or {}
     if not isinstance(limits, dict):
@@ -311,19 +373,35 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         memory_limit_mb = None
 
     validation = metadata.get("validation", "default")
-    problem_validator_flags = _validator_flags(metadata.get("validator_flags"))
-    if isinstance(validation, dict):
-        validation_name = "custom"
-        validation_metadata = validation
-    else:
-        validation_name = str(validation or "default")
-        validation_metadata = validation_name
+    validation_text = str(validation or "default")
+    validation_tokens = validation_text.split()
+    validation_kind = validation_tokens[0] if validation_tokens else "default"
+    root_validator_name = None
+    root_flags = _validator_flags(metadata.get("validator_flags"))
+    if not root_flags:
+        root_flags = _validator_flags(metadata.get("output_validator_args"))
 
     problem_type = metadata.get("type", "pass-fail")
     if isinstance(problem_type, list):
         type_values = [str(item) for item in problem_type]
     else:
-        type_values = [str(problem_type)]
+        type_values = str(problem_type).split()
+
+    available_programs = _validator_programs(files)
+    available_names = set(available_programs)
+
+    if validation_kind == "custom":
+        if available_names:
+            root_validator_name = "output_validator" if "output_validator" in available_names else next(iter(available_names))
+    else:
+        validation_kind = "default"
+
+    test_cases = _extract_test_cases(
+        files,
+        root_validator_name=root_validator_name,
+        root_flags=root_flags,
+        available_validator_names=available_names,
+    )
 
     samples = [
         {
@@ -339,8 +417,33 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
     if not source_name and "oj-lab-metadata" in metadata:
         source_name = "oj-lab"
     source_name = source_name or "problem-package"
+
     source_url = metadata.get("source_url")
     external_id = str(metadata.get("uuid") or package_name)
+
+    validation_time = limits.get("validation_time", 60)
+    validation_output = limits.get("validation_output", 8)
+    try:
+        validation_time_ms = max(100, int(float(validation_time) * 1000))
+    except (TypeError, ValueError):
+        validation_time_ms = 60_000
+    try:
+        validation_output_bytes = max(1024, int(float(validation_output) * 1024 * 1024))
+    except (TypeError, ValueError):
+        validation_output_bytes = 8 * 1024 * 1024
+
+    custom_validator_programs = {
+        name: path
+        for name, path in available_programs.items()
+        if _supported_validator_program(path, files)
+    }
+
+    has_custom_validator = validation_kind == "custom" or bool(available_programs)
+    custom_validator_supported = (
+        bool(root_validator_name)
+        and root_validator_name in custom_validator_programs
+        and "interactive" not in validation_tokens
+    )
 
     package_metadata = {
         "problem_format_version": metadata.get("problem_format_version"),
@@ -352,40 +455,45 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "difficulty": _source_text(oj_metadata.get("difficulty")) or metadata.get("difficulty"),
         "languages": metadata.get("languages"),
         "type": type_values,
-        "validation": validation_metadata,
-        "validator_flags": problem_validator_flags,
+        "validation": validation_text,
+        "validator_flags": root_flags,
+        "validator_programs": available_programs,
+        "supported_validator_programs": custom_validator_programs,
         "statement_file": statement_file,
         "test_case_count": len(test_cases),
         "sample_test_count": sum(case.visibility == "sample" for case in test_cases),
         "secret_test_count": sum(case.visibility == "secret" for case in test_cases),
+        "validation_time_ms": validation_time_ms,
+        "validation_output_bytes": validation_output_bytes,
+        "has_custom_output_validator": has_custom_validator,
+        "custom_validator_supported": custom_validator_supported,
     }
-
-    has_custom_output_validator = any(
-        path.startswith("output_validator/") or path.startswith("output_validators/")
-        for path in files
-    )
-    package_metadata["has_custom_output_validator"] = has_custom_output_validator
-
-    judge_supported = (
-        "pass-fail" in type_values
-        and validation_name == "default"
-        and not has_custom_output_validator
-        and "interactive" not in type_values
-        and "multi-pass" not in type_values
-        and "submit-answer" not in type_values
-        and "scoring" not in type_values
-    )
-    package_metadata["judge_supported"] = judge_supported
 
     if "domjudge-problem.ini" in files:
         package_metadata["domjudge"] = _parse_domjudge_ini(
             files["domjudge-problem.ini"].decode("utf-8", errors="replace")
         )
 
+    pass_fail = "pass-fail" in type_values
+    unsupported_type = any(
+        item in validation_tokens for item in {"interactive", "multi-pass", "submit-answer", "score"}
+    )
+    judge_supported = (
+        pass_fail
+        and not unsupported_type
+        and (
+            validation_kind == "default"
+            and not available_programs
+            or validation_kind == "custom"
+            and custom_validator_supported
+        )
+    )
+    package_metadata["judge_supported"] = judge_supported
+
     return {
         "slug": slug,
         "title": title[:180],
-        "difficulty": (str(oj_metadata.get("difficulty") or metadata.get("difficulty") or "Unknown").title()),
+        "difficulty": str(oj_metadata.get("difficulty") or metadata.get("difficulty") or "Unknown").title(),
         "topics": topics,
         "description": statement,
         "constraints": [],
@@ -396,7 +504,9 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
                 "input": case.input_data,
                 "expected_output": case.expected_output,
                 "visibility": case.visibility,
-                "validator_flags": case.validator_flags or problem_validator_flags,
+                "validator_name": case.validator_name,
+                "validator_flags": case.validator_flags,
+                "group": case.group,
             }
             for case in test_cases
         ],
@@ -407,30 +517,29 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "execution_mode": "stdio",
         "time_limit_ms": time_limit_ms,
         "memory_limit_mb": memory_limit_mb,
-        "validation": validation_name[:30],
+        "validation": validation_text[:30],
         "package_metadata": package_metadata,
     }
 
 
 def load_problem_package(path: str) -> dict[str, Any]:
-    package = PurePosixPath(path)
-    if str(package) != path:
-        # The path may contain platform-specific separators; runtime loading below
-        # uses the normal filesystem APIs.
-        pass
+    from pathlib import Path
 
-    import pathlib
-
-    filesystem_path = pathlib.Path(path)
+    filesystem_path = Path(path)
     if filesystem_path.is_dir():
         raw_files = {}
         for file_path in filesystem_path.rglob("*"):
             if file_path.is_file():
-                raw_files[file_path.relative_to(filesystem_path).as_posix()] = file_path.read_bytes()
+                relative = file_path.relative_to(filesystem_path).as_posix()
+                raw_files[relative] = file_path.read_bytes()
         package_name = filesystem_path.name
-    elif filesystem_path.is_file() and filesystem_path.suffix.lower() == ".zip":
+    elif filesystem_path.is_file() and filesystem_path.suffix.lower() in {".zip", ".kpp"}:
         with zipfile.ZipFile(filesystem_path, "r") as archive:
-            raw_files = {info.filename: archive.read(info) for info in archive.infolist() if not info.is_dir()}
+            raw_files = {
+                info.filename: archive.read(info)
+                for info in archive.infolist()
+                if not info.is_dir()
+            }
         package_name = filesystem_path.stem
     else:
         raise ProblemPackageError("Input must be a problem package directory or .zip file.")
