@@ -19,42 +19,47 @@ def initialize_database() -> None:
         return
 
     inspector = inspect(engine)
-    if not inspector.has_table("user_profiles"):
-        return
+    if inspector.has_table("user_profiles"):
+        columns = {column["name"] for column in inspector.get_columns("user_profiles")}
+        new_columns = {
+            "bio": "VARCHAR(180)",
+            "target_companies": "JSON",
+            "preparation_timeline": "VARCHAR(100)",
+            "onboarding_completed": "BOOLEAN NOT NULL DEFAULT 0",
+        }
 
-    columns = {column["name"] for column in inspector.get_columns("user_profiles")}
-    new_columns = {
-        "bio": "VARCHAR(180)",
-        "target_companies": "JSON",
-        "preparation_timeline": "VARCHAR(100)",
-        "onboarding_completed": "BOOLEAN NOT NULL DEFAULT 0",
-    }
+        with engine.begin() as connection:
+            for column_name, column_type in new_columns.items():
+                if column_name not in columns:
+                    connection.execute(
+                        text(
+                            f'ALTER TABLE user_profiles ADD COLUMN "{column_name}" {column_type}'
+                        )
+                    )
 
-    with engine.begin() as connection:
-        for column_name, column_type in new_columns.items():
-            if column_name not in columns:
+            if "onboarding_completed" not in columns:
                 connection.execute(
                     text(
-                        f'ALTER TABLE user_profiles ADD COLUMN "{column_name}" {column_type}'
+                        """
+                        UPDATE user_profiles
+                        SET onboarding_completed = 1
+                        WHERE TRIM(COALESCE(full_name, '')) <> ''
+                          AND TRIM(COALESCE(preferred_language, '')) <> ''
+                          AND TRIM(COALESCE(experience_level, '')) <> ''
+                          AND TRIM(COALESCE(target_role, '')) <> ''
+                        """
                     )
                 )
 
-        # Existing profiles that already contain all onboarding requirements
-        # are treated as completed so users are not forced through onboarding again.
-        if "onboarding_completed" not in columns:
-            connection.execute(
-                text(
-                    """
-                    UPDATE user_profiles
-                    SET onboarding_completed = 1
-                    WHERE TRIM(COALESCE(full_name, '')) <> ''
-                      AND TRIM(COALESCE(preferred_language, '')) <> ''
-                      AND TRIM(COALESCE(experience_level, '')) <> ''
-                      AND TRIM(COALESCE(target_role, '')) <> ''
-                    """
+    if inspector.has_table("problems"):
+        problem_columns = {column["name"] for column in inspector.get_columns("problems")}
+        if "test_cases" not in problem_columns:
+            with engine.begin() as connection:
+                connection.execute(
+                    text('ALTER TABLE problems ADD COLUMN "test_cases" JSON')
                 )
-            )
 
+    return
 
 initialize_database()
 
