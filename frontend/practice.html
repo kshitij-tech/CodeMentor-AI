@@ -517,10 +517,17 @@ function renderResults(data){
         <span class="mono text-[9px] text-slate-500">${esc(t.runtime_ms)} ms</span>
       </div>
       ${t.message?`<div class="px-3 pb-2 text-[10px] text-slate-400">${esc(t.message)}</div>`:''}
-      ${(!good&&t.expected!==undefined&&t.actual!==undefined)?`<div class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-800 border-t border-slate-800">
-        <div class="bg-[#0b1020] p-2.5"><div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Expected</div><pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${esc(JSON.stringify(t.expected))}</pre></div>
-        <div class="bg-[#0b1020] p-2.5"><div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Actual</div><pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${esc(JSON.stringify(t.actual))}</pre></div>
-      </div>`:''}
+      ${!good&&t.actual!==undefined?`
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-800 border-t border-slate-800">
+          <div class="bg-[#0b1020] p-2.5">
+            <div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Expected</div>
+            <pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${t.visibility==='secret'?'Hidden for secret test':esc(JSON.stringify(t.expected))}</pre>
+          </div>
+          <div class="bg-[#0b1020] p-2.5">
+            <div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Actual</div>
+            <pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${esc(JSON.stringify(t.actual))}</pre>
+          </div>
+        </div>`:''}
     </div>`;
   }).join(''):'<div class="h-full flex items-center justify-center text-xs text-slate-500">No test results.</div>';
   $('results-body').scrollTop=0;
