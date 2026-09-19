@@ -12,6 +12,12 @@ PROBLEMS = [
             {"input": "nums = [2, 1, 3, 2, 1], budget = 6", "output": "3", "explanation": "The window [1, 3, 2] has sum 6."},
             {"input": "nums = [5, 1, 1, 1], budget = 3", "output": "3", "explanation": "The window [1, 1, 1] has sum 3."},
         ],
+        "test_cases": [
+            {"args": [[[2, 1, 3, 2, 1], 6]], "expected": 3},
+            {"args": [[[5, 1, 1, 1], 3]], "expected": 3},
+            {"args": [[[5, 5, 5], 4]], "expected": 0},
+            {"args": [[[1, 1, 1, 1, 1], 3]], "expected": 3},
+        ],
         "starter_code": {
             "Python": "def solve(nums, budget):\n    # Return the maximum valid window length.\n    pass\n",
             "C++": "#include <bits/stdc++.h>\nusing namespace std;\n\nint solve(vector<int>& nums, long long budget) {\n    // Return the maximum valid window length.\n    return 0;\n}\n",
@@ -28,6 +34,12 @@ PROBLEMS = [
         "examples": [
             {"input": "nums = [4, 7, 2, 7, 9]", "output": "7", "explanation": "7 is the first value encountered for the second time."},
             {"input": "nums = [1, 2, 3]", "output": "-1", "explanation": "No value occurs twice."},
+        ],
+        "test_cases": [
+            {"args": [[[4, 7, 2, 7, 9]]], "expected": 7},
+            {"args": [[[1, 2, 3]]], "expected": -1},
+            {"args": [[[5, 5]]], "expected": 5},
+            {"args": [[[9, 2, 9, 2]]], "expected": 9},
         ],
         "starter_code": {
             "Python": "def solve(nums):\n    # Return the first repeated value, or -1.\n    pass\n",
@@ -46,6 +58,12 @@ PROBLEMS = [
             {"input": "arrivals = [100, 200, 300], departures = [150, 250, 350]", "output": "1", "explanation": "The trains do not overlap."},
             {"input": "arrivals = [100, 120, 140], departures = [200, 220, 160]", "output": "3", "explanation": "All three trains overlap around time 140."},
         ],
+        "test_cases": [
+            {"args": [[[100, 200, 300], [150, 250, 350]]], "expected": 1},
+            {"args": [[[100, 120, 140], [200, 220, 160]]], "expected": 3},
+            {"args": [[[100], [100]]], "expected": 1},
+            {"args": [[[100, 110], [120, 130]]], "expected": 1},
+        ],
         "starter_code": {
             "Python": "def solve(arrivals, departures):\n    # Return the minimum number of platforms.\n    pass\n",
             "C++": "#include <bits/stdc++.h>\nusing namespace std;\n\nint solve(vector<int>& arrivals, vector<int>& departures) {\n    // Return the minimum number of platforms.\n    return 0;\n}\n",
@@ -63,6 +81,12 @@ PROBLEMS = [
             {"input": "n = 5, edges = [[0,1],[1,2],[3,4]], start = 0", "output": "3", "explanation": "Nodes 0, 1, and 2 are reachable."},
             {"input": "n = 4, edges = [], start = 2", "output": "1", "explanation": "Only the start node is reachable."},
         ],
+        "test_cases": [
+            {"args": [[5, [[0,1],[1,2],[3,4]], 0]], "expected": 3},
+            {"args": [[4, [], 2]], "expected": 1},
+            {"args": [[6, [[0,1],[1,2],[2,3],[4,5]], 4]], "expected": 2},
+            {"args": [[3, [[0,1],[1,2]], 2]], "expected": 3},
+        ],
         "starter_code": {
             "Python": "def solve(n, edges, start):\n    # Return the number of reachable nodes.\n    pass\n",
             "C++": "#include <bits/stdc++.h>\nusing namespace std;\n\nint solve(int n, vector<vector<int>>& edges, int start) {\n    // Return the number of reachable nodes.\n    return 0;\n}\n",
@@ -79,6 +103,12 @@ PROBLEMS = [
         "examples": [
             {"input": "cost = [10, 15, 20]", "output": "15", "explanation": "Take the first and third positions via a two-step move."},
             {"input": "cost = [1, 100, 1, 1, 1, 100, 1, 1, 100, 1]", "output": "6", "explanation": "Choose the lower-cost path through the staircase."},
+        ],
+        "test_cases": [
+            {"args": [[[10, 15, 20]]], "expected": 15},
+            {"args": [[[1, 100, 1, 1, 1, 100, 1, 1, 100, 1]]], "expected": 6},
+            {"args": [[[1, 2]]], "expected": 1},
+            {"args": [[[5, 5, 5, 5]]], "expected": 10},
         ],
         "starter_code": {
             "Python": "def solve(cost):\n    # Return the minimum cost to reach the top.\n    pass\n",
