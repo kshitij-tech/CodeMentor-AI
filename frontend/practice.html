@@ -77,6 +77,13 @@ body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mon
       <span id="autosave" class="mono text-[10px] text-slate-500">Draft not saved</span>
     </div>
     <div id="code-editor" class="flex-1 min-h-0"></div>
+    <div id="execution-panel" class="hidden max-h-56 overflow-auto bg-[#0b1220] border-t border-white/10 shrink-0">
+      <div class="px-4 py-2 flex items-center justify-between border-b border-white/10 sticky top-0 bg-[#0b1220]">
+        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[16px] text-slate-400">terminal</span><span class="mono text-[10px] uppercase tracking-wider text-slate-400">Execution result</span></div>
+        <span id="execution-summary" class="text-xs text-slate-400">—</span>
+      </div>
+      <div id="execution-results" class="p-3 space-y-2"></div>
+    </div>
     <div class="h-12 bg-[#111827] border-t border-white/10 flex items-center justify-between px-4 shrink-0">
       <div id="execution-status" class="text-xs text-slate-400">Execution engine will be connected next.</div>
       <div class="flex items-center gap-2">
@@ -278,8 +285,66 @@ function initializeEditor(){
 }
 
 
-document.getElementById('run-btn').addEventListener('click',()=>toast('Run is ready for the sandbox stage. No code is executed yet.'));
-document.getElementById('submit-btn').addEventListener('click',()=>toast('Submit will use the isolated execution and test engine in the next stage.'));
+function escapeHtml(value){
+ return String(value ?? '').replace(/[&<>"']/g, char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+}
+function resultValue(value){
+ try{return JSON.stringify(value);}
+ catch{return String(value);}
+}
+function renderExecution(data){
+ const panel=document.getElementById('execution-panel');
+ const summary=document.getElementById('execution-summary');
+ const results=document.getElementById('execution-results');
+ if(!panel||!summary||!results)return;
+ panel.classList.remove('hidden');
+ const status=data.status||'Unknown';
+ const statusClass=status==='Accepted'
+   ? 'text-emerald-400'
+   : status==='Wrong Answer'||status==='Runtime Error'||status==='Time Limit Exceeded'
+     ? 'text-rose-400'
+     : 'text-amber-400';
+ summary.className='text-xs font-semibold '+statusClass;
+ summary.textContent=(status||'Unknown')+' · '+(data.summary||'');
+ results.innerHTML='';
+ (data.results||[]).forEach(test=>{
+   const row=document.createElement('div');
+   const ok=!!test.passed;
+   row.className='rounded-lg border '+(ok?'border-emerald-500/15 bg-emerald-500/5':'border-rose-500/15 bg-rose-500/5')+' px-3 py-2';
+   row.innerHTML='<div class="flex items-center justify-between gap-3"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-[15px] '+(ok?'text-emerald-400':'text-rose-400')+'">'+(ok?'check_circle':'cancel')+'</span><span class="text-xs font-semibold">Test '+escapeHtml(test.test)+'</span><span class="text-[10px] text-slate-500">'+escapeHtml(test.status)+'</span></div><span class="mono text-[10px] text-slate-500">'+escapeHtml(test.runtime_ms)+' ms</span></div>'+
+     (test.message?'<div class="text-[11px] text-slate-400 mt-1">'+escapeHtml(test.message)+'</div>':'')+
+     (test.expected!==undefined&&test.actual!==undefined&&!ok?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2 text-[10px]"><div><span class="text-slate-500">Expected</span><pre class="mono text-slate-300 mt-1 whitespace-pre-wrap">'+escapeHtml(resultValue(test.expected))+'</pre></div><div><span class="text-slate-500">Actual</span><pre class="mono text-slate-300 mt-1 whitespace-pre-wrap">'+escapeHtml(resultValue(test.actual))+'</pre></div></div>':'');
+   results.appendChild(row);
+ });
+}
+async function execute(mode){
+ if(!current){toast('Select a problem first.');return;}
+ if(!editor){toast('Code editor is still loading.');return;}
+ const code=editor.getValue().trim();
+ if(!code){toast('Write a solution before running it.');return;}
+ const runBtn=document.getElementById('run-btn'), submitBtn=document.getElementById('submit-btn'), status=document.getElementById('execution-status');
+ runBtn.disabled=true; submitBtn.disabled=true; runBtn.classList.add('opacity-60'); submitBtn.classList.add('opacity-60');
+ status.textContent=mode==='submit'?'Submitting solution...':'Running tests...';
+ try{
+   const response=await fetch(API+'/execution/run',{
+     method:'POST',
+     headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
+     body:JSON.stringify({problem_slug:current.slug,language:document.getElementById('language').value,code,mode})
+   });
+   if(response.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return;}
+   const data=await response.json().catch(()=>({}));
+   if(!response.ok) throw new Error(data.detail||'Execution request failed.');
+   renderExecution(data);
+   status.textContent=(data.status||'Execution complete')+' · '+(data.summary||'');
+ }catch(error){
+   status.textContent='Execution request failed.';
+   toast(error.message||'Unable to execute solution.');
+ }finally{
+   runBtn.disabled=false; submitBtn.disabled=false; runBtn.classList.remove('opacity-60'); submitBtn.classList.remove('opacity-60');
+ }
+}
+document.getElementById('run-btn').addEventListener('click',()=>execute('run'));
+document.getElementById('submit-btn').addEventListener('click',()=>execute('submit'));
 function openMentor(){
  const panel=document.getElementById('mentor-panel');
  const backdrop=document.getElementById('mentor-backdrop');
