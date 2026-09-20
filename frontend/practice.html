@@ -132,6 +132,9 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
         </div>
       </div>
       <div id="problem-list" class="flex-1 overflow-y-auto scroll-panel p-1.5 space-y-0.5"></div>
+      <div class="shrink-0 p-2 border-t border-slate-100">
+        <button id="load-more-problems" type="button" class="hidden w-full py-2 rounded-lg bg-surface-container text-slate-600 text-[10px] font-semibold hover:bg-surface-container-high">Load more problems</button>
+      </div>
     </aside>
 
     <!-- PROBLEM STATEMENT -->
@@ -295,6 +298,10 @@ const LANG_IDS={Python:'python','C++':'cpp',Java:'java',JavaScript:'javascript',
 const FILE_NAMES={Python:'solution.py','C++':'solution.cpp',Java:'Solution.java',JavaScript:'solution.js',TypeScript:'solution.ts',Go:'solution.go',Rust:'solution.rs'};
 let problems=[];
 let current=null;
+let problemTotal=0;
+let problemOffset=0;
+let problemHasMore=false;
+let problemRequestId=0;
 let editor=null;
 let pendingEditor=null;
 let currentDifficulty='';
@@ -360,9 +367,8 @@ function setProblemExplorer(open){
 }
 
 function renderProblems(){
-  const q=$('problem-search').value.trim().toLowerCase();
-  const filtered=problems.filter(p=>p.slug!==current?.slug&&(!currentDifficulty||p.difficulty===currentDifficulty)&&(!q||(`${p.title} ${(p.topics||[]).join(' ')}`).toLowerCase().includes(q)));
-  $('problem-count').textContent=filtered.length;
+  const filtered=problems.filter(p=>p.slug!==current?.slug);
+  $('problem-count').textContent=String(problemTotal||filtered.length);
   $('problem-list').innerHTML=filtered.map(p=>`
     <button type="button" class="problem-item w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-surface-container-low transition-colors" data-slug="${esc(p.slug)}">
       <div class="flex items-start justify-between gap-2">
@@ -374,8 +380,14 @@ function renderProblems(){
   $('problem-list').querySelectorAll('[data-slug]').forEach(btn=>btn.addEventListener('click',()=>{
     const p=problems.find(x=>x.slug===btn.dataset.slug);if(p)selectProblem(p);
   }));
-  // The currently selected problem is intentionally removed from the list.
+  const more=$('load-more-problems');
+  if(more){
+    more.classList.toggle('hidden',!problemHasMore);
+    more.disabled=false;
+    more.textContent='Load more problems';
+  }
 }
+
 function renderExamples(examples){
   return (examples||[]).map((e,i)=>`<div class="bg-surface-container-low rounded-xl p-3 border border-slate-100">
     <div class="mono text-[9px] uppercase tracking-wider text-primary-container font-semibold">Example ${i+1}</div>
@@ -666,7 +678,15 @@ function initResultsResizer(){
   });
 }
 
-$('problem-search').addEventListener('input',renderProblems);
+let problemSearchTimer=null;
+$('problem-search').addEventListener('input',()=>{
+  clearTimeout(problemSearchTimer);
+  problemSearchTimer=setTimeout(()=>{
+    fetchProblems({reset:true}).catch(err=>{
+      $('problem-list').innerHTML='<div class="p-4 text-xs text-rose-600">'+esc(err.message||'Unable to load problems.')+'</div>';
+    });
+  },250);
+});
 document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.addEventListener('click',()=>{
   currentDifficulty=btn.dataset.difficulty;
   document.querySelectorAll('.difficulty-btn').forEach(b=>{
@@ -675,9 +695,23 @@ document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.addEventListener('
   });
   btn.classList.remove('bg-surface-container','text-slate-500');
   btn.classList.add('active','bg-primary-container','text-white');
-  renderProblems();
+  fetchProblems({reset:true}).catch(err=>{
+    $('problem-list').innerHTML='<div class="p-4 text-xs text-rose-600">'+esc(err.message||'Unable to load problems.')+'</div>';
+  });
 }));
-$('problem-browser-toggle').addEventListener('click',()=>{
+$('load-more-problems')?.addEventListener('click',async()=>{
+  const button=$('load-more-problems');
+  if(!button)return;
+  button.disabled=true;
+  button.textContent='Loading...';
+  try{await fetchProblems();}catch(err){
+    button.disabled=false;
+    button.textContent='Retry loading';
+    toast(err.message||'Unable to load more problems.');
+  }
+});
+
+$('problem-browser-toggle').addEventListener$('problem-browser-toggle').addEventListener('click',()=>{
   setProblemExplorer(document.getElementById('problem-explorer').classList.contains('hidden'));
 });
 $('language').addEventListener('change',()=>{
@@ -1014,36 +1048,72 @@ $('mentor-input').addEventListener('keydown',e=>{
 });
 
 
+async function fetchProblems({reset=false}={}){
+  if(!token())return;
+  const requestId=++problemRequestId;
+  const offset=reset?0:problemOffset;
+  const params=new URLSearchParams({limit:'100',offset:String(offset)});
+  if(currentDifficulty)params.set('difficulty',currentDifficulty);
+  const q=$('problem-search').value.trim();
+  if(q)params.set('search',q);
+
+  const response=await fetch(API+'/problems?'+params.toString(),{headers:{Authorization:'Bearer '+token()}});
+  if(response.status===401){
+    localStorage.removeItem(TOKEN_KEY);
+    location.replace('auth.html');
+    return;
+  }
+  if(!response.ok){
+    let detail='';
+    try{const body=await response.json();detail=body.detail?' — '+body.detail:'';}catch(_err){}
+    throw new Error('Unable to load problems (HTTP '+response.status+')'+detail);
+  }
+
+  const data=await response.json();
+  if(!Array.isArray(data.items))throw new Error('Problems API returned an unexpected response shape.');
+  if(requestId!==problemRequestId)return null;
+
+  if(reset)problems=[];
+  problems=problems.concat(data.items);
+  problemTotal=Number(data.total)||problems.length;
+  problemOffset=Number(data.offset||0)+data.items.length;
+  problemHasMore=Boolean(data.has_more);
+  renderProblems();
+  return data;
+}
+
 async function load(){
   if(!requireAuth())return;
   try{
-    const [problemsRes,profileRes,userRes]=await Promise.all([
-      fetch(API+'/problems',{headers:{Authorization:'Bearer '+token()}}),
+    const [profileRes,userRes]=await Promise.all([
       fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
       fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
     ]);
-    if(problemsRes.status===401||profileRes.status===401||userRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
-    if(!problemsRes.ok){
-      let detail='';
-      try{const errorBody=await problemsRes.json();detail=errorBody.detail?' — '+errorBody.detail:'';}catch(_err){}
-      throw new Error('Unable to load problems (HTTP '+problemsRes.status+')'+detail);
+    if(profileRes.status===401||userRes.status===401){
+      localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return;
     }
-    const data=await problemsRes.json();
-    if(!Array.isArray(data.items))throw new Error('Problems API returned an unexpected response shape.');
-    problems=data.items;
-    $('problem-count').textContent=String(problems.length);
     const profile=profileRes.ok?await profileRes.json():{};
     const user=userRes.ok?await userRes.json():{};
     $('account-name').textContent=profile.full_name||'CodeMentor User';
     $('account-email').textContent=user.email||'Signed in';
     if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language))$('language').value=profile.preferred_language;
     $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
-    renderProblems();
+
     const params=new URLSearchParams(location.search);
-    const requested=params.get('problem')||localStorage.getItem('cm_current_problem');
-    const chosen=requested?problems.find(p=>p.slug===requested):null;
     pendingMentorOpen=params.get('mentor')==='1';
     pendingMentorQuestion=(params.get('question')||'').trim()||null;
+
+    await fetchProblems({reset:true});
+
+    const requested=params.get('problem')||localStorage.getItem('cm_current_problem');
+    let chosen=requested?problems.find(p=>p.slug===requested):null;
+    if(requested&&!chosen){
+      try{
+        const detailRes=await fetch(API+'/problems/'+encodeURIComponent(requested),{headers:{Authorization:'Bearer '+token()}});
+        if(detailRes.ok)chosen=await detailRes.json();
+      }catch(_err){}
+    }
+
     if(chosen){
       selectProblem(chosen);
       maybeOpenMentorFromDashboard();
@@ -1053,11 +1123,13 @@ async function load(){
       setProblemExplorer(true);
     }
   }catch(err){
-    $('problem-list').innerHTML=`<div class="p-4 text-xs text-rose-600">${esc(err.message||'Unable to load problems.')}</div>`;
+    console.error('Problem loading failed:',err);
+    $('problem-count').textContent='0';
+    $('problem-list').innerHTML='<div class="p-4 text-xs text-rose-600">'+esc(err.message||'Unable to load problems.')+'</div>';
   }
 }
 
-initMonaco();
+initMonaco();initMonaco();
 initWorkspaceSplitter();
 initResultsResizer();
 setProblemExplorer(true);
