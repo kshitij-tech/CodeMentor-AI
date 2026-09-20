@@ -1,3 +1,5 @@
+from collections import Counter
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
@@ -6,6 +8,7 @@ from backend.models import Problem, User
 from backend.routers.auth import get_current_user
 
 router = APIRouter(prefix="/problems", tags=["Problems"])
+
 
 def serialize(problem: Problem) -> dict:
     return {
@@ -32,18 +35,44 @@ def serialize(problem: Problem) -> dict:
         },
     }
 
+
+def serialize_list_row(row) -> dict:
+    return {
+        "id": row.id,
+        "slug": row.slug,
+        "title": row.title,
+        "difficulty": row.difficulty,
+        "topics": row.topics or [],
+        "source": row.source,
+        "external_id": row.external_id,
+        "external_url": row.external_url,
+    }
+
+
 @router.get("")
 def list_problems(
     topic: str | None = Query(default=None),
     difficulty: str | None = Query(default=None),
     source: str | None = Query(default=None),
     search: str | None = Query(default=None, min_length=1, max_length=120),
-    limit: int = Query(default=100, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Problem).order_by(Problem.id.asc())
+    query = (
+        db.query(
+            Problem.id,
+            Problem.slug,
+            Problem.title,
+            Problem.difficulty,
+            Problem.topics,
+            Problem.source,
+            Problem.external_id,
+            Problem.external_url,
+        )
+        .order_by(Problem.id.asc())
+    )
 
     if difficulty:
         query = query.filter(Problem.difficulty.ilike(difficulty))
@@ -52,29 +81,19 @@ def list_problems(
         query = query.filter(Problem.source.ilike(source))
 
     if search:
-        pattern = f"%{search.strip()}%"
-        query = query.filter(
-            Problem.title.ilike(pattern)
-            | Problem.description.ilike(pattern)
-        )
+        query = query.filter(Problem.title.ilike(f"%{search.strip()}%"))
 
     if topic:
-        # JSON topic filtering is kept in Python for SQLite/PostgreSQL parity.
-        total_candidates = query.all()
-        filtered = [p for p in total_candidates if topic in (p.topics or [])]
-        total = len(filtered)
-        page = filtered[offset:offset + limit]
+        # SQLite JSON portability: only lightweight list columns are fetched.
+        candidates = query.all()
+        matching = [row for row in candidates if topic in (row.topics or [])]
+        total = len(matching)
+        page = matching[offset : offset + limit]
     else:
         total = query.count()
         page = query.offset(offset).limit(limit).all()
 
-    # Problem lists never need hidden test cases or package internals.
-    items = []
-    for problem in page:
-        item = serialize(problem)
-        item.pop("test_cases", None)
-        item.pop("package_metadata", None)
-        items.append(item)
+    items = [serialize_list_row(row) for row in page]
 
     return {
         "items": items,
@@ -83,6 +102,44 @@ def list_problems(
         "offset": offset,
         "has_more": offset + len(items) < total,
     }
+
+
+@router.get("/topics")
+def list_problem_topics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    topic_counts: Counter[str] = Counter()
+    difficulty_counts: Counter[str] = Counter()
+
+    rows = db.query(Problem.topics, Problem.difficulty).yield_per(1000)
+    total = 0
+    for topics, difficulty in rows:
+        total += 1
+        difficulty_counts[str(difficulty)] += 1
+        for topic in topics or []:
+            topic_text = str(topic).strip()
+            if topic_text:
+                topic_counts[topic_text] += 1
+
+    return {
+        "total": total,
+        "topics": [
+            {"name": name, "count": count}
+            for name, count in sorted(
+                topic_counts.items(),
+                key=lambda item: (-item[1], item[0].lower()),
+            )
+        ],
+        "difficulties": [
+            {"name": name, "count": count}
+            for name, count in sorted(
+                difficulty_counts.items(),
+                key=lambda item: item[0].lower(),
+            )
+        ],
+    }
+
 
 @router.get("/{slug}")
 def get_problem(
