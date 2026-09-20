@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeMentor AI — AI Mentor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{
+  surface:'#f8f9ff','surface-container-lowest':'#ffffff','surface-container-low':'#eff4ff',
+  'surface-container':'#e5eeff','surface-container-high':'#dce9ff',
+  'on-surface':'#0b1c30','on-surface-variant':'#464554',
+  primary:'#2a14b4','primary-container':'#4338ca','on-primary':'#ffffff',
+  secondary:'#006591',error:'#ba1a1a','error-container':'#ffdad6'
+},fontFamily:{body:['Plus Jakarta Sans'],mono:['JetBrains Mono']}}}};
+</script>
+<style>
+html,body{margin:0;padding:0}
+body{overscroll-behavior:none}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-thumb{background:#c7c4d7;border-radius:999px}
+.mentor-scroll{scrollbar-width:thin}
+.message{max-width:min(80%,760px);padding:12px 14px;border-radius:14px;font-size:13px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.user-message{align-self:flex-end;background:#4338ca;color:#fff;border-bottom-right-radius:4px}
+.ai-message{align-self:flex-start;background:#eff4ff;color:#0b1c30;border-bottom-left-radius:4px}
+.system-message{align-self:center;max-width:92%;background:#e5eeff;color:#464554}
+</style>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js" defer></script>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen">
+<header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-sm">
+  <div class="h-16 px-4 lg:px-8 flex items-center justify-between gap-4">
+    <a href="dashboard.html" class="flex items-center gap-3 shrink-0" aria-label="CodeMentor AI dashboard">
+      <div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
+      <span class="font-bold tracking-tight">CodeMentor <span class="text-primary">AI</span></span>
+    </a>
+    <nav class="flex items-center gap-1 overflow-x-auto">
+      <a href="dashboard.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-high">Dashboard</a>
+      <a href="practice.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-high">Practice</a>
+      <a href="analytics.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-high">Analytics</a>
+      <a href="mentor.html" class="px-3 py-2 rounded-lg bg-primary-container text-on-primary text-sm font-medium">AI Mentor</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pt-16 pb-8 min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="flex flex-col gap-6">
+      <section class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+        <div class="p-6 sm:p-8 bg-gradient-to-br from-primary-container via-primary to-primary text-white">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div>
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-xl bg-white/95 text-primary flex items-center justify-center"><span class="material-symbols-outlined">smart_toy</span></div>
+                <div>
+                  <div class="font-mono text-[10px] uppercase tracking-wider text-white/75">CodeMentor AI</div>
+                  <h1 class="text-2xl sm:text-3xl font-bold">AI Mentor Workspace</h1>
+                </div>
+              </div>
+              <p class="mt-4 text-sm sm:text-base text-white/85 max-w-3xl leading-relaxed">Ask about algorithms, debugging, complexity, interview preparation, or what to practice next. Your dashboard mentor session is shared with this workspace.</p>
+            </div>
+            <a href="practice.html" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-white text-primary text-sm font-semibold shrink-0">Open Practice <span class="material-symbols-outlined text-[17px]">code</span></a>
+          </div>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 xl:grid-cols-[260px_minmax(0,1fr)] gap-6 items-start">
+        <aside class="bg-surface-container-lowest rounded-2xl shadow-sm p-4">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <div class="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">Conversation</div>
+              <h2 class="font-bold text-base mt-1">Mentor Sessions</h2>
+            </div>
+            <button id="new-session" class="w-9 h-9 rounded-lg bg-surface-container-low hover:bg-surface-container-high flex items-center justify-center" type="button" title="Start a new mentor session" aria-label="Start a new mentor session">
+              <span class="material-symbols-outlined text-[19px]">add</span>
+            </button>
+          </div>
+          <div id="session-list" class="mentor-scroll mt-4 max-h-[60vh] overflow-y-auto space-y-2"></div>
+        </aside>
+
+        <section class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[680px]">
+          <div class="px-5 sm:px-6 py-4 border-b border-surface-container-high flex items-center justify-between gap-4">
+            <div>
+              <div id="session-status" class="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">Dashboard mentor</div>
+              <h2 class="font-bold text-lg mt-1">Ask anything about your coding progress</h2>
+            </div>
+            <span id="provider-status" class="px-2.5 py-1 rounded-full bg-surface-container-low text-xs font-medium">Checking AI…</span>
+          </div>
+
+          <div id="chat" class="mentor-scroll flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4">
+            <div id="empty-state" class="m-auto max-w-2xl w-full text-center">
+              <div class="w-14 h-14 rounded-2xl bg-surface-container text-primary mx-auto flex items-center justify-center"><span class="material-symbols-outlined text-[30px]">psychology</span></div>
+              <h3 class="text-xl font-bold mt-4">What are you working on?</h3>
+              <p class="text-sm text-on-surface-variant mt-2">Choose a prompt below or ask your own question.</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-6">
+                <button class="suggestion text-left p-4 rounded-xl bg-surface-container-low hover:bg-surface-container" data-query="Explain how I should approach a difficult DSA problem without giving me the full solution." type="button"><div class="font-semibold text-sm">Build an approach</div><div class="text-xs text-on-surface-variant mt-1">Learn how to break a difficult problem down.</div></button>
+                <button class="suggestion text-left p-4 rounded-xl bg-surface-container-low hover:bg-surface-container" data-query="Help me debug my coding approach and tell me what I should inspect first." type="button"><div class="font-semibold text-sm">Debug my approach</div><div class="text-xs text-on-surface-variant mt-1">Find the first thing worth checking.</div></button>
+                <button class="suggestion text-left p-4 rounded-xl bg-surface-container-low hover:bg-surface-container" data-query="How should I analyze the time and space complexity of my current solution?" type="button"><div class="font-semibold text-sm">Analyze complexity</div><div class="text-xs text-on-surface-variant mt-1">Understand runtime and memory tradeoffs.</div></button>
+                <button class="suggestion text-left p-4 rounded-xl bg-surface-container-low hover:bg-surface-container" data-query="What should I practice next based on my progress?" type="button"><div class="font-semibold text-sm">Plan my practice</div><div class="text-xs text-on-surface-variant mt-1">Turn your recent work into the next step.</div></button>
+              </div>
+            </div>
+          </div>
+
+          <div class="px-4 sm:px-6 py-4 border-t border-surface-container-high bg-surface-container-low">
+            <div class="flex items-end gap-2">
+              <textarea id="mentor-input" class="flex-1 resize-none min-h-12 max-h-36 px-4 py-3 rounded-xl bg-white border border-surface-container-high outline-none text-sm focus:ring-2 focus:ring-primary/20" placeholder="Ask your AI Mentor…" rows="1"></textarea>
+              <button id="mentor-send" class="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center disabled:opacity-50" type="button" aria-label="Send to AI Mentor"><span class="material-symbols-outlined">send</span></button>
+            </div>
+            <p class="text-[10px] text-on-surface-variant mt-2">Press Enter to send. Shift+Enter for a new line.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API_BASE_URL='http://127.0.0.1:8000';
+const TOKEN_KEY='codementor_access_token';
+let sessionId=null;
+let messages=[];
+let sessions=[];
+
+function token(){return localStorage.getItem(TOKEN_KEY);}
+function esc(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function cleanText(value){return String(value||'').replace(/\r/g,'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/__([^_]+)__/g,'$1').replace(/^#{1,6}\s*/gm,'').replace(/^\s*[-•]\s+/gm,'').replace(/^\s*\d+[.)]\s+/gm,'').trim();}
+
+function requireAuth(){
+  if(!token()){window.location.replace('auth.html');return false;}
+  return true;
+}
+
+function setProviderStatus(message, ok=false){
+  const el=document.getElementById('provider-status');
+  if(!el)return;
+  el.textContent=message;
+  el.className='px-2.5 py-1 rounded-full text-xs font-medium '+(ok?'bg-green-100 text-green-700':'bg-error-container text-error');
+}
+
+function renderSessions(){
+  const host=document.getElementById('session-list');
+  if(!sessions.length){
+    host.innerHTML='<div class="p-3 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">No mentor sessions yet. Send a message to create one.</div>';
+    return;
+  }
+  host.innerHTML=sessions.map(s=>{
+    const active=s.id===sessionId;
+    return '<button type="button" data-session-id="'+s.id+'" class="w-full text-left p-3 rounded-xl '+(active?'bg-primary-container text-white':'bg-surface-container-low hover:bg-surface-container-high')+'"><div class="font-semibold text-xs truncate">'+esc(s.title||'Mentor session')+'</div><div class="font-mono text-[9px] mt-1 '+(active?'text-white/75':'text-on-surface-variant')+'">'+new Date(s.updated_at).toLocaleString()+'</div></button>';
+  }).join('');
+  host.querySelectorAll('[data-session-id]').forEach(btn=>btn.addEventListener('click',()=>loadSession(Number(btn.dataset.sessionId))));
+}
+
+function renderChat(){
+  const chat=document.getElementById('chat');
+  const empty=document.getElementById('empty-state');
+  chat.querySelectorAll('.runtime-message').forEach(el=>el.remove());
+  if(!messages.length){
+    empty?.classList.remove('hidden');
+    return;
+  }
+  empty?.classList.add('hidden');
+  messages.forEach(m=>{
+    const wrap=document.createElement('div');
+    wrap.className='runtime-message flex flex-col '+(m.role==='user'?'items-end':'items-start');
+    const label=document.createElement('div');
+    label.className='font-mono text-[9px] uppercase tracking-wider text-on-surface-variant mb-1';
+    label.textContent=m.role==='user'?'You':'AI Mentor';
+    const bubble=document.createElement('div');
+    bubble.className='message '+(m.role==='user'?'user-message':'ai-message');
+    bubble.textContent=cleanText(m.text);
+    wrap.append(label,bubble);
+    chat.appendChild(wrap);
+  });
+  chat.scrollTop=chat.scrollHeight;
+}
+
+function showSystemMessage(message){
+  const chat=document.getElementById('chat');
+  chat.querySelectorAll('.runtime-system').forEach(el=>el.remove());
+  const wrap=document.createElement('div');
+  wrap.className='runtime-system runtime-message flex flex-col items-center';
+  const bubble=document.createElement('div');
+  bubble.className='message system-message';
+  bubble.textContent=message;
+  wrap.appendChild(bubble);
+  chat.appendChild(wrap);
+  chat.scrollTop=chat.scrollHeight;
+}
+
+async function loadSessions(){
+  const res=await fetch(API_BASE_URL+'/mentor/sessions?scope=dashboard',{headers:{Authorization:'Bearer '+token()}});
+  if(res.status===401){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');return [];}
+  if(!res.ok)throw new Error('Could not load mentor sessions.');
+  return await res.json();
+}
+
+async function loadSession(id){
+  const res=await fetch(API_BASE_URL+'/mentor/sessions/'+id,{headers:{Authorization:'Bearer '+token()}});
+  if(!res.ok)throw new Error('Could not load that mentor session.');
+  const data=await res.json();
+  sessionId=data.id;
+  messages=(data.messages||[]).map(m=>({role:m.role==='user'?'user':'ai',text:m.content}));
+  document.getElementById('session-status').textContent=data.title||'Dashboard mentor';
+  renderSessions();
+  renderChat();
+}
+
+async function sendMessage(){
+  const input=document.getElementById('mentor-input');
+  const button=document.getElementById('mentor-send');
+  const q=input.value.trim();
+  if(!q)return;
+  messages.push({role:'user',text:q});
+  renderChat();
+  input.value='';
+  input.style.height='auto';
+  input.disabled=true;
+  button.disabled=true;
+  showSystemMessage('Thinking…');
+  try{
+    const res=await fetch(API_BASE_URL+'/mentor/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
+      body:JSON.stringify({question:q,session_id:sessionId})
+    });
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');return;}
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
+    document.querySelectorAll('.runtime-system').forEach(el=>el.remove());
+    sessionId=data.session_id||sessionId;
+    messages.push({role:'ai',text:data.answer||'The mentor returned no explanation.'});
+    sessions=await loadSessions();
+    document.getElementById('session-status').textContent='Dashboard mentor';
+    renderSessions();
+    renderChat();
+    setProviderStatus('AI connected',true);
+  }catch(err){
+    document.querySelectorAll('.runtime-system').forEach(el=>el.remove());
+    const msg=err.message||'Unable to contact the AI Mentor.';
+    messages.push({role:'ai',text:msg.includes('GEMINI_API_KEY')?'AI Mentor is not configured yet. Add GEMINI_API_KEY to backend/.env and restart the FastAPI server.':msg});
+    renderChat();
+    if(msg.includes('GEMINI_API_KEY'))setProviderStatus('Configuration needed');
+  }finally{
+    input.disabled=false;
+    button.disabled=false;
+    input.focus();
+  }
+}
+
+function newSession(){
+  sessionId=null;
+  messages=[];
+  sessions=[];
+  document.getElementById('session-status').textContent='New dashboard mentor session';
+  renderSessions();
+  renderChat();
+  document.getElementById('mentor-input').focus();
+}
+
+document.getElementById('mentor-send').addEventListener('click',sendMessage);
+document.getElementById('mentor-input').addEventListener('keydown',event=>{
+  if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}
+});
+document.getElementById('mentor-input').addEventListener('input',event=>{
+  event.target.style.height='auto';
+  event.target.style.height=Math.min(event.target.scrollHeight,144)+'px';
+});
+document.getElementById('new-session').addEventListener('click',newSession);
+document.querySelectorAll('.suggestion').forEach(button=>button.addEventListener('click',()=>{document.getElementById('mentor-input').value=button.dataset.query||'';sendMessage();}));
+
+(async function init(){
+  if(!requireAuth())return;
+  try{
+    sessions=await loadSessions();
+    renderSessions();
+    if(sessions.length)await loadSession(sessions[0].id);
+    else renderChat();
+    setProviderStatus('Ready',true);
+  }catch(err){
+    setProviderStatus('Check backend');
+    showSystemMessage(err.message||'Unable to initialize the AI Mentor workspace.');
+  }
+})();
+</script>
+</body>
+</html>
