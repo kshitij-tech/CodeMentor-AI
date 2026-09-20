@@ -31,18 +31,36 @@ def _extract_text(payload: dict[str, Any]) -> str:
 
 def _parse_mentor_response(raw: str) -> dict[str, Any]:
     text = raw.strip()
-    if text.startswith("```"):
-        text = text.strip("`").strip()
-        if text.lower().startswith("json"):
-            text = text[4:].lstrip()
 
+    # Gemini can occasionally wrap otherwise valid JSON in a Markdown fence.
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[0].strip().startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+
+    parsed: Any = None
     try:
         parsed = json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise AIProviderError("The mentor returned invalid structured output.") from exc
+    except json.JSONDecodeError:
+        # Be tolerant of harmless prose before/after the JSON object.
+        object_start = text.find("{")
+        if object_start >= 0:
+            try:
+                parsed, _ = json.JSONDecoder().raw_decode(text[object_start:])
+            except json.JSONDecodeError as exc:
+                raise AIProviderError("The mentor returned invalid structured output.") from exc
+        else:
+            raise AIProviderError("The mentor returned invalid structured output.")
 
-    if not isinstance(parsed, dict) or not isinstance(parsed.get("answer"), str):
+    if not isinstance(parsed, dict):
         raise AIProviderError("The mentor returned an invalid response structure.")
+
+    answer = parsed.get("answer")
+    if not isinstance(answer, str) or not answer.strip():
+        raise AIProviderError("The mentor response is missing a valid 'answer' field.")
 
     error_line = parsed.get("error_line")
     if error_line is not None:
@@ -79,11 +97,10 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
                 patch = None
 
     return {
-        "answer": parsed["answer"].strip(),
+        "answer": answer.strip(),
         "error_line": error_line,
         "patch": patch,
     }
-
 def _normalize_model(model: str) -> str:
     model_aliases = {
         "2.5 flash": "gemini-2.5-flash",
@@ -226,6 +243,32 @@ Keep the answer concise, educational, and conversational.
         "generationConfig": {
             "maxOutputTokens": 900,
             "responseMimeType": "application/json",
+            "responseSchema": {
+                "type": "OBJECT",
+                "properties": {
+                    "answer": {
+                        "type": "STRING",
+                        "description": "The concise plain-text mentor response.",
+                    },
+                    "error_line": {
+                        "type": ["INTEGER", "NULL"],
+                        "description": "The 1-based user-code line most directly responsible for an observed error, or null.",
+                    },
+                    "patch": {
+                        "type": ["OBJECT", "NULL"],
+                        "description": "A small optional code patch. Use null unless the request explicitly asks for a modification.",
+                        "properties": {
+                            "start_line": {"type": "INTEGER"},
+                            "end_line": {"type": "INTEGER"},
+                            "replacement": {"type": "STRING"},
+                        },
+                        "required": ["start_line", "end_line", "replacement"],
+                        "additionalProperties": false,
+                    },
+                },
+                "required": ["answer", "error_line", "patch"],
+                "additionalProperties": false,
+            },
         },
     }
 
