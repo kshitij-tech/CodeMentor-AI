@@ -149,7 +149,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 <script>
 const API='http://127.0.0.1:8000';
 const TOKEN_KEY='codementor_access_token';
-const LANG_IDS={Python:'python','C++':'cpp',Java:'java',JavaScript:'javascript',TypeScript:'typescript',Go:'go',Rust:'rust'};
+const LANG_IDS=JSON.parse('{"Python":"python","C++":"cpp","Java":"java","JavaScript":"javascript","TypeScript":"typescript","Go":"go","Rust":"rust"}'); // normalized language map
 let userId='unknown';
 let problem=null;
 let editor=null;
