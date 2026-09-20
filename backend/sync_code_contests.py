@@ -315,7 +315,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Stream English competitive-programming problems from DeepMind CodeContests."
     )
-    parser.add_argument("--split", default="train", choices=["train", "valid", "test"])
+    parser.add_argument("--split", default="all", choices=["all", "train", "valid", "test"])
     parser.add_argument(
         "--max-problems",
         type=int,
@@ -331,17 +331,29 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=100)
     args = parser.parse_args()
 
-    created, updated, skipped = bulk_import(
-        split=args.split,
-        max_problems=args.max_problems,
-        max_secret_tests=args.max_secret_tests,
-        batch_size=max(1, args.batch_size),
-    )
+    splits = ["train", "valid", "test"] if args.split == "all" else [args.split]
+    total_created = 0
+    total_updated = 0
+    total_skipped = 0
+
+    for split in splits:
+        created, updated, skipped = bulk_import(
+            split=split,
+            max_problems=args.max_problems,
+            max_secret_tests=args.max_secret_tests,
+            batch_size=max(1, args.batch_size),
+        )
+        total_created += created
+        total_updated += updated
+        total_skipped += skipped
+        print(
+            f"{split}: {created} created, {updated} updated, {skipped} skipped."
+        )
 
     print()
     print(
-        f"CodeContests import complete: {created} created, "
-        f"{updated} updated, {skipped} skipped."
+        f"CodeContests import complete: {total_created} created, "
+        f"{total_updated} updated, {total_skipped} skipped."
     )
 
 
