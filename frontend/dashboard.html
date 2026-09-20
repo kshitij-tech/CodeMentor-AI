@@ -431,30 +431,29 @@ async function loadDashboard(){
   renderSkills();
   void loadDashboardMentor();
   void loadRecommendation();
+
+  const headers={headers:{Authorization:'Bearer '+token()}};
+
+  // Load identity independently so an analytics failure cannot leave the
+  // entire dashboard showing prototype/default account information.
   try{
-    const headers={headers:{Authorization:'Bearer '+token()}};
-    const [profileRes, meRes, analyticsRes]=await Promise.all([
+    const [profileRes, meRes]=await Promise.all([
       fetch(API_BASE_URL+'/profile',headers),
-      fetch(API_BASE_URL+'/auth/me',headers),
-      fetch(API_BASE_URL+'/analytics/summary',headers)
+      fetch(API_BASE_URL+'/auth/me',headers)
     ]);
     if(profileRes.status===401||meRes.status===401){
-      localStorage.removeItem(TOKEN_KEY); window.location.replace('auth.html'); return;
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace('auth.html');
+      return;
     }
+
     const profile=profileRes.ok?await profileRes.json():{};
     const me=meRes.ok?await meRes.json():{};
-    if(analyticsRes.ok){
-      analyticsSnapshot=await analyticsRes.json();
-      renderAnalytics(analyticsSnapshot);
-    }else{
-      analyticsSnapshot=null;
-      const detail=await analyticsRes.text().catch(()=> '');
-      renderAnalyticsUnavailable('Analytics API error ('+analyticsRes.status+')'+(detail?' — '+detail.slice(0,120):''));
-    }
-    renderSkills();
+
     const name=profile.full_name || 'CodeMentor User';
     const role=profile.target_role || 'Complete your profile';
     const language=profile.preferred_language || 'Language not set';
+
     document.getElementById('welcome-title').textContent='Welcome, '+name;
     document.getElementById('welcome-role').textContent=role;
     document.getElementById('welcome-language').textContent=language;
@@ -465,8 +464,35 @@ async function loadDashboard(){
     document.getElementById('menu-name').textContent=name;
     document.getElementById('menu-email').textContent=me.email || (profile.leetcode_username ? '@'+profile.leetcode_username : 'Signed in');
   }catch(err){
-    console.warn('Dashboard profile load failed:',err);
+    console.warn('Dashboard identity load failed:',err);
   }
+
+  // Analytics is intentionally independent from identity/profile rendering.
+  try{
+    const analyticsRes=await fetch(API_BASE_URL+'/analytics/summary',headers);
+    if(analyticsRes.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace('auth.html');
+      return;
+    }
+    if(analyticsRes.ok){
+      analyticsSnapshot=await analyticsRes.json();
+      renderAnalytics(analyticsSnapshot);
+    }else{
+      analyticsSnapshot=null;
+      const detail=await analyticsRes.text().catch(()=> '');
+      renderAnalyticsUnavailable(
+        'Analytics API error ('+analyticsRes.status+')'+
+        (detail?' — '+detail.slice(0,120):'')
+      );
+    }
+  }catch(err){
+    analyticsSnapshot=null;
+    renderAnalyticsUnavailable('Unable to load analytics telemetry.');
+    console.warn('Dashboard analytics load failed:',err);
+  }
+
+  renderSkills();
 }
 document.querySelectorAll('.skill-card').forEach(card=>{
   card.addEventListener('click',()=>openSkillModal(card.dataset.topic));
