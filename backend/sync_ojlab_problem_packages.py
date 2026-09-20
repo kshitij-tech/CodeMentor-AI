@@ -73,8 +73,9 @@ def _discover_packages(problems_root: Path) -> list[Path]:
     return sorted(packages, key=lambda path: path.relative_to(problems_root).as_posix().lower())
 
 
-def bulk_import(source_root: Path | None = None) -> tuple[int, int, list[str]]:
+def bulk_import(source_root: Path | None = None) -> tuple[int, int, list[str], list[str]]:
     failures: list[str] = []
+    skipped: list[str] = []
 
     with tempfile.TemporaryDirectory(prefix="codementor-bulk-import-") as temp_dir:
         temp_root = Path(temp_dir)
@@ -107,10 +108,14 @@ def bulk_import(source_root: Path | None = None) -> tuple[int, int, list[str]]:
                     f"judge-supported={summary['judge_supported']}"
                 )
             except Exception as exc:
+                if str(exc) == "No English problem statement was found.":
+                    skipped.append(str(package))
+                    print(f"[{index}/{len(packages)}] SKIPPED (non-English): {package}")
+                    continue
                 failures.append(f"{package}: {exc}")
                 print(f"[{index}/{len(packages)}] FAILED: {package} | {exc}")
 
-    return created, updated, failures
+    return created, updated, failures, skipped
 
 
 def main() -> None:
@@ -129,13 +134,18 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        created, updated, failures = bulk_import(args.source_root)
+        created, updated, failures, skipped = bulk_import(args.source_root)
     except BulkImportError as exc:
         raise SystemExit(f"Bulk import failed: {exc}") from exc
 
     print()
     print(f"Bulk import complete: {created} created, {updated} updated.")
+    print(f"Skipped non-English packages: {len(skipped)}")
     print(f"Failed packages: {len(failures)}")
+
+    if skipped:
+        for package in skipped:
+            print(f" - {package}")
 
     if failures:
         for failure in failures:
