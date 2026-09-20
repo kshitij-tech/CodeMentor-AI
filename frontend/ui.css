@@ -4,7 +4,7 @@ button, a, [role="button"], select, input[type="button"], input[type="submit"] {
 }
 
 .cm-interactive {
-  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, background-color .16s ease, opacity .16s ease;
+  transition: transform .10s ease, box-shadow .10s ease, filter .10s ease, background-color .10s ease, opacity .10s ease;
 }
 
 .cm-interactive:not(:disabled):hover {
@@ -30,7 +30,7 @@ button, a, [role="button"], select, input[type="button"], input[type="submit"] {
   background: currentColor;
   opacity: .18;
   transform: translate(-50%, -50%) scale(0);
-  animation: cm-ripple .48s ease-out forwards;
+  animation: cm-ripple .28s ease-out forwards;
 }
 
 @keyframes cm-ripple {
@@ -44,7 +44,7 @@ button, a, [role="button"], select, input[type="button"], input[type="submit"] {
 }
 
 .cm-message-enter {
-  animation: cm-message-enter .28s cubic-bezier(.2,.75,.25,1) both;
+  animation: cm-message-enter .18s cubic-bezier(.2,.75,.25,1) both;
 }
 
 @keyframes cm-panel-enter {
@@ -60,12 +60,12 @@ button, a, [role="button"], select, input[type="button"], input[type="submit"] {
 #account-menu:not(.hidden),
 [data-account-menu]:not(.hidden) {
   transform-origin: top right;
-  animation: cm-menu-enter .18s ease-out both;
+  animation: cm-menu-enter .12s ease-out both;
 }
 
 #mentor-panel:not(.hidden) {
   transform-origin: bottom right;
-  animation: cm-panel-enter .22s cubic-bezier(.2,.75,.25,1) both;
+  animation: cm-panel-enter .16s cubic-bezier(.2,.75,.25,1) both;
 }
 
 button:disabled, [role="button"][aria-disabled="true"] {
