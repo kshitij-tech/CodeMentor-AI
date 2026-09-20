@@ -195,7 +195,7 @@ def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retri
 def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
     api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
     if not api_key:
-        raise AIProviderError("GEMINI_API_KEY is not configured. Add your Gemini API key to the backend environment.")
+        raise AIProviderError("GEMINI_API_KEY is not configured. Set it in backend/.env (or the server environment) and restart FastAPI.")
     model = _normalize_model(os.getenv("AI_MODEL", DEFAULT_MODEL))
     fallback_model = _normalize_model(os.getenv("AI_FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL))
 
