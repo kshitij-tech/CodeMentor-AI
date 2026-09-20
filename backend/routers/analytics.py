@@ -28,6 +28,26 @@ def _utc_now() -> datetime:
 def _naive_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=None) if value.tzinfo else value
 
+TOPIC_ALIASES = {
+    "Arrays & Strings": {"array", "arrays", "strings", "string"},
+    "Hashing & Hash Maps": {"hashing", "hash table", "hash tables", "map", "maps", "unordered map", "data structures"},
+    "Two Pointers": {"two pointers", "two-pointer", "two pointer"},
+    "Binary Search": {"binary search", "binary_search"},
+    "Linked Lists": {"linked list", "linked lists"},
+    "Trees & BST": {"tree", "trees", "binary search tree", "bst"},
+    "Graphs (BFS/DFS)": {"graph", "graphs", "bfs", "dfs", "shortest paths"},
+    "Dynamic Programming": {"dp", "dynamic programming"},
+    "Backtracking": {"backtracking"},
+    "Greedy Algorithms": {"greedy"},
+}
+
+def _problem_matches_topic(problem: Problem, topic: str) -> bool:
+    if topic in (problem.topics or []):
+        return True
+    aliases = TOPIC_ALIASES.get(topic, set())
+    normalized = {str(value).strip().lower() for value in (problem.topics or [])}
+    return bool(normalized & aliases)
+
 @router.get("/summary")
 def analytics_summary(
     current_user: User = Depends(get_current_user),
@@ -78,7 +98,7 @@ def analytics_summary(
 
     topic_stats = []
     for topic in TOPICS:
-        topic_attempts = [pair for pair in attempts if topic in (pair[1].topics or [])]
+        topic_attempts = [pair for pair in attempts if _problem_matches_topic(pair[1], topic)]
         topic_problem_ids = {problem.id for _, problem in topic_attempts}
         topic_solved_ids = {
             attempt.problem_id
