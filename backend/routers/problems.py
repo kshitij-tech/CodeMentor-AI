@@ -1,4 +1,5 @@
 from collections import Counter
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -8,6 +9,15 @@ from backend.models import Problem, User
 from backend.routers.auth import get_current_user
 
 router = APIRouter(prefix="/problems", tags=["Problems"])
+
+
+_CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+
+
+def _is_english_problem(title: str | None, description: str | None) -> bool:
+    text = f"{title or ''}\n{description or ''}"
+    return not _CJK_RE.search(text)
+
 
 
 def serialize(problem: Problem) -> dict:
@@ -67,6 +77,7 @@ def list_problems(
             Problem.title,
             Problem.difficulty,
             Problem.topics,
+            Problem.description,
             Problem.source,
             Problem.external_id,
             Problem.external_url,
@@ -83,16 +94,19 @@ def list_problems(
     if search:
         query = query.filter(Problem.title.ilike(f"%{search.strip()}%"))
 
-    if topic:
-        # SQLite JSON portability: only lightweight list columns are fetched.
-        candidates = query.all()
-        matching = [row for row in candidates if topic in (row.topics or [])]
-        total = len(matching)
-        page = matching[offset : offset + limit]
-    else:
-        total = query.count()
-        page = query.offset(offset).limit(limit).all()
+    # Existing databases may contain non-English records from earlier imports.
+    # Filter them here so the Practice catalogue stays English-only.
+    candidates = query.all()
+    candidates = [
+        row for row in candidates
+        if _is_english_problem(row.title, row.description)
+    ]
 
+    if topic:
+        candidates = [row for row in candidates if topic in (row.topics or [])]
+
+    total = len(candidates)
+    page = candidates[offset : offset + limit]
     items = [serialize_list_row(row) for row in page]
 
     return {
@@ -112,9 +126,16 @@ def list_problem_topics(
     topic_counts: Counter[str] = Counter()
     difficulty_counts: Counter[str] = Counter()
 
-    rows = db.query(Problem.topics, Problem.difficulty).yield_per(1000)
+    rows = db.query(
+        Problem.topics,
+        Problem.difficulty,
+        Problem.title,
+        Problem.description,
+    ).yield_per(1000)
     total = 0
-    for topics, difficulty in rows:
+    for topics, difficulty, title, description in rows:
+        if not _is_english_problem(title, description):
+            continue
         total += 1
         difficulty_counts[str(difficulty)] += 1
         for topic in topics or []:
