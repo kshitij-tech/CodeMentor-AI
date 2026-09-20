@@ -1,0 +1,85 @@
+/* Shared CodeMentor AI interaction layer */
+button, a, [role="button"], select, input[type="button"], input[type="submit"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cm-interactive {
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease, background-color .16s ease, opacity .16s ease;
+}
+
+.cm-interactive:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.cm-interactive:not(:disabled):active,
+.cm-click-pop {
+  transform: scale(.97);
+}
+
+.cm-ripple-host {
+  position: relative;
+  overflow: hidden;
+}
+
+.cm-ripple {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  pointer-events: none;
+  background: currentColor;
+  opacity: .18;
+  transform: translate(-50%, -50%) scale(0);
+  animation: cm-ripple .48s ease-out forwards;
+}
+
+@keyframes cm-ripple {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: .20; }
+  100% { transform: translate(-50%, -50%) scale(15); opacity: 0; }
+}
+
+@keyframes cm-message-enter {
+  0% { opacity: 0; transform: translateY(10px) scale(.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.cm-message-enter {
+  animation: cm-message-enter .28s cubic-bezier(.2,.75,.25,1) both;
+}
+
+@keyframes cm-panel-enter {
+  0% { opacity: 0; transform: translateY(10px) scale(.985); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cm-menu-enter {
+  0% { opacity: 0; transform: translateY(-5px) scale(.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+#account-menu:not(.hidden),
+[data-account-menu]:not(.hidden) {
+  transform-origin: top right;
+  animation: cm-menu-enter .18s ease-out both;
+}
+
+#mentor-panel:not(.hidden) {
+  transform-origin: bottom right;
+  animation: cm-panel-enter .22s cubic-bezier(.2,.75,.25,1) both;
+}
+
+button:disabled, [role="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cm-interactive,
+  .cm-ripple,
+  .cm-message-enter,
+  #account-menu:not(.hidden),
+  [data-account-menu]:not(.hidden),
+  #mentor-panel:not(.hidden) {
+    animation: none !important;
+    transition: none !important;
+  }
+}
