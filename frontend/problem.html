@@ -298,6 +298,7 @@ const LANG_IDS={Python:'python','C++':'cpp',Java:'java',JavaScript:'javascript',
 const FILE_NAMES={Python:'solution.py','C++':'solution.cpp',Java:'Solution.java',JavaScript:'solution.js',TypeScript:'solution.ts',Go:'solution.go',Rust:'solution.rs'};
 let problems=[];
 let current=null;
+let currentUserId=null;
 let problemTotal=0;
 let problemOffset=0;
 let problemHasMore=false;
@@ -321,7 +322,8 @@ function toast(msg){const el=$('toast');el.textContent=msg;el.classList.remove('
 function requireAuth(){if(!token()){location.replace('auth.html');return false}return true}
 
 function starterCode(problem,language){return (problem?.starter_code||{})[language]||''}
-function userStoragePrefix(){return 'cm_user_'+String(currentUserId||'unknown')}\nfunction draftKey(){return current?userStoragePrefix()+'_code_draft_'+current.slug+'_'+$('language').value:null}
+function userStoragePrefix(){return 'cm_user_'+String(currentUserId||'unknown')}
+function draftKey(){return current?userStoragePrefix()+'_code_draft_'+current.slug+'_'+$('language').value:null}
 function loadDraftOrStarter(){
   if(!current)return;
   const key=draftKey();
