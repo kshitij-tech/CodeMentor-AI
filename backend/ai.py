@@ -274,7 +274,8 @@ Keep the answer concise, educational, and conversational.
         },
     }
 
-    try:        payload = _request_gemini(
+    try:
+        payload = _request_gemini(
             model=model,
             api_key=api_key,
             body=body,
