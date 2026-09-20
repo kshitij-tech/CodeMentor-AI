@@ -260,7 +260,7 @@ Keep the answer concise, educational, and conversational.
                     },
                     "patch": {
                         "type": "OBJECT",
-                        "description": "Return a minimal patch object. Use start_line=0, end_line=0, replacement="" when no patch is needed.",
+                        "description": "Return a minimal patch object. Use zero line numbers and an empty replacement when no patch is needed.",
                         "properties": {
                             "start_line": {"type": "INTEGER"},
                             "end_line": {"type": "INTEGER"},
@@ -270,8 +270,11 @@ Keep the answer concise, educational, and conversational.
                     },
                 },
                 "required": ["answer", "error_line", "patch"],
-            },:
-        payload = _request_gemini(
+            },
+        },
+    }
+
+    try:        payload = _request_gemini(
             model=model,
             api_key=api_key,
             body=body,
