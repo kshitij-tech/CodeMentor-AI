@@ -1023,8 +1023,15 @@ async function load(){
       fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
     ]);
     if(problemsRes.status===401||profileRes.status===401||userRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
-    if(!problemsRes.ok)throw new Error('Unable to load problems.');
-    const data=await problemsRes.json();problems=data.items||[];
+    if(!problemsRes.ok){
+      let detail='';
+      try{const errorBody=await problemsRes.json();detail=errorBody.detail?' — '+errorBody.detail:'';}catch(_err){}
+      throw new Error('Unable to load problems (HTTP '+problemsRes.status+')'+detail);
+    }
+    const data=await problemsRes.json();
+    if(!Array.isArray(data.items))throw new Error('Problems API returned an unexpected response shape.');
+    problems=data.items;
+    $('problem-count').textContent=String(problems.length);
     const profile=profileRes.ok?await profileRes.json():{};
     const user=userRes.ok?await userRes.json():{};
     $('account-name').textContent=profile.full_name||'CodeMentor User';
