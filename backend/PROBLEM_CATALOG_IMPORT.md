@@ -81,7 +81,7 @@ Then import the training catalog:
 
     python -m backend.sync_code_contests
 
-The importer streams the dataset instead of loading the full corpus into memory. It keeps English descriptions, skips CJK-heavy or file-based-I/O problems, stores public tests as samples, and stores private/generated tests as hidden tests. By default it stores up to 50 hidden tests per problem; use `--max-secret-tests 0` to retain all available hidden tests.
+The importer streams the dataset instead of loading the full corpus into memory and commits small batches suitable for the default SQLite development database. It keeps English descriptions, skips CJK-heavy or file-based-I/O problems, stores public tests as samples, and stores private/generated tests as hidden tests. By default it stores up to 10 hidden tests per problem; use `--max-secret-tests 0` to retain all available hidden tests. The importer also caps public tests at 8.
 
 Useful options:
 
