@@ -16,8 +16,10 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 .scroll{scrollbar-width:thin;scrollbar-color:#94a3b8 transparent}
 .split{cursor:col-resize}
 .mentor-msg{white-space:pre-wrap;line-height:1.6}
-#results-resizer{touch-action:none}
-#results-resizer:active{background:#6366f1}
+#results-resizer{touch-action:none;cursor:row-resize;user-select:none}
+#results-resizer:hover,#results-resizer:active{background:#6366f1}
+#results{min-height:140px}
+#result-body{min-height:0;overscroll-behavior:contain}
 </style>
   <link rel="stylesheet" href="ui.css">
   <script src="ui.js" defer></script>
@@ -82,7 +84,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 
   <div id="splitter" class="split bg-slate-200 hover:bg-indigo-400"></div>
 
-  <section class="bg-[#0b1020] text-slate-100 min-w-0 flex flex-col">
+  <section class="bg-[#0b1020] text-slate-100 min-w-0 min-h-0 flex flex-col">
     <div class="h-11 shrink-0 bg-[#111827] border-b border-white/10 px-3 flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="mono text-xs text-slate-300">solution</span>
@@ -95,7 +97,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
     </div>
     <div id="editor" class="flex-1 min-h-0"></div>
 
-    <div id="results" class="hidden shrink-0 border-t border-white/10 bg-[#0f172a] max-h-[60vh] flex flex-col" style="height:260px">
+    <div id="results" class="hidden shrink-0 min-h-0 border-t border-white/10 bg-[#0f172a] max-h-[70vh] flex flex-col" style="height:260px">
       <div id="results-resizer" class="h-1.5 shrink-0 cursor-row-resize bg-slate-800 hover:bg-indigo-500 transition-colors" title="Drag to resize results"></div>
       <div class="h-10 px-3 flex items-center justify-between border-b border-white/10">
         <div class="flex items-center gap-2">
@@ -104,7 +106,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
         </div>
         <button id="clear-results" class="text-[10px] text-slate-500 hover:text-slate-200">Clear</button>
       </div>
-      <div id="result-body" class="overflow-y-auto scroll p-3 space-y-2"></div>
+      <div id="result-body" class="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll p-3 space-y-2"></div>
     </div>
 
     <div class="h-12 shrink-0 bg-[#111827] border-t border-white/10 px-3 flex items-center justify-between">
@@ -388,38 +390,79 @@ $('splitter').addEventListener('pointerdown',e=>{
 function initResultsResizer(){
   const results=$('results');
   const handle=$('results-resizer');
-  if(!results||!handle)return;
-  const saved=Number(localStorage.getItem('cm_results_height_'+userId));
+  const main=document.querySelector('main');
+  if(!results||!handle||!main)return;
+
+  const storageKey=()=> 'cm_results_height_'+(userId||'unknown');
+  const getMaxHeight=()=>Math.max(
+    180,
+    Math.min(
+      Math.floor(main.getBoundingClientRect().height*.70),
+      Math.floor(window.innerHeight*.70)
+    )
+  );
+
+  const saved=Number(localStorage.getItem(storageKey()));
   if(Number.isFinite(saved)&&saved>=140){
-    results.style.height=Math.min(saved,Math.floor(window.innerHeight*.6))+'px';
+    results.style.height=Math.min(saved,getMaxHeight())+'px';
   }
-  let dragging=false,startY=0,startHeight=260;
+
+  let dragging=false;
+  let startY=0;
+  let startHeight=260;
+
   const move=e=>{
     if(!dragging)return;
-    const next=Math.max(140,Math.min(Math.floor(window.innerHeight*.65),startHeight+(startY-e.clientY)));
-    results.style.height=next+'px';
+    const next=Math.max(140,Math.min(getMaxHeight(),startHeight+(startY-e.clientY)));
+    results.style.height=Math.round(next)+'px';
     editor?.layout();
   };
+
   const stop=()=>{
     if(!dragging)return;
     dragging=false;
-    localStorage.setItem('cm_results_height_'+userId,String(Math.round(results.getBoundingClientRect().height)));
+    document.body.style.userSelect='';
+    localStorage.setItem(
+      storageKey(),
+      String(Math.round(results.getBoundingClientRect().height))
+    );
     window.removeEventListener('pointermove',move);
     window.removeEventListener('pointerup',stop);
+    window.removeEventListener('pointercancel',stop);
   };
+
   handle.addEventListener('pointerdown',e=>{
+    if(e.button!==0)return;
     e.preventDefault();
     dragging=true;
     startY=e.clientY;
     startHeight=results.getBoundingClientRect().height;
+    document.body.style.userSelect='none';
     window.addEventListener('pointermove',move);
     window.addEventListener('pointerup',stop);
+    window.addEventListener('pointercancel',stop);
   });
 }
 
-initResultsResizer();
+function restoreResultsHeight(){
+  const results=$('results');
+  if(!results)return;
+  const saved=Number(localStorage.getItem('cm_results_height_'+(userId||'unknown')));
+  if(Number.isFinite(saved)&&saved>=140){
+    const main=document.querySelector('main');
+    const max=Math.max(180,Math.min(
+      Math.floor(main.getBoundingClientRect().height*.70),
+      Math.floor(window.innerHeight*.70)
+    ));
+    results.style.height=Math.min(saved,max)+'px';
+  }
+}
+
 initEditor();
-load();
+load().then(()=>{
+  initResultsResizer();
+  restoreResultsHeight();
+});
 </script>
 </body>
 </html>
