@@ -37,17 +37,52 @@ def list_problems(
     topic: str | None = Query(default=None),
     difficulty: str | None = Query(default=None),
     source: str | None = Query(default=None),
+    search: str | None = Query(default=None, min_length=1, max_length=120),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    problems = db.query(Problem).order_by(Problem.id.asc()).all()
-    if topic:
-        problems = [p for p in problems if topic in (p.topics or [])]
+    query = db.query(Problem).order_by(Problem.id.asc())
+
     if difficulty:
-        problems = [p for p in problems if p.difficulty.lower() == difficulty.lower()]
+        query = query.filter(Problem.difficulty.ilike(difficulty))
+
     if source:
-        problems = [p for p in problems if p.source.lower() == source.lower()]
-    return {"items": [serialize(problem) for problem in problems]}
+        query = query.filter(Problem.source.ilike(source))
+
+    if search:
+        pattern = f"%{search.strip()}%"
+        query = query.filter(
+            Problem.title.ilike(pattern)
+            | Problem.description.ilike(pattern)
+        )
+
+    if topic:
+        # JSON topic filtering is kept in Python for SQLite/PostgreSQL parity.
+        total_candidates = query.all()
+        filtered = [p for p in total_candidates if topic in (p.topics or [])]
+        total = len(filtered)
+        page = filtered[offset:offset + limit]
+    else:
+        total = query.count()
+        page = query.offset(offset).limit(limit).all()
+
+    # Problem lists never need hidden test cases or package internals.
+    items = []
+    for problem in page:
+        item = serialize(problem)
+        item.pop("test_cases", None)
+        item.pop("package_metadata", None)
+        items.append(item)
+
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + len(items) < total,
+    }
 
 @router.get("/{slug}")
 def get_problem(
