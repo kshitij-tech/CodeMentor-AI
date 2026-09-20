@@ -73,20 +73,23 @@ def _difficulty(row: dict[str, Any]) -> str:
     return "Unknown"
 
 
-def _test_pairs(value: Any) -> list[dict[str, str]]:
+def _test_pairs(value: Any, limit: int | None = None) -> list[dict[str, str]]:
     # The dataset can expose nested test data either as a list of records
     # or as {input: [...], output: [...]} depending on the dataset reader.
+    pairs: list[dict[str, str]] = []
+
     if isinstance(value, list):
-        pairs = []
         for item in value:
             if isinstance(item, dict):
-                pairs.append(
-                    {
-                        "input": str(item.get("input") or ""),
-                        "output": str(item.get("output") or ""),
-                    }
-                )
-        return [item for item in pairs if item["input"] or item["output"]]
+                pair = {
+                    "input": str(item.get("input") or ""),
+                    "output": str(item.get("output") or ""),
+                }
+                if pair["input"] or pair["output"]:
+                    pairs.append(pair)
+                    if limit is not None and len(pairs) >= limit:
+                        break
+        return pairs
 
     if isinstance(value, dict):
         inputs = value.get("input") or []
@@ -95,12 +98,18 @@ def _test_pairs(value: Any) -> list[dict[str, str]]:
             inputs = [inputs]
         if isinstance(outputs, str):
             outputs = [outputs]
-        return [
-            {"input": str(inp), "output": str(outputs[index]) if index < len(outputs) else ""}
-            for index, inp in enumerate(inputs)
-        ]
 
-    return []
+        for index, inp in enumerate(inputs):
+            pair = {
+                "input": str(inp),
+                "output": str(outputs[index]) if index < len(outputs) else "",
+            }
+            if pair["input"] or pair["output"]:
+                pairs.append(pair)
+                if limit is not None and len(pairs) >= limit:
+                    break
+
+    return pairs
 
 
 def _time_limit_ms(value: Any) -> int:
@@ -140,9 +149,10 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         else f"{source_label.lower()}:{_slugify(title)}"
     )[:120]
 
-    public = _test_pairs(row.get("public_tests"))
-    private = _test_pairs(row.get("private_tests"))
-    generated = _test_pairs(row.get("generated_tests"))
+    public = _test_pairs(row.get("public_tests"), limit=8)
+    private = _test_pairs(row.get("private_tests"), limit=max_secret_tests)
+    remaining = max(0, max_secret_tests - len(private)) if max_secret_tests > 0 else None
+    generated = _test_pairs(row.get("generated_tests"), limit=remaining)
 
     if not public and not private and not generated:
         return None
@@ -170,8 +180,6 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
     ]
 
     secret_pool = private + generated
-    if max_secret_tests > 0:
-        secret_pool = secret_pool[:max_secret_tests]
 
     test_cases = sample_test_cases + [
         {
@@ -325,10 +333,15 @@ def main() -> None:
     parser.add_argument(
         "--max-secret-tests",
         type=int,
-        default=50,
+        default=10,
         help="Maximum private/generated tests stored per problem; 0 means all.",
     )
-    parser.add_argument("--batch-size", type=int, default=100)
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=10,
+        help="Commit after this many problems to keep SQLite writes small.",
+    )
     args = parser.parse_args()
 
     splits = ["train", "valid", "test"] if args.split == "all" else [args.split]
