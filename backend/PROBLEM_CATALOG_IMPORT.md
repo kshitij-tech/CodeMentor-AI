@@ -68,3 +68,15 @@ CodeMentor reads `testdata.yaml` from `data/`, `data/sample/`, `data/secret/`, a
 For custom pass-fail validators, the importer supports Python validators, prebuilt executables, Windows batch/cmd validators, and single-file C++ validators when `g++` is available. The validator is invoked with the input file, answer file, feedback directory, configured arguments, and the contestant output on stdin. Exit code 42 means Accepted and 43 means Wrong Answer; other exit codes are reported as Judge Error. This matches the Kattis/ICPC output-validator contract. citeturn330198view0turn948456search0
 
 The local validator runner is intended for development. Production execution still needs the stronger OS/container isolation that a system such as DOMjudge provides for contestant and validator processes. citeturn948456search0turn281698search4
+
+## Import the complete OJ Lab package collection
+
+The repository currently contains 14 problem packages under `problems/`. Because the source repository is MIT-licensed, CodeMentor includes a one-shot synchronizer for that complete collection. citeturn933651search0turn601754view0
+
+From the project root:
+
+    python -m backend.sync_ojlab_problem_packages
+
+The command downloads the current `oj-lab/problem-packages` archive, discovers every directory containing `problem.yaml`, and imports them all. Imported package files are persisted in the local `.codementor_problem_packages/` directory and are not committed to Git.
+
+The command prints progress for each package and returns a non-zero exit code if any package failed to import.
