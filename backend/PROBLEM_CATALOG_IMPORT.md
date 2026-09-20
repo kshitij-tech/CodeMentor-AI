@@ -69,14 +69,26 @@ For custom pass-fail validators, the importer supports Python validators, prebui
 
 The local validator runner is intended for development. Production execution still needs the stronger OS/container isolation that a system such as DOMjudge provides for contestant and validator processes. citeturn948456search0turn281698search4
 
-## Import the complete OJ Lab package collection
+## Bulk English problem catalog: DeepMind CodeContests
 
-The repository currently contains 14 problem packages under `problems/`. Because the source repository is MIT-licensed, CodeMentor includes a one-shot synchronizer for that complete collection. citeturn933651search0turn601754view0
+For a larger English-language catalog, CodeMentor includes a streaming importer for the DeepMind CodeContests dataset. The dataset contains competitive-programming problems with paired public, private, and generated input/output tests. Its dataset card identifies the dataset license as CC BY 4.0 and notes that third-party source terms may also apply, so attribution and source-specific restrictions must be preserved when redistributing content. citeturn505255search0turn865062view0
 
-From the project root:
+Install the optional importer dependency:
 
-    python -m backend.sync_ojlab_problem_packages
+    pip install -r backend/requirements-problem-import.txt
 
-The command downloads the current `oj-lab/problem-packages` archive, discovers every directory containing `problem.yaml`, and imports them all. Imported package files are persisted in the local `.codementor_problem_packages/` directory and are not committed to Git.
+Then import the training catalog:
 
-The command prints progress for each package and returns a non-zero exit code if any package failed to import.
+    python -m backend.sync_code_contests
+
+The importer streams the dataset instead of loading the full corpus into memory. It keeps English descriptions, skips CJK-heavy or file-based-I/O problems, stores public tests as samples, and stores private/generated tests as hidden tests. By default it stores up to 50 hidden tests per problem; use `--max-secret-tests 0` to retain all available hidden tests.
+
+Useful options:
+
+    python -m backend.sync_code_contests --max-problems 100
+    python -m backend.sync_code_contests --split valid
+    python -m backend.sync_code_contests --max-secret-tests 0
+
+The published dataset metadata lists 13,328 training examples, 117 validation examples, and 165 test examples. citeturn657724search0turn657724search5
+
+The existing `backend/sync_ojlab_problem_packages.py` remains available as a small MIT-licensed package-format compatibility source; packages without an English statement are skipped.
