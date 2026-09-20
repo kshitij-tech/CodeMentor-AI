@@ -169,6 +169,6 @@ def get_problem(
     db: Session = Depends(get_db),
 ):
     problem = db.query(Problem).filter(Problem.slug == slug).first()
-    if problem is None:
+    if problem is None or not _is_english_problem(problem.title, problem.description):
         raise HTTPException(status_code=404, detail="Problem not found.")
     return serialize(problem)
