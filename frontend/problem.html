@@ -16,6 +16,8 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 .scroll{scrollbar-width:thin;scrollbar-color:#94a3b8 transparent}
 .split{cursor:col-resize}
 .mentor-msg{white-space:pre-wrap;line-height:1.6}
+#results-resizer{touch-action:none}
+#results-resizer:active{background:#6366f1}
 </style>
   <link rel="stylesheet" href="ui.css">
   <script src="ui.js" defer></script>
@@ -26,9 +28,9 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
     <button id="back-btn" class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center" title="Back to Practice">
       <span class="material-symbols-outlined text-[19px]">arrow_back</span>
     </button>
-    <div class="font-bold">CodeMentor <span class="text-indigo-600">AI</span></div>
+    <a href="dashboard.html" class="font-bold hover:text-indigo-600" title="Go to Dashboard">CodeMentor <span class="text-indigo-600">AI</span></a>
     <span class="text-slate-300">/</span>
-    <span class="text-sm font-semibold text-slate-600">Problem Solver</span>
+    <a href="practice.html" class="text-sm font-semibold text-slate-600 hover:text-indigo-600" title="Go to Problems">Problems</a>
     <span id="header-title" class="hidden md:block text-xs text-slate-400 truncate ml-2">Loading…</span>
   </div>
   <div class="flex items-center gap-2">
@@ -93,7 +95,8 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
     </div>
     <div id="editor" class="flex-1 min-h-0"></div>
 
-    <div id="results" class="hidden shrink-0 border-t border-white/10 bg-[#0f172a] max-h-[34vh] flex flex-col">
+    <div id="results" class="hidden shrink-0 border-t border-white/10 bg-[#0f172a] max-h-[60vh] flex flex-col" style="height:260px">
+      <div id="results-resizer" class="h-1.5 shrink-0 cursor-row-resize bg-slate-800 hover:bg-indigo-500 transition-colors" title="Drag to resize results"></div>
       <div class="h-10 px-3 flex items-center justify-between border-b border-white/10">
         <div class="flex items-center gap-2">
           <span class="text-xs font-semibold">Results</span>
@@ -118,11 +121,11 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
   </section>
 </main>
 
-<button id="mentor-open" class="fixed right-5 bottom-5 z-40 px-4 py-3 rounded-full bg-indigo-600 text-white text-xs font-semibold shadow-lg flex items-center gap-2">
+<button id="mentor-open" class="fixed right-5 bottom-20 z-40 px-4 py-3 rounded-full bg-indigo-600 text-white text-xs font-semibold shadow-lg flex items-center gap-2">
   <span class="material-symbols-outlined text-[18px]">psychology</span> AI Mentor
 </button>
 
-<div id="mentor-panel" class="hidden fixed right-5 bottom-20 z-50 w-[390px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] bg-[#0f172a] text-white rounded-2xl border border-slate-700 shadow-2xl flex-col">
+<div id="mentor-panel" class="hidden fixed right-5 bottom-36 z-50 w-[390px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] bg-[#0f172a] text-white rounded-2xl border border-slate-700 shadow-2xl flex-col">
   <div class="h-11 shrink-0 px-3 bg-[#131d33] border-b border-slate-700 flex items-center justify-between">
     <span class="font-semibold text-xs">AI Mentor</span>
     <div class="flex items-center gap-1">
@@ -195,7 +198,7 @@ function renderProblem(){
   $('difficulty').textContent=problem.difficulty||'Unknown';
   $('difficulty').className='px-2 py-1 rounded text-[10px] font-semibold '+difficultyClass(problem.difficulty);
   $('source').textContent=problem.source||'catalog';
-  $('topics').innerHTML=(problem.topics||[]).map(t=>'<span class="px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px]">'+esc(t)+'</span>').join('');
+  $('topics').innerHTML=(problem.topics||[]).map(t=>'<a href="practice.html?topic='+encodeURIComponent(t)+'" class="px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] hover:bg-indigo-100 hover:text-indigo-700" title="View '+esc(t)+' problems">'+esc(t)+'</a>').join('');
   $('description').textContent=problem.description||'No statement available.';
   $('examples').innerHTML=(problem.examples||[]).map((e,i)=>'<div class="rounded-xl bg-slate-50 border border-slate-200 p-3"><div class="mono text-[9px] text-indigo-600 uppercase">Example '+(i+1)+'</div><div class="mt-2 text-[11px]"><div><b>Input:</b> <code>'+esc(e.input)+'</code></div><div class="mt-1"><b>Output:</b> <code>'+esc(e.output)+'</code></div></div></div>').join('');
   const constraints=problem.constraints||[];
@@ -382,6 +385,39 @@ $('splitter').addEventListener('pointerdown',e=>{
   const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};
   window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);
 });
+function initResultsResizer(){
+  const results=$('results');
+  const handle=$('results-resizer');
+  if(!results||!handle)return;
+  const saved=Number(localStorage.getItem('cm_results_height_'+userId));
+  if(Number.isFinite(saved)&&saved>=140){
+    results.style.height=Math.min(saved,Math.floor(window.innerHeight*.6))+'px';
+  }
+  let dragging=false,startY=0,startHeight=260;
+  const move=e=>{
+    if(!dragging)return;
+    const next=Math.max(140,Math.min(Math.floor(window.innerHeight*.65),startHeight+(startY-e.clientY)));
+    results.style.height=next+'px';
+    editor?.layout();
+  };
+  const stop=()=>{
+    if(!dragging)return;
+    dragging=false;
+    localStorage.setItem('cm_results_height_'+userId,String(Math.round(results.getBoundingClientRect().height)));
+    window.removeEventListener('pointermove',move);
+    window.removeEventListener('pointerup',stop);
+  };
+  handle.addEventListener('pointerdown',e=>{
+    e.preventDefault();
+    dragging=true;
+    startY=e.clientY;
+    startHeight=results.getBoundingClientRect().height;
+    window.addEventListener('pointermove',move);
+    window.addEventListener('pointerup',stop);
+  });
+}
+
+initResultsResizer();
 initEditor();
 load();
 </script>
