@@ -47,6 +47,8 @@ body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!impo
 .mentor-panel-fullscreen .mentor-user .mentor-bubble{font-size:14px}
 .cm-error-line{background:rgba(239,68,68,.20)!important;border-left:3px solid #ef4444}
 .cm-error-glyph{border-left:3px solid #ef4444;margin-left:3px}
+#problem-explorer,#problem-browser-toggle{display:none!important}
+#workspace-grid{grid-template-columns:var(--statement-width) 6px minmax(0,1fr)!important}
 .mentor-patch{margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#cbd5e1;font-size:10px}
 .mentor-patch button{padding:5px 8px;border-radius:6px;background:#4338ca;color:#fff;font-size:10px;font-weight:600}
 .mentor-patch button:hover{background:#4f46e5}
@@ -1091,46 +1093,67 @@ async function load(){
       fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
       fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
     ]);
+
     if(profileRes.status===401||userRes.status===401){
-      localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return;
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace('auth.html');
+      return;
     }
+
     const profile=profileRes.ok?await profileRes.json():{};
     const user=userRes.ok?await userRes.json():{};
+    currentUserId=String(user.id||'unknown');
+
     $('account-name').textContent=profile.full_name||'CodeMentor User';
     $('account-email').textContent=user.email||'Signed in';
-    if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language))$('language').value=profile.preferred_language;
+
+    if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language)){
+      $('language').value=profile.preferred_language;
+    }
     $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
 
     const params=new URLSearchParams(location.search);
+    const requested=params.get('problem');
     pendingMentorOpen=params.get('mentor')==='1';
     pendingMentorQuestion=(params.get('question')||'').trim()||null;
 
-    await fetchProblems({reset:true});
+    if(!requested){
+      location.replace('practice.html');
+      return;
+    }
 
-    currentUserId=String(user.id||'unknown');
-    const requested=params.get('problem')||localStorage.getItem(userStoragePrefix()+'_current_problem');
-    let chosen=requested?problems.find(p=>p.slug===requested):null;
-    if(requested&&!chosen){
+    const response=await fetch(API+'/problems/'+encodeURIComponent(requested),{
+      headers:{Authorization:'Bearer '+token()}
+    });
+
+    if(response.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace('auth.html');
+      return;
+    }
+
+    if(!response.ok){
+      let detail='';
       try{
-        const detailRes=await fetch(API+'/problems/'+encodeURIComponent(requested),{headers:{Authorization:'Bearer '+token()}});
-        if(detailRes.ok)chosen=await detailRes.json();
+        const body=await response.json();
+        detail=body.detail?' — '+body.detail:'';
       }catch(_err){}
+      throw new Error('Unable to load this problem (HTTP '+response.status+')'+detail);
     }
 
-    if(chosen){
-      selectProblem(chosen);
-      maybeOpenMentorFromDashboard();
-    }else{
-      $('header-problem').textContent='Choose a problem';
-      $('execution-status').textContent='Choose a problem to begin.';
-      setProblemExplorer(true);
-    }
+    const problem=await response.json();
+    selectProblem(problem);
+    maybeOpenMentorFromDashboard();
   }catch(err){
     console.error('Problem loading failed:',err);
-    $('problem-count').textContent='0';
-    $('problem-list').innerHTML='<div class="p-4 text-xs text-rose-600">'+esc(err.message||'Unable to load problems.')+'</div>';
+    $('problem-title').textContent='Unable to load problem';
+    $('problem-description').textContent=err.message||'Unable to load the requested problem.';
+    $('problem-empty').classList.add('hidden');
+    $('problem-details').classList.remove('hidden');
+    $('execution-status').textContent='Problem loading failed.';
   }
 }
+
 
 initMonaco();
 initWorkspaceSplitter();
