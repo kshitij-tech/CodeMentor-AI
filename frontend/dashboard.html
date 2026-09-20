@@ -50,7 +50,7 @@ tailwind.config = {
         <div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
         <span class="font-bold tracking-tight">CodeMentor <span class="text-primary">AI</span></span>
       </a>
-      <nav class="hidden xl:flex items-center gap-1 p-1 bg-surface-container-low rounded-xl">
+      <nav class="flex xl:hidden items-center gap-1 p-1 bg-surface-container-low rounded-xl overflow-x-auto max-w-[58vw]">
         <button data-nav="dashboard" class="nav-top px-3 py-1.5 rounded-lg bg-primary-container text-on-primary text-sm font-medium">Dashboard</button>
         <button data-nav="practice" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Practice</button>
         <button data-nav="analytics" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Analytics</button>
@@ -97,9 +97,9 @@ tailwind.config = {
     </div>
     <nav class="flex flex-col gap-1">
       <button data-side="dashboard" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary-container text-on-primary text-sm font-medium text-left"><span class="material-symbols-outlined">space_dashboard</span>Overview</button>
-      <button data-side="practice" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">code</span>Live Practice</button>
-      <button data-side="mentor" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">smart_toy</span>AI Copilot Sessions</button>
-      <button data-side="analytics" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">monitoring</span>Skill Graph</button>
+      <button data-side="practice" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">code</span>Practice</button>
+      <button data-side="mentor" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">smart_toy</span>AI Mentor</button>
+      <button data-side="analytics" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">monitoring</span>Analytics</button>
       <button data-side="career" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">badge</span>Interview Prep</button>
     </nav>
   </div>
@@ -314,7 +314,10 @@ function startRecommendation(){
 function handleAction(action){
   if(action==='problem') startRecommendation();
   else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
-  else if(action==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+  else if(action==='mentor'){
+    document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+    window.setTimeout(()=>document.getElementById('mentor-input')?.focus(),160);
+  }
   else if(action==='analytics') window.location.replace('analytics.html');
 }
 const skillCatalog = {
@@ -476,7 +479,10 @@ document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click'
 document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>{
   const target=b.dataset.nav||b.dataset.side;
   if(target==='practice') window.location.replace('practice.html');
-  else if(target==='mentor') document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+  else if(target==='mentor'){
+    document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
+    window.setTimeout(()=>document.getElementById('mentor-input')?.focus(),160);
+  }
   else if(target==='analytics') window.location.replace('analytics.html');
   else navNotice((b.textContent||'Module').trim());
 }));
