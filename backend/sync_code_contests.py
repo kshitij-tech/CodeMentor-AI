@@ -148,7 +148,24 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         return None
 
     samples = [
-        {"input": item["input"], "output": item["output"], "name": f"sample-{index + 1}"}
+        {
+            "input": item["input"],
+            "output": item["output"],
+            "name": f"sample-{index + 1}",
+        }
+        for index, item in enumerate(public[:8])
+    ]
+
+    sample_test_cases = [
+        {
+            "input": item["input"],
+            "expected_output": item["output"],
+            "visibility": "sample",
+            "name": f"sample-{index + 1}",
+            "validator_name": None,
+            "validator_flags": [],
+            "group": "sample",
+        }
         for index, item in enumerate(public[:8])
     ]
 
@@ -156,7 +173,7 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
     if max_secret_tests > 0:
         secret_pool = secret_pool[:max_secret_tests]
 
-    test_cases = samples + [
+    test_cases = sample_test_cases + [
         {
             "input": item["input"],
             "expected_output": item["output"],
@@ -168,14 +185,6 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         }
         for index, item in enumerate(secret_pool)
     ]
-
-    # Public tests need the same normalized schema as secret tests.
-    for index, item in enumerate(test_cases[: len(samples)]):
-        item["expected_output"] = item.pop("output")
-        item["visibility"] = "sample"
-        item["validator_name"] = None
-        item["validator_flags"] = []
-        item["group"] = "sample"
 
     if not test_cases:
         return None
