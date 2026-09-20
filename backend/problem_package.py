@@ -100,7 +100,7 @@ def _read_time_limit(files: dict[str, bytes], limits: dict[str, Any]) -> float:
 
 
 def _contains_cjk(value: str) -> bool:
-    return bool(re.search(r"[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]", value))
+    return bool(re.search(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]", value))
 
 
 def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
