@@ -12,9 +12,16 @@ DEFAULT_MODEL = "gemini-2.5-flash"
 DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash-lite"
 
 class AIProviderError(RuntimeError):
-    def __init__(self, message: str, *, retryable: bool = False):
+    def __init__(
+        self,
+        message: str,
+        *,
+        retryable: bool = False,
+        status_code: int | None = None,
+    ):
         super().__init__(message)
         self.retryable = retryable
+        self.status_code = status_code
 
 def _extract_text(payload: dict[str, Any]) -> str:
     if isinstance(payload.get("output_text"), str) and payload["output_text"].strip():
@@ -142,15 +149,46 @@ def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retri
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:1200]
-            last_error = "AI provider request failed ({}): {}".format(exc.code, detail)
-            if exc.code not in {500, 502, 503, 504}:
-                raise AIProviderError(last_error) from exc
-            if attempt >= max_retries:
-                raise AIProviderError(last_error, retryable=True) from exc
+            retryable = exc.code in {429, 500, 502, 503, 504}
+
+            if exc.code in {401, 403}:
+                last_error = (
+                    "Gemini rejected the API key or project permissions "
+                    f"(HTTP {exc.code}). Check GEMINI_API_KEY and the Google AI Studio project."
+                )
+            elif exc.code == 404:
+                last_error = (
+                    f"Gemini model '{model}' was not found or is unavailable "
+                    f"(HTTP 404)."
+                )
+            elif exc.code == 400:
+                last_error = (
+                    "Gemini rejected the mentor request (HTTP 400). "
+                    f"Provider detail: {detail}"
+                )
+            else:
+                last_error = "AI provider request failed ({}): {}".format(
+                    exc.code, detail
+                )
+
+            if not retryable or attempt >= max_retries:
+                raise AIProviderError(
+                    last_error,
+                    retryable=retryable,
+                    status_code=exc.code,
+                ) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
             last_error = "Unable to reach the AI provider."
             if attempt >= max_retries:
-                raise AIProviderError(last_error, retryable=True) from exc
+                raise AIProviderError(
+                    last_error,
+                    retryable=True,
+                ) from exc
+        except json.JSONDecodeError as exc:
+            raise AIProviderError(
+                "Gemini returned an unreadable HTTP response.",
+                status_code=None,
+            ) from exc
         time.sleep(min(8.0, 2 ** attempt))
     raise AIProviderError(last_error or "AI provider request failed after retries.")
 
@@ -282,17 +320,37 @@ Keep the answer concise, educational, and conversational.
             max_retries=2,
         )
     except AIProviderError as primary_error:
-        if not primary_error.retryable or fallback_model == model:
+        # A 400 here is commonly caused by structured-output/schema compatibility.
+        # Retry once without responseSchema before falling back to another model.
+        if primary_error.status_code == 400:
+            json_only_body = {
+                **body,
+                "generationConfig": {
+                    **body.get("generationConfig", {}),
+                },
+            }
+            json_only_body["generationConfig"].pop("responseSchema", None)
+            try:
+                payload = _request_gemini(
+                    model=model,
+                    api_key=api_key,
+                    body=json_only_body,
+                    max_retries=0,
+                )
+            except AIProviderError:
+                raise primary_error
+        elif not primary_error.retryable or fallback_model == model:
             raise
-        try:
-            payload = _request_gemini(
-                model=fallback_model,
-                api_key=api_key,
-                body=body,
-                max_retries=1,
-            )
-        except AIProviderError:
-            raise primary_error
+        else:
+            try:
+                payload = _request_gemini(
+                    model=fallback_model,
+                    api_key=api_key,
+                    body=body,
+                    max_retries=1,
+                )
+            except AIProviderError:
+                raise primary_error
 
     candidates = payload.get("candidates") or []
     if not candidates:
