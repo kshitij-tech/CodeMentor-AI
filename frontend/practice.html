@@ -273,7 +273,7 @@ $('load-more-btn').addEventListener('click',async()=>{
   await loadProblems({reset:false});
 });
 
-$('home-btn').addEventListener('click',()=>location.href='dashboard.html');
+document.querySelectorAll('[data-home-link]').forEach(el=>el.addEventListener('click',()=>location.href='dashboard.html'));
 $('account-btn').addEventListener('click',e=>{e.stopPropagation();const menu=$('account-menu');const open=!menu.classList.contains('hidden');menu.classList.toggle('hidden',open);$('account-btn').setAttribute('aria-expanded',String(!open))});
 document.addEventListener('click',e=>{const menu=$('account-menu');if(menu&&!menu.contains(e.target)){menu.classList.add('hidden');$('account-btn').setAttribute('aria-expanded','false')}});
 $('logout-btn').addEventListener('click',()=>{localStorage.removeItem(TOKEN_KEY);location.replace('auth.html')});
