@@ -90,16 +90,37 @@ def analytics_summary(
             for attempt, _ in topic_attempts
             if attempt.mode == "submit"
         ]
-        topic_accepted = [attempt for attempt in topic_submissions if attempt.status == "Accepted"]
-        mastery = round((len(topic_solved_ids) / len(topic_problem_ids)) * 100) if topic_problem_ids else 0
-        acceptance = round((len(topic_accepted) / len(topic_submissions)) * 100) if topic_submissions else 0
+        topic_accepted = [
+            attempt for attempt in topic_submissions
+            if attempt.status == "Accepted"
+        ]
+
+        attempted_count = len(topic_problem_ids)
+        solved_count = len(topic_solved_ids)
+        submission_count = len(topic_submissions)
+        acceptance = (
+            round((len(topic_accepted) / submission_count) * 100)
+            if submission_count else 0
+        )
+
+        # Mastery is an evidence-weighted skill estimate, not simply
+        # solved/attempted. A single successful problem therefore cannot
+        # produce 100%. The evidence factor grows with distinct problems
+        # practiced and reaches full weight after 10 distinct problems.
+        solve_rate = (solved_count / attempted_count) if attempted_count else 0.0
+        submission_success = (len(topic_accepted) / submission_count) if submission_count else 0.0
+        evidence = min(1.0, attempted_count / 10.0)
+        raw_mastery = (0.70 * solve_rate + 0.30 * submission_success) * 100
+        mastery = round(raw_mastery * evidence) if attempted_count else 0
+
         topic_stats.append({
             "topic": topic,
-            "attempted_problems": len(topic_problem_ids),
-            "solved_problems": len(topic_solved_ids),
-            "submissions": len(topic_submissions),
+            "attempted_problems": attempted_count,
+            "solved_problems": solved_count,
+            "submissions": submission_count,
             "acceptance_rate": acceptance,
             "mastery": mastery,
+            "mastery_confidence": round(evidence * 100),
         })
 
     daily = []
