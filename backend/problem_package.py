@@ -99,32 +99,55 @@ def _read_time_limit(files: dict[str, bytes], limits: dict[str, Any]) -> float:
         return 2.0
 
 
-def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
-    candidates = ["problem.html", "problem.md", "problem.txt"]
-    for candidate in candidates:
-        if candidate in files:
-            raw = files[candidate].decode("utf-8", errors="replace")
-            return (_strip_html(raw) if candidate.endswith(".html") else raw.strip(), candidate)
+def _contains_cjk(value: str) -> bool:
+    return bool(re.search(r"[\\u3400-\\u4dbf\\u4e00-\\u9fff\\uf900-\\ufaff]", value))
 
-    statement_files = sorted(
+
+def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
+    # Prefer explicitly English statements when a package provides them.
+    preferred = [
         path for path in files
-        if path.startswith("problem_statement/") and path.endswith((".md", ".html", ".txt", ".tex", ".pdf"))
+        if path.startswith("problem_statement/")
+        and path.lower().endswith((".en.md", ".en.html", ".en.txt", ".en.tex"))
+    ]
+    preferred.sort()
+
+    candidates = preferred + sorted(
+        path for path in files
+        if path.startswith("problem_statement/")
+        and path.endswith((".md", ".html", ".txt", ".tex"))
+        and path not in preferred
     )
 
-    for path in statement_files:
+    for path in candidates:
         raw = files[path].decode("utf-8", errors="replace")
         if path.endswith(".html"):
             raw = _strip_html(raw)
         elif path.endswith(".tex"):
             raw = _strip_latex(raw)
-        elif path.endswith(".pdf"):
-            raw = (
-                "The problem statement is included as a PDF in the imported package. "
-                "PDF rendering will be added to the package viewer."
-            )
-        return raw.strip(), path
 
-    raise ProblemPackageError("No supported problem statement file was found.")
+        raw = raw.strip()
+        if not raw:
+            continue
+
+        # CodeMentor AI currently imports English-only problem statements.
+        # CJK-heavy statements are skipped rather than translated.
+        if _contains_cjk(raw):
+            continue
+
+        return raw, path
+
+    # Keep legacy top-level statements as a fallback, but apply the same
+    # language filter.
+    for candidate in ("problem.html", "problem.md", "problem.txt"):
+        if candidate not in files:
+            continue
+        raw = files[candidate].decode("utf-8", errors="replace")
+        raw = _strip_html(raw) if candidate.endswith(".html") else raw.strip()
+        if raw and not _contains_cjk(raw):
+            return raw, candidate
+
+    raise ProblemPackageError("No English problem statement was found.")
 
 
 def _parse_domjudge_ini(raw: str) -> dict[str, str]:
