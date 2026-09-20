@@ -480,14 +480,9 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         for item in {"interactive", "multi-pass", "submit-answer", "score"}
     )
     case_validator_supported = all(
-        not case.get("validator_name")
-        or case.get("validator_name") in custom_validator_programs
-        for case in [
-            {
-                "validator_name": item["validator_name"],
-            }
-            for item in test_cases
-        ]
+        not case.validator_name
+        or case.validator_name in custom_validator_programs
+        for case in test_cases
     )
     uses_custom_validators = any(item.validator_name for item in test_cases)
     judge_supported = (
