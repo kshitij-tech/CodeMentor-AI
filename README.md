@@ -24,3 +24,13 @@ The repository is being built incrementally. Each stage is manually tested befor
 2. Commit it to GitHub.
 3. Run and verify it locally.
 4. Only then continue to the next capability.
+
+## Local AI Mentor setup
+
+Create `backend/.env` and set your Gemini API key:
+
+    GEMINI_API_KEY=your-gemini-api-key
+    AI_MODEL=gemini-2.5-flash
+    AI_FALLBACK_MODEL=gemini-2.5-flash-lite
+
+The backend loads `backend/.env` from the repository path, so the API key is available even when Uvicorn is started from the project root. Restart the FastAPI server after changing the key.
