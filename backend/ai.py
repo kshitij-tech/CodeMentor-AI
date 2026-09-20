@@ -263,11 +263,11 @@ Keep the answer concise, educational, and conversational.
                             "replacement": {"type": "STRING"},
                         },
                         "required": ["start_line", "end_line", "replacement"],
-                        "additionalProperties": false,
+                        "additionalProperties": False,
                     },
                 },
                 "required": ["answer", "error_line", "patch"],
-                "additionalProperties": false,
+                "additionalProperties": False,
             },
         },
     }
