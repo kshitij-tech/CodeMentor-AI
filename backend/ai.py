@@ -63,6 +63,8 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
         raise AIProviderError("The mentor response is missing a valid 'answer' field.")
 
     error_line = parsed.get("error_line")
+    if error_line in (0, "0", "", "null"):
+        error_line = None
     if error_line is not None:
         try:
             error_line = int(error_line)
@@ -72,6 +74,8 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
             error_line = None
 
     patch = parsed.get("patch")
+    if patch in ({}, None):
+        patch = None
     if patch is not None:
         if not isinstance(patch, dict):
             patch = None
@@ -251,28 +255,22 @@ Keep the answer concise, educational, and conversational.
                         "description": "The concise plain-text mentor response.",
                     },
                     "error_line": {
-                        "type": ["INTEGER", "NULL"],
-                        "description": "The 1-based user-code line most directly responsible for an observed error, or null.",
+                        "type": "INTEGER",
+                        "description": "Use 0 when no specific user-code line can be identified.",
                     },
                     "patch": {
-                        "type": ["OBJECT", "NULL"],
-                        "description": "A small optional code patch. Use null unless the request explicitly asks for a modification.",
+                        "type": "OBJECT",
+                        "description": "Return a minimal patch object. Use start_line=0, end_line=0, replacement="" when no patch is needed.",
                         "properties": {
                             "start_line": {"type": "INTEGER"},
                             "end_line": {"type": "INTEGER"},
                             "replacement": {"type": "STRING"},
                         },
                         "required": ["start_line", "end_line", "replacement"],
-                        "additionalProperties": False,
                     },
                 },
                 "required": ["answer", "error_line", "patch"],
-                "additionalProperties": False,
-            },
-        },
-    }
-
-    try:
+            },:
         payload = _request_gemini(
             model=model,
             api_key=api_key,
