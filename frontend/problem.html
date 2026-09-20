@@ -8,1157 +8,379 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:FILL@0..1&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config={darkMode:'class',theme:{extend:{colors:{
-  primary:'#2a14b4','primary-container':'#4338ca','surface':'#f8f9ff','surface-container-low':'#eff4ff',
-  'surface-container':'#e5eeff','surface-container-high':'#dce9ff','surface-container-highest':'#d3e4fe',
-  'on-surface':'#0b1c30','on-surface-variant':'#464554','outline':'#777586','outline-variant':'#c7c4d7',
-  tertiary:'#00442d','tertiary-container':'#005e3f','error':'#ba1a1a'
-},fontFamily:{sans:['Plus Jakarta Sans'],mono:['JetBrains Mono']}}}};
-</script>
 <style>
-html,body{margin:0;padding:0;height:100%;overflow:hidden}
-body{font-family:"Plus Jakarta Sans",sans-serif;overscroll-behavior:none}
+:root{--primary:#4338ca}
+html,body{height:100%;margin:0;overflow:hidden}
+body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 .mono{font-family:"JetBrains Mono",monospace}
-.scroll-panel{scrollbar-width:thin;scrollbar-color:#64748b transparent;overscroll-behavior:contain}
-.scroll-panel::-webkit-scrollbar{width:9px;height:9px}
-.scroll-panel::-webkit-scrollbar-track{background:transparent}
-.scroll-panel::-webkit-scrollbar-thumb{background:#475569;border-radius:999px;border:2px solid transparent;background-clip:padding-box}
-.scroll-panel::-webkit-scrollbar-thumb:hover{background:#64748b;background-clip:padding-box}
-.problem-item{border-left:3px solid transparent}
-.workspace-splitter-dragging{user-select:none}
-body.workspace-splitter-dragging *{cursor:col-resize!important}
-body.workspace-row-dragging,body.workspace-row-dragging *{cursor:row-resize!important;user-select:none}
-
-.mentor-action{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 5px;border:1px solid #334155;border-radius:8px;background:#0f172a;color:#cbd5e1;font-size:10px;font-weight:600;transition:background .15s,border-color .15s}
-.mentor-action:hover:not(:disabled){background:#1e293b;border-color:#4c1d95}
-.mentor-action:disabled{opacity:.5;cursor:not-allowed}
-.mentor-user{display:flex;justify-content:flex-end}
-.mentor-agent{display:flex;justify-content:flex-start}
-.mentor-bubble{max-width:88%;padding:10px 12px;border-radius:14px;font-size:11px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
-.mentor-user .mentor-bubble{max-width:92%;padding:12px 14px;background:#4338ca;color:#fff;border-bottom-right-radius:5px;font-size:13px;line-height:1.55}
-.mentor-agent .mentor-bubble{background:#1b253b;color:#dbe4ef;border:1px solid #334155;border-bottom-left-radius:5px}
-.mentor-label{font-size:9px;line-height:1;margin-bottom:4px;color:#64748b}
-.mentor-typing{display:inline-flex;gap:4px;align-items:center;color:#94a3b8}
-.mentor-typing span{width:4px;height:4px;border-radius:999px;background:#94a3b8;animation:mentorDot 1.2s infinite ease-in-out}
-.mentor-typing span:nth-child(2){animation-delay:.15s}.mentor-typing span:nth-child(3){animation-delay:.3s}
-.mentor-panel-fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;margin:0!important;border-radius:0!important;z-index:100!important}
-.mentor-panel-fullscreen .mentor-bubble{max-width:min(760px,88vw);font-size:12px}
-.mentor-panel-fullscreen .mentor-user .mentor-bubble{font-size:14px}
-.cm-error-line{background:rgba(239,68,68,.20)!important;border-left:3px solid #ef4444}
-.cm-error-glyph{border-left:3px solid #ef4444;margin-left:3px}
-#problem-explorer,#problem-browser-toggle{display:none!important}
-#workspace-grid{grid-template-columns:var(--statement-width) 6px minmax(0,1fr)!important}
-.mentor-patch{margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border:1px solid #475569;border-radius:8px;background:#0f172a;color:#cbd5e1;font-size:10px}
-.mentor-patch button{padding:5px 8px;border-radius:6px;background:#4338ca;color:#fff;font-size:10px;font-weight:600}
-.mentor-patch button:hover{background:#4f46e5}
-.mentor-patch-note{color:#94a3b8;line-height:1.4}
-@keyframes mentorDot{0%,70%,100%{opacity:.25;transform:translateY(0)}35%{opacity:1;transform:translateY(-2px)}}
+.scroll{scrollbar-width:thin;scrollbar-color:#94a3b8 transparent}
+.split{cursor:col-resize}
+.mentor-msg{white-space:pre-wrap;line-height:1.6}
 </style>
 </head>
-<body class="bg-surface text-on-surface antialiased">
-
-<header class="fixed top-0 left-0 right-0 h-14 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200/80 shadow-sm">
-  <div class="h-full px-4 flex items-center justify-between gap-4">
-    <div class="flex items-center gap-3 min-w-0">
-      <button id="home-btn" class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-container to-indigo-500 text-white flex items-center justify-center shadow-sm" title="Back to Practice">
-        <span class="material-symbols-outlined text-[20px]">arrow_back</span>
-      </button>
-      <div class="flex items-center gap-1.5 shrink-0">
-        <span class="font-bold tracking-tight">CodeMentor</span>
-        <span class="mono text-[10px] uppercase tracking-wider bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-full font-semibold">AI</span>
+<body class="text-slate-900">
+<header class="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0">
+  <div class="flex items-center gap-3 min-w-0">
+    <button id="back-btn" class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center" title="Back to Practice">
+      <span class="material-symbols-outlined text-[19px]">arrow_back</span>
+    </button>
+    <div class="font-bold">CodeMentor <span class="text-indigo-600">AI</span></div>
+    <span class="text-slate-300">/</span>
+    <span class="text-sm font-semibold text-slate-600">Problem Solver</span>
+    <span id="header-title" class="hidden md:block text-xs text-slate-400 truncate ml-2">Loading…</span>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="analytics.html" class="hidden sm:flex px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg">Analytics</a>
+    <button id="account-btn" class="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center">
+      <span class="material-symbols-outlined text-[18px]">person</span>
+    </button>
+    <div id="account-menu" class="hidden absolute right-4 top-12 z-50 w-56 bg-white border border-slate-200 rounded-xl shadow-xl">
+      <div class="px-4 py-3 border-b border-slate-100">
+        <div id="account-name" class="font-semibold text-sm truncate">CodeMentor User</div>
+        <div id="account-email" class="text-xs text-slate-500 truncate"></div>
       </div>
-      <span class="text-slate-300">/</span>
-      <span class="text-sm font-medium text-slate-700">Problem Solver</span>
-      <button id="problem-browser-toggle" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-surface-container-high hover:text-slate-800" title="Open problem list" aria-label="Open problem list" aria-expanded="false" type="button">
-        <span id="problem-browser-icon" class="material-symbols-outlined text-[18px]">menu_open</span>
-      </button>
-      <span class="hidden md:inline text-xs text-slate-400 truncate" id="header-problem">Select a problem</span>
-    </div>
-
-    <div class="flex items-center gap-2 shrink-0">
-      <div class="hidden md:flex items-center gap-2 bg-surface-container-low rounded-lg px-2.5 py-1.5">
-        <span class="material-symbols-outlined text-[16px] text-slate-500">save</span>
-        <span id="header-save" class="mono text-[10px] text-slate-500">Not saved</span>
-      </div>
-      <button id="settings-btn" class="w-8 h-8 rounded-lg text-slate-500 hover:bg-surface-container-high hover:text-slate-800" title="Settings">
-        <span class="material-symbols-outlined text-[19px]">settings</span>
-      </button>
-      <div class="relative">
-        <button id="account-btn" class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center hover:ring-2 hover:ring-primary/20" title="Account" aria-expanded="false" aria-haspopup="menu" type="button">
-          <span class="material-symbols-outlined text-[17px]">person</span>
-        </button>
-        <div id="account-menu" class="hidden absolute right-0 top-10 w-56 rounded-xl bg-white shadow-xl border border-slate-200 overflow-hidden z-[80]">
-          <div class="px-4 py-3 border-b border-slate-100">
-            <p id="account-name" class="font-semibold text-sm truncate">CodeMentor User</p>
-            <p id="account-email" class="text-xs text-slate-500 truncate">Signed in</p>
-          </div>
-          <button type="button" data-account-action="profile" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm">
-            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">person</span>Profile
-          </button>
-          <button type="button" data-account-action="preferences" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm">
-            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">tune</span>Preferences
-          </button>
-          <button type="button" data-account-action="settings" class="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm">
-            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">settings</span>Settings
-          </button>
-          <button type="button" data-account-action="logout" class="w-full text-left px-4 py-2.5 hover:bg-rose-50 text-rose-600 text-sm">
-            <span class="material-symbols-outlined align-middle mr-2 text-[18px]">logout</span>Log out
-          </button>
-        </div>
-      </div>
+      <a href="dashboard.html" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Dashboard</a>
+      <a href="practice.html" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Practice</a>
+      <a href="preferences.html" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Preferences</a>
+      <button id="logout-btn" class="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50">Log out</button>
     </div>
   </div>
 </header>
 
-<main class="pt-14 h-screen">
-  <div id="workspace-grid" class="h-[calc(100vh-3.5rem)] overflow-hidden" style="display:grid;grid-template-columns:300px var(--statement-width) 6px minmax(0,1fr);--statement-width:410px;">
+<main class="h-[calc(100vh-3.5rem)] grid grid-cols-[minmax(320px,42%)_6px_minmax(0,1fr)]">
+  <section class="bg-white min-h-0 flex flex-col border-r border-slate-200">
+    <div class="px-5 py-4 border-b border-slate-100 shrink-0">
+      <div class="flex items-center gap-2 mb-2">
+        <span id="difficulty" class="px-2 py-1 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">—</span>
+        <span id="source" class="mono text-[9px] uppercase tracking-wider text-slate-400"></span>
+      </div>
+      <h1 id="title" class="text-xl font-bold leading-tight">Loading problem…</h1>
+      <div id="topics" class="flex flex-wrap gap-1.5 mt-3"></div>
+    </div>
+    <div id="statement-wrap" class="flex-1 min-h-0 overflow-y-auto scroll p-5">
+      <div id="loading-state" class="h-full flex items-center justify-center text-sm text-slate-400">Loading problem statement…</div>
+      <div id="problem-body" class="hidden space-y-7 text-sm leading-7">
+        <section>
+          <div class="mono text-[10px] uppercase tracking-wider text-slate-400 mb-2">Problem</div>
+          <div id="description" class="whitespace-pre-wrap text-slate-700"></div>
+        </section>
+        <section>
+          <div class="mono text-[10px] uppercase tracking-wider text-slate-400 mb-2">Examples</div>
+          <div id="examples" class="space-y-3"></div>
+        </section>
+        <section>
+          <div class="mono text-[10px] uppercase tracking-wider text-slate-400 mb-2">Constraints</div>
+          <ul id="constraints" class="list-disc pl-5 text-slate-700"></ul>
+        </section>
+      </div>
+    </div>
+  </section>
 
-    <!-- PROBLEM EXPLORER -->
-    <aside id="problem-explorer" class="bg-white border-r border-slate-200/80 flex flex-col min-h-0">
-      <div class="p-3 border-b border-slate-100 shrink-0">
-        <div class="flex items-center justify-between mb-2.5">
-          <div class="flex items-center gap-2">
-            <h2 class="text-[15px] font-semibold">Problems</h2>
-            <span id="problem-count" class="mono text-[9px] font-semibold bg-surface-container px-1.5 py-0.5 rounded-full text-slate-500">0</span>
-          </div>
-        </div>
-        <div class="relative">
-          <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-[17px] text-slate-400">search</span>
-          <input id="problem-search" class="w-full pl-8 pr-3 py-2 text-xs bg-surface-container-low border-0 rounded-lg outline-none focus:ring-2 focus:ring-primary/20" placeholder="Search problems...">
-        </div>
-        <div class="flex items-center gap-1 mt-2">
-          <button data-difficulty="" class="difficulty-btn active px-2.5 py-1 rounded-md text-[10px] font-semibold bg-primary-container text-white">All</button>
-          <button data-difficulty="Easy" class="difficulty-btn px-2.5 py-1 rounded-md text-[10px] font-semibold bg-surface-container text-slate-500 hover:bg-surface-container-high">Easy</button>
-          <button data-difficulty="Medium" class="difficulty-btn px-2.5 py-1 rounded-md text-[10px] font-semibold bg-surface-container text-slate-500 hover:bg-surface-container-high">Medium</button>
-        </div>
-      </div>
-      <div id="problem-list" class="flex-1 overflow-y-auto scroll-panel p-1.5 space-y-0.5"></div>
-      <div class="shrink-0 p-2 border-t border-slate-100">
-        <button id="load-more-problems" type="button" class="hidden w-full py-2 rounded-lg bg-surface-container text-slate-600 text-[10px] font-semibold hover:bg-surface-container-high">Load more problems</button>
-      </div>
-    </aside>
+  <div id="splitter" class="split bg-slate-200 hover:bg-indigo-400"></div>
 
-    <!-- PROBLEM STATEMENT -->
-    <section class="bg-white border-r border-slate-200/80 flex flex-col min-h-0">
-      <div class="p-4 border-b border-slate-100 shrink-0">
-        <div class="flex items-center gap-2 mb-2">
-          <span id="problem-difficulty" class="text-[10px] font-semibold px-2 py-1 rounded bg-slate-100 text-slate-600">—</span>
-        </div>
-        <h1 id="problem-title" class="text-[19px] leading-tight font-bold">Choose a problem</h1>
-        <div id="problem-topics" class="flex flex-wrap gap-1.5 mt-2.5"></div>
+  <section class="bg-[#0b1020] text-slate-100 min-w-0 flex flex-col">
+    <div class="h-11 shrink-0 bg-[#111827] border-b border-white/10 px-3 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="mono text-xs text-slate-300">solution</span>
+        <select id="language" class="bg-[#0b1020] border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] mono">
+          <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
+        </select>
+        <span id="save-status" class="mono text-[9px] text-slate-500">Starter</span>
       </div>
-      <div id="problem-content" class="flex-1 overflow-y-auto scroll-panel p-4">
-        <div id="problem-empty" class="h-full flex items-center justify-center text-center px-6">
-          <div>
-            <span class="material-symbols-outlined text-4xl text-slate-300">menu_book</span>
-            <p class="font-semibold text-sm mt-3">Choose a problem to start</p>
-            <p class="text-xs text-slate-400 mt-1">The statement, examples, constraints, and starter code will load here.</p>
-          </div>
-        </div>
-        <div id="problem-details" class="hidden space-y-6 text-[13px] leading-6">
-          <section>
-            <div class="mono text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Statement</div>
-            <p id="problem-description" class="text-slate-600"></p>
-          </section>
-          <section>
-            <div class="mono text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Examples</div>
-            <div id="examples" class="space-y-3"></div>
-          </section>
-          <section class="pb-5">
-            <div class="mono text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Constraints</div>
-            <ul id="constraints" class="list-disc pl-5 space-y-1 text-slate-600"></ul>
-          </section>
-        </div>
-      </div>
-    </section>
+      <button id="reset-btn" class="px-2.5 py-1.5 rounded-lg text-[10px] text-slate-400 hover:bg-slate-800">Reset</button>
+    </div>
+    <div id="editor" class="flex-1 min-h-0"></div>
 
-    <!-- RESIZABLE DIVIDER -->
-    <div id="workspace-splitter" class="relative h-full bg-slate-200/80 hover:bg-primary/60 active:bg-primary transition-colors cursor-col-resize" role="separator" aria-label="Resize problem statement and code editor" aria-orientation="vertical" tabindex="0" title="Drag to resize">
-      <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-slate-300/70"></div>
+    <div id="results" class="hidden shrink-0 border-t border-white/10 bg-[#0f172a] max-h-[34vh] flex flex-col">
+      <div class="h-10 px-3 flex items-center justify-between border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold">Results</span>
+          <span id="result-badge" class="px-2 py-1 rounded text-[9px] bg-slate-800 text-slate-300">—</span>
+        </div>
+        <button id="clear-results" class="text-[10px] text-slate-500 hover:text-slate-200">Clear</button>
+      </div>
+      <div id="result-body" class="overflow-y-auto scroll p-3 space-y-2"></div>
     </div>
 
-    <!-- CODE / EXECUTION -->
-    <section class="min-w-0 min-h-0 bg-[#0b1020] text-slate-100 flex flex-col">
-      <div class="h-11 bg-[#0f172a] border-b border-white/10 px-3 flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-2 min-w-0">
-          <div class="flex items-center gap-1.5 bg-[#0b1020] px-3 py-1.5 rounded-t border-t-2 border-primary-container min-w-0">
-            <span class="material-symbols-outlined text-[14px] text-amber-400">code</span>
-            <span id="file-label" class="mono text-[11px] truncate">solution.py</span>
-          </div>
-          <div class="relative">
-            <select id="language" class="appearance-none bg-slate-800 text-slate-200 border border-slate-700 pl-2.5 pr-7 py-1.5 rounded-lg mono text-[10px] font-medium outline-none focus:border-indigo-500 cursor-pointer">
-              <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
-            </select>
-            <span class="material-symbols-outlined pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[14px] text-slate-400">expand_more</span>
-          </div>
-        </div>
-        <div class="flex items-center gap-1">
-          <button id="format-code" class="px-2 py-1.5 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 text-[10px]" title="Format">Format</button>
-          <button id="reset-code" class="w-8 h-8 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200" title="Reset code">
-            <span class="material-symbols-outlined text-[17px]">restart_alt</span>
-          </button>
-        </div>
+    <div class="h-12 shrink-0 bg-[#111827] border-t border-white/10 px-3 flex items-center justify-between">
+      <span id="execution-status" class="text-[10px] text-slate-500 truncate">Ready</span>
+      <div class="flex items-center gap-2">
+        <button id="run-btn" disabled class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-[10px] font-semibold disabled:opacity-40">
+          <span class="material-symbols-outlined align-middle text-[14px]">play_arrow</span> Run
+        </button>
+        <button id="submit-btn" disabled class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-[10px] font-semibold disabled:opacity-40">
+          <span class="material-symbols-outlined align-middle text-[14px]">task_alt</span> Submit
+        </button>
       </div>
-
-      <div id="editor-wrap" class="flex-1 min-h-0 overflow-hidden relative">
-        <div id="code-editor" class="absolute inset-0"></div>
-      </div>
-
-      <div id="results-resizer" class="hidden h-1 shrink-0 cursor-row-resize bg-transparent hover:bg-primary/60 active:bg-primary transition-colors" role="separator" aria-label="Resize test results and code editor" aria-orientation="horizontal" title="Drag to resize results"></div>
-      <section id="results-drawer" class="hidden shrink-0 bg-[#0f172a] border-t border-white/10 flex-col overflow-hidden" style="height:var(--results-height,256px)">
-        <div class="h-11 shrink-0 px-3 flex items-center justify-between bg-[#131d33] border-b border-white/10">
-          <div class="flex items-center gap-2">
-            <button id="results-toggle" class="flex items-center gap-1.5 text-slate-200 text-xs font-semibold">
-              <span id="results-toggle-icon" class="material-symbols-outlined text-[17px]">expand_more</span>
-              Test Results
-            </button>
-            <span id="execution-badge" class="text-[10px] font-semibold px-2 py-1 rounded bg-slate-800 text-slate-300">—</span>
-            <span id="execution-meta" class="hidden sm:inline text-[10px] text-slate-500"></span>
-          </div>
-          <button id="clear-results" class="text-[10px] text-slate-500 hover:text-slate-200">Clear</button>
-        </div>
-        <div id="results-body" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-2"></div>
-      </section>
-
-      <div class="h-12 shrink-0 bg-[#111827] border-t border-white/10 flex items-center justify-between px-3">
-        <div class="flex items-center gap-2 min-w-0">
-          <span id="execution-status" class="text-[10px] text-slate-500 truncate">Select a problem to begin.</span>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <button id="run-btn" class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-[11px] font-semibold hover:bg-slate-700 disabled:opacity-50" disabled>
-            <span class="material-symbols-outlined align-middle text-[15px]">play_arrow</span> Run
-          </button>
-          <button id="submit-btn" class="px-3.5 py-2 rounded-lg bg-primary-container text-white text-[11px] font-semibold hover:bg-primary disabled:opacity-50" disabled>
-            <span class="material-symbols-outlined align-middle text-[15px]">task_alt</span> Submit
-          </button>
-        </div>
-      </div>
-    </section>
-  </div>
+    </div>
+  </section>
 </main>
 
-<!-- AI MENTOR -->
-<div class="fixed bottom-16 right-5 z-[70] flex flex-col items-end">
-  <div id="mentor-panel" class="hidden w-[min(410px,calc(100vw-2rem))] h-[min(560px,calc(100vh-6rem))] mb-3 bg-[#0f172a] text-slate-100 rounded-xl shadow-2xl border border-slate-700/80 overflow-hidden flex-col">
-    <div class="h-12 shrink-0 px-3 bg-[#131d33] border-b border-slate-800 flex items-center justify-between">
-      <div class="flex items-center gap-2 min-w-0">
-        <div class="w-7 h-7 rounded-md bg-gradient-to-tr from-primary-container to-indigo-500 flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[16px]">psychology</span>
-        </div>
-        <div class="min-w-0">
-          <div class="text-[13px] font-semibold">AI Mentor</div>
-          <div id="mentor-context" class="text-[9px] text-slate-500 truncate">Select a problem to begin</div>
-        </div>
-      </div>
-      <div class="flex items-center gap-1">
-        <button id="mentor-fullscreen" type="button" class="w-7 h-7 rounded hover:bg-slate-800 text-slate-400" aria-label="Open AI Mentor fullscreen" title="Fullscreen">
-          <span id="mentor-fullscreen-icon" class="material-symbols-outlined text-[16px]">fullscreen</span>
-        </button>
-        <button id="mentor-clear" type="button" class="px-2 py-1 rounded text-[10px] text-slate-500 hover:bg-slate-800 hover:text-slate-200">Clear</button>
-        <button id="mentor-close" type="button" class="w-7 h-7 rounded hover:bg-slate-800 text-slate-400" aria-label="Close mentor">
-          <span class="material-symbols-outlined text-[16px]">close</span>
-        </button>
-      </div>
-    </div>
+<button id="mentor-open" class="fixed right-5 bottom-5 z-40 px-4 py-3 rounded-full bg-indigo-600 text-white text-xs font-semibold shadow-lg flex items-center gap-2">
+  <span class="material-symbols-outlined text-[18px]">psychology</span> AI Mentor
+</button>
 
-    <div id="mentor-chat" class="flex-1 min-h-0 overflow-y-auto scroll-panel p-3 space-y-3">
-      <div class="mentor-welcome rounded-xl bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">
-        Ask a question or use one of the guidance actions below. Your conversation stays visible while you work.
-      </div>
-    </div>
-
-    <div class="shrink-0 px-3 pt-2.5 pb-2 bg-[#131d33] border-t border-slate-800">
-      <div class="grid grid-cols-4 gap-1.5 mb-2">
-        <button class="mentor-action" data-action="hint" type="button"><span class="material-symbols-outlined text-[15px] text-amber-400">lightbulb</span>Hint</button>
-        <button class="mentor-action" data-action="debug" type="button"><span class="material-symbols-outlined text-[15px] text-rose-400">bug_report</span>Debug</button>
-        <button class="mentor-action" data-action="complexity" type="button"><span class="material-symbols-outlined text-[15px] text-purple-400">speed</span>Complexity</button>
-        <button class="mentor-action" data-action="edge" type="button"><span class="material-symbols-outlined text-[15px] text-emerald-400">verified</span>Edge</button>
-        <button class="mentor-action col-span-2" data-action="modify" type="button"><span class="material-symbols-outlined text-[15px] text-sky-400">edit</span>Suggest Fix</button>
-      </div>
-      <div class="flex items-end gap-2">
-        <textarea id="mentor-input" rows="1" class="flex-1 resize-none overflow-y-hidden max-h-24 bg-slate-900 border border-slate-700 text-slate-200 text-[11px] rounded-lg px-2.5 py-2 outline-none focus:border-indigo-500" placeholder="Ask about this problem..."></textarea>
-        <button id="mentor-send" type="button" class="w-9 h-9 shrink-0 rounded-lg bg-primary-container text-white flex items-center justify-center hover:bg-primary disabled:opacity-50" aria-label="Send message">
-          <span class="material-symbols-outlined text-[16px]">send</span>
-        </button>
-      </div>
+<div id="mentor-panel" class="hidden fixed right-5 bottom-20 z-50 w-[390px] max-w-[calc(100vw-2rem)] h-[560px] max-h-[calc(100vh-6rem)] bg-[#0f172a] text-white rounded-2xl border border-slate-700 shadow-2xl flex-col">
+  <div class="h-11 shrink-0 px-3 bg-[#131d33] border-b border-slate-700 flex items-center justify-between">
+    <span class="font-semibold text-xs">AI Mentor</span>
+    <div class="flex items-center gap-1">
+      <button id="mentor-clear" class="text-[10px] text-slate-400 hover:text-white px-2">Clear</button>
+      <button id="mentor-close" class="w-7 h-7 rounded hover:bg-slate-800"><span class="material-symbols-outlined text-[16px]">close</span></button>
     </div>
   </div>
-  <button id="mentor-trigger" type="button" class="h-11 px-4 rounded-full bg-gradient-to-r from-primary-container to-indigo-500 text-white text-[12px] font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl hover:scale-[1.02] transition-transform">
-    <span class="material-symbols-outlined text-[19px]">psychology</span> AI Mentor
-  </button>
-</div>
+  <div id="mentor-messages" class="flex-1 overflow-y-auto scroll p-3 space-y-3"></div>
+  <div class="shrink-0 border-t border-slate-700 p-3">
+    <div class="grid grid-cols-4 gap-1.5 mb-2">
+      <button data-mentor="hint" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Hint</button>
+      <button data-mentor="debug" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Debug</button>
+      <button data-mentor="complexity" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Complexity</button>
+      <button data-mentor="edge" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Edge cases</button>
+    </div>
+    <div class="flex gap-2">
+      <textarea id="mentor-input" rows="1" placeholder="Ask about this problem…" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] resize-none outline-none"></textarea>
+      <button id="mentor-send" class="w-9 h-9 rounded-lg bg-indigo-600 flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">send</span></button>
+    </div>
+  </div>
 </div>
 
-<div id="toast" class="hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[100] px-4 py-2.5 rounded-lg bg-slate-900 text-white text-xs shadow-xl"></div>
+<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-5 z-[70] px-4 py-2.5 rounded-lg bg-slate-900 text-white text-xs shadow-xl"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor/min/vs/loader.js"></script>
 <script>
 const API='http://127.0.0.1:8000';
 const TOKEN_KEY='codementor_access_token';
-const LANG_IDS={Python:'python','C++':'cpp',Java:'java',JavaScript:'javascript',TypeScript:'typescript',Go:'go',Rust:'rust'};
-const FILE_NAMES={Python:'solution.py','C++':'solution.cpp',Java:'Solution.java',JavaScript:'solution.js',TypeScript:'solution.ts',Go:'solution.go',Rust:'solution.rs'};
-let problems=[];
-let current=null;
-let currentUserId=null;
-let problemTotal=0;
-let problemOffset=0;
-let problemHasMore=false;
-let problemRequestId=0;
+const LANG_IDS={Python:'python',C++:'cpp',Java:'java',JavaScript:'javascript',TypeScript:'typescript',Go:'go',Rust:'rust'};
+let userId='unknown';
+let problem=null;
 let editor=null;
-let pendingEditor=null;
-let currentDifficulty='';
-let lastExecution=null;
-let hintLevel=1;
-let mentorMessages=[];
-let mentorRequestId=0;
 let mentorSessionId=null;
-let errorLineDecorationIds=[];
-let pendingMentorQuestion=null;
-let pendingMentorOpen=false;
+let mentorMessages=[];
+let hintLevel=1;
+let lastExecution=null;
 
 const $=id=>document.getElementById(id);
 function token(){return localStorage.getItem(TOKEN_KEY)}
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function toast(msg){const el=$('toast');el.textContent=msg;el.classList.remove('hidden');clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.add('hidden'),2400)}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c))}
+function toast(msg){const e=$('toast');e.textContent=msg;e.classList.remove('hidden');clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.add('hidden'),2200)}
 function requireAuth(){if(!token()){location.replace('auth.html');return false}return true}
+function storagePrefix(){return 'codementor:user:'+userId}
+function draftKey(){return problem?storagePrefix()+':draft:'+problem.slug+':'+$('language').value:null}
 
-function starterCode(problem,language){return (problem?.starter_code||{})[language]||''}
-function userStoragePrefix(){return 'cm_user_'+String(currentUserId||'unknown')}
-function draftKey(){return current?userStoragePrefix()+'_code_draft_'+current.slug+'_'+$('language').value:null}
-function loadDraftOrStarter(){
-  if(!current)return;
-  const key=draftKey();
-  const saved=localStorage.getItem(key);
-  const value=saved!==null?saved:starterCode(current,$('language').value);
-  setEditorValue(value,LANG_IDS[$('language').value]);
-  $('header-save').textContent=saved!==null?'Draft restored':'Starter code';
+function showError(message){
+  $('loading-state').textContent=message;
+  $('loading-state').className='h-full flex items-center justify-center text-sm text-rose-500 p-6 text-center';
+  $('problem-body').classList.add('hidden');
 }
-function setEditorValue(value,langId){
-  if(!editor){pendingEditor={value:value||'',langId};return}
-  editor.setValue(value||'');
-  if(window.monaco&&langId) monaco.editor.setModelLanguage(editor.getModel(),langId);
-  editor.setScrollTop(0);
-}
-
 function difficultyClass(d){
   if(d==='Easy')return 'bg-emerald-100 text-emerald-800';
   if(d==='Medium')return 'bg-amber-100 text-amber-900';
-  return 'bg-rose-100 text-rose-800';
+  if(d==='Hard')return 'bg-rose-100 text-rose-800';
+  return 'bg-slate-100 text-slate-600';
 }
-function setProblemExplorer(open){
-  const aside=$('problem-explorer');
-  const grid=$('workspace-grid');
-  const toggle=$('problem-browser-toggle');
-  const icon=$('problem-browser-icon');
-  if(!aside||!grid||!toggle||!icon)return;
-  if(open){
-    grid.style.gridTemplateColumns='300px var(--statement-width) 6px minmax(0,1fr)';
-    aside.classList.remove('hidden');
-    toggle.setAttribute('aria-expanded','true');
-    toggle.title='Hide problem list';
-    toggle.setAttribute('aria-label','Hide problem list');
-    icon.textContent='menu';
-  }else{
-    aside.classList.add('hidden');
-    grid.style.gridTemplateColumns='var(--statement-width) 6px minmax(0,1fr)';
-    toggle.setAttribute('aria-expanded','false');
-    toggle.title='Open problem list';
-    toggle.setAttribute('aria-label','Open problem list');
-    icon.textContent='menu_open';
-  }
-  if(editor)editor.layout();
+function starterCode(language){
+  const starter=(problem&&problem.starter_code)||{};
+  return starter[language]||'';
 }
-
-function renderProblems(){
-  const filtered=problems.filter(p=>p.slug!==current?.slug);
-  $('problem-count').textContent=String(problemTotal||filtered.length);
-  $('problem-list').innerHTML=filtered.map(p=>`
-    <button type="button" class="problem-item w-full text-left px-2.5 py-2.5 rounded-lg hover:bg-surface-container-low transition-colors" data-slug="${esc(p.slug)}">
-      <div class="flex items-start justify-between gap-2">
-        <span class="font-semibold text-[12px] leading-5 text-slate-700">${esc(p.title)}</span>
-        <span class="text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0 ${difficultyClass(p.difficulty)}">${esc(p.difficulty)}</span>
-      </div>
-      <div class="mt-1 text-[10px] text-slate-400 truncate">${esc((p.topics||[]).join(' • '))}</div>
-    </button>`).join('') || '<div class="p-4 text-xs text-slate-400">No problems match your filters.</div>';
-  $('problem-list').querySelectorAll('[data-slug]').forEach(btn=>btn.addEventListener('click',()=>{
-    const p=problems.find(x=>x.slug===btn.dataset.slug);if(p)selectProblem(p);
-  }));
-  const more=$('load-more-problems');
-  if(more){
-    more.classList.toggle('hidden',!problemHasMore);
-    more.disabled=false;
-    more.textContent='Load more problems';
-  }
+function loadDraft(){
+  if(!problem||!editor)return;
+  const saved=localStorage.getItem(draftKey());
+  editor.setValue(saved!==null?saved:starterCode($('language').value));
+  $('save-status').textContent=saved!==null?'Draft restored':'Starter';
 }
-
-function renderExamples(examples){
-  return (examples||[]).map((e,i)=>`<div class="bg-surface-container-low rounded-xl p-3 border border-slate-100">
-    <div class="mono text-[9px] uppercase tracking-wider text-primary-container font-semibold">Example ${i+1}</div>
-    <div class="mt-2 space-y-1.5 text-[11px]">
-      <div><span class="text-slate-400">Input: </span><code class="mono text-slate-700">${esc(e.input)}</code></div>
-      <div><span class="text-slate-400">Output: </span><code class="mono text-emerald-700 font-semibold">${esc(e.output)}</code></div>
-      <div class="text-slate-500 leading-5"><span class="text-slate-400">Explanation: </span>${esc(e.explanation)}</div>
-    </div>
-  </div>`).join('');
+function renderProblem(){
+  $('header-title').textContent=problem.title;
+  $('title').textContent=problem.title;
+  $('difficulty').textContent=problem.difficulty||'Unknown';
+  $('difficulty').className='px-2 py-1 rounded text-[10px] font-semibold '+difficultyClass(problem.difficulty);
+  $('source').textContent=problem.source||'catalog';
+  $('topics').innerHTML=(problem.topics||[]).map(t=>'<span class="px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px]">'+esc(t)+'</span>').join('');
+  $('description').textContent=problem.description||'No statement available.';
+  $('examples').innerHTML=(problem.examples||[]).map((e,i)=>'<div class="rounded-xl bg-slate-50 border border-slate-200 p-3"><div class="mono text-[9px] text-indigo-600 uppercase">Example '+(i+1)+'</div><div class="mt-2 text-[11px]"><div><b>Input:</b> <code>'+esc(e.input)+'</code></div><div class="mt-1"><b>Output:</b> <code>'+esc(e.output)+'</code></div></div></div>').join('');
+  const constraints=problem.constraints||[];
+  $('constraints').innerHTML=constraints.length?constraints.map(c=>'<li>'+esc(c)+'</li>').join(''):'<li>No constraints provided.</li>';
+  $('loading-state').classList.add('hidden');
+  $('problem-body').classList.remove('hidden');
 }
-function selectProblem(p){
-  current=p;
-  lastExecution=null;
-  clearErrorLineHighlight();
-  $('header-problem').textContent=p.title;
-  $('problem-title').textContent=p.title;
-  $('problem-difficulty').textContent=p.difficulty;
-  $('problem-difficulty').className='text-[10px] font-semibold px-2 py-1 rounded '+difficultyClass(p.difficulty);
-  $('problem-topics').innerHTML=(p.topics||[]).map(t=>`<span class="text-[9px] bg-surface-container-high text-slate-600 px-2 py-1 rounded-full">${esc(t)}</span>`).join('');
-  $('problem-description').textContent=p.description||'No description available.';
-  $('examples').innerHTML=renderExamples(p.examples);
-  $('constraints').innerHTML=(p.constraints||[]).map(c=>`<li>${esc(c)}</li>`).join('')||'<li>No constraints available.</li>';
-  $('problem-empty').classList.add('hidden');
-  $('problem-details').classList.remove('hidden');
-  $('problem-content').scrollTop=0;
-  localStorage.setItem(userStoragePrefix()+'_current_problem',p.slug);
-  $('run-btn').disabled=false;$('submit-btn').disabled=false;
-  $('execution-status').textContent='Ready to run.';
-  $('mentor-context').textContent=`${p.title} · ${$('language').value}`;
-  loadDraftOrStarter();
-  void loadMentorChat();
-  renderProblems();
-  setProblemExplorer(false);
-}
-
-function initMonaco(){
-  require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs'}});
-  require(['vs/editor/editor.main'],()=>{
-    monaco.editor.defineTheme('codementor-vibrant',{
-      base:'vs-dark',inherit:true,
-      rules:[
-        {token:'comment',foreground:'6A9955',fontStyle:'italic'},
-        {token:'keyword',foreground:'C586C0'},
-        {token:'string',foreground:'CE9178'},
-        {token:'number',foreground:'B5CEA8'},
-        {token:'type',foreground:'4EC9B0'},
-        {token:'type.identifier',foreground:'4EC9B0'},
-        {token:'identifier',foreground:'DCDCAA'},
-        {token:'function',foreground:'DCDCAA'}
-      ],
-      colors:{
-        'editor.background':'#0b1020','editor.foreground':'#E6EDF3',
-        'editorLineNumber.foreground':'#475569','editorLineNumber.activeForeground':'#CBD5E1',
-        'editorCursor.foreground':'#8B5CF6','editor.selectionBackground':'#3730A344',
-        'editor.lineHighlightBackground':'#111827','editorIndentGuide.background1':'#1E293B',
-        'editorIndentGuide.activeBackground1':'#334155'
-      }
-    });
-    monaco.editor.setTheme('codementor-vibrant');
-    editor=monaco.editor.create($('code-editor'),{
-      value:'',language:'python',theme:'codementor-vibrant',automaticLayout:true,
-      fontFamily:'JetBrains Mono, monospace',fontSize:13,lineHeight:22,
-      minimap:{enabled:true},smoothScrolling:true,cursorBlinking:'smooth',
-      padding:{top:14,bottom:14},scrollBeyondLastLine:false,
-      bracketPairColorization:{enabled:true},guides:{bracketPairs:true,indentation:true},
-      suggest:{showMethods:true,showFunctions:true}
-    });
-    editor.onDidChangeModelContent(()=>{
-      if(!current)return;
-      clearErrorLineHighlight();
-      localStorage.setItem(draftKey(),editor.getValue());
-      $('header-save').textContent='Draft saved';
-    });
-    if(pendingEditor){setEditorValue(pendingEditor.value,pendingEditor.langId);pendingEditor=null;}
-    if(current)loadDraftOrStarter();
-    maybeOpenMentorFromDashboard();
-  },err=>{console.error(err);$('execution-status').textContent='Editor failed to load. Refresh to retry.';});
-}
-
-function clearErrorLineHighlight(){
-  if(!editor||!window.monaco)return;
-  errorLineDecorationIds=editor.deltaDecorations(errorLineDecorationIds,[]);
-}
-
-function highlightErrorLine(line){
-  clearErrorLineHighlight();
-  if(!editor||!window.monaco)return;
-  const lineNumber=Number(line);
-  if(!Number.isInteger(lineNumber)||lineNumber<1||lineNumber>editor.getModel().getLineCount())return;
-  errorLineDecorationIds=editor.deltaDecorations([],[
-    {
-      range:new monaco.Range(lineNumber,1,lineNumber,1),
-      options:{
-        isWholeLine:true,
-        className:'cm-error-line',
-        linesDecorationsClassName:'cm-error-glyph',
-        hoverMessage:{value:'**Error line** — inspect this line and the surrounding logic.'}
-      }
-    }
-  ]);
-  editor.revealLineInCenter(lineNumber);
-}
-
-function executionErrorLine(data){
-  if(Number.isInteger(Number(data?.error_line)))return Number(data.error_line);
-  const result=(data?.results||[]).find(item=>item?.error_line!=null);
-  return result?Number(result.error_line):null;
-}
-
-function setExecutionBadge(status,summary){
-  const badge=$('execution-badge');
-  let classes='text-[10px] font-semibold px-2 py-1 rounded ';
-  if(status==='Accepted')classes+='bg-emerald-950 text-emerald-400';
-  else if(['Wrong Answer','Runtime Error','Time Limit Exceeded','Rejected'].includes(status))classes+='bg-rose-950 text-rose-400';
-  else classes+='bg-slate-800 text-slate-300';
-  badge.className=classes;badge.textContent=summary||status||'—';
-}
-function showResults(){
-  const d=$('results-drawer'),r=$('results-resizer');
-  d.classList.remove('hidden');d.classList.add('flex');
-  r?.classList.remove('hidden');
-}
-function renderResults(data){
-  showResults();
-  setExecutionBadge(data.status,data.summary);
-  const results=data.results||[];
-  $('execution-meta').textContent=results.length?`${results.length} test${results.length===1?'':'s'}`:'';
-  $('results-body').innerHTML=results.length?results.map(t=>{
-    const good=!!t.passed;
-    const border=good?'border-emerald-800/40':'border-rose-800/40';
-    const bg=good?'bg-emerald-950/20':'bg-rose-950/20';
-    return `<div class="rounded-lg border ${border} ${bg} overflow-hidden">
-      <div class="px-3 py-2.5 flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2 min-w-0">
-          <span class="material-symbols-outlined text-[16px] ${good?'text-emerald-400':'text-rose-400'}">${good?'check_circle':'cancel'}</span>
-          <span class="text-xs font-semibold">Test ${esc(t.test)}</span>
-          <span class="text-[10px] text-slate-500">${esc(t.status)}</span>
-        </div>
-        <span class="mono text-[9px] text-slate-500">${esc(t.runtime_ms)} ms</span>
-      </div>
-      ${t.message?`<div class="px-3 pb-2 text-[10px] text-slate-400">${esc(t.message)}</div>`:''}
-      ${!good&&t.actual!==undefined?`
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-800 border-t border-slate-800">
-          <div class="bg-[#0b1020] p-2.5">
-            <div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Expected</div>
-            <pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${t.visibility==='secret'?'Hidden for secret test':esc(JSON.stringify(t.expected))}</pre>
-          </div>
-          <div class="bg-[#0b1020] p-2.5">
-            <div class="mono text-[9px] uppercase tracking-wider text-slate-500 mb-1">Actual</div>
-            <pre class="mono text-[10px] text-slate-300 whitespace-pre-wrap break-words">${esc(JSON.stringify(t.actual))}</pre>
-          </div>
-        </div>`:''}
-    </div>`;
-  }).join(''):'<div class="h-full flex items-center justify-center text-xs text-slate-500">No test results.</div>';
-  $('results-body').scrollTop=0;
-  lastExecution=data;
-  const line=executionErrorLine(data);
-  if(line)highlightErrorLine(line);else if(data.status==='Accepted')clearErrorLineHighlight();
-}
-
-function initWorkspaceSplitter(){
-  const grid=$('workspace-grid'), splitter=$('workspace-splitter');
-  if(!grid||!splitter)return;
-  const saved=parseInt(localStorage.getItem('cm_statement_width')||'',10);
-  if(Number.isFinite(saved)) grid.style.setProperty('--statement-width', saved+'px');
-
-  let dragging=false;
-  let startX=0;
-  let startWidth=0;
-
-  const clampWidth=(width)=>{
-    const total=grid.getBoundingClientRect().width;
-    const min=280;
-    const max=Math.max(min,total-300-6-420);
-    return Math.max(min,Math.min(width,max));
-  };
-
-  const onMove=(event)=>{
-    if(!dragging)return;
-    const next=clampWidth(startWidth+(event.clientX-startX));
-    grid.style.setProperty('--statement-width',next+'px');
-    if(editor)editor.layout();
-  };
-
-  const stop=()=>{
-    if(!dragging)return;
-    dragging=false;
-    document.body.classList.remove('workspace-splitter-dragging');
-    localStorage.setItem('cm_statement_width',parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10));
-    window.removeEventListener('pointermove',onMove);
-    window.removeEventListener('pointerup',stop);
-  };
-
-  splitter.addEventListener('pointerdown',event=>{
-    if(window.innerWidth<1000)return;
-    event.preventDefault();
-    dragging=true;
-    startX=event.clientX;
-    startWidth=parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10)||410;
-    document.body.classList.add('workspace-splitter-dragging');
-    splitter.setPointerCapture?.(event.pointerId);
-    window.addEventListener('pointermove',onMove);
-    window.addEventListener('pointerup',stop);
-  });
-
-  splitter.addEventListener('keydown',event=>{
-    if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;
-    event.preventDefault();
-    const currentWidth=parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10)||410;
-    const next=clampWidth(currentWidth+(event.key==='ArrowRight'?20:-20));
-    grid.style.setProperty('--statement-width',next+'px');
-    localStorage.setItem('cm_statement_width',next);
-    if(editor)editor.layout();
-  });
-
-  window.addEventListener('resize',()=>{
-    const currentWidth=parseInt(getComputedStyle(grid).getPropertyValue('--statement-width'),10)||410;
-    const next=clampWidth(currentWidth);
-    grid.style.setProperty('--statement-width',next+'px');
-    if(editor)editor.layout();
-  });
-}
-
-async function execute(mode){
-  if(!current){toast('Select a problem first.');return}
-  if(!editor){toast('Editor is still loading.');return}
-  const code=editor.getValue();
-  if(!code.trim()){toast('Write a solution before running it.');return}
-  const run=$('run-btn'),submit=$('submit-btn');
-  run.disabled=true;submit.disabled=true;
-  $('execution-status').textContent=mode==='submit'?'Submitting...':'Running tests...';
-  showResults();
-  $('results-body').innerHTML='<div class="h-full flex items-center justify-center text-xs text-slate-500"><span class="material-symbols-outlined animate-spin mr-2 text-[16px]">refresh</span>Running your code...</div>';
-  setExecutionBadge('Running','Running tests');
-  try{
-    const response=await fetch(API+'/execution/run',{
-      method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
-      body:JSON.stringify({problem_slug:current.slug,language:$('language').value,code,mode})
-    });
-    if(response.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(data.detail||'Execution request failed.');
-    renderResults(data);
-    $('execution-status').textContent=`${data.status||'Complete'} · ${data.summary||''}`;
-  }catch(err){
-    setExecutionBadge('Error','Execution failed');
-    $('results-body').innerHTML=`<div class="rounded-lg border border-rose-800/40 bg-rose-950/20 p-3 text-xs text-rose-300">${esc(err.message||'Unable to execute the solution.')}</div>`;
-    $('execution-status').textContent='Execution failed.';
-  }finally{run.disabled=false;submit.disabled=false}
-}
-
-
-function initResultsResizer(){
-  const grid=$('workspace-grid'),drawer=$('results-drawer'),handle=$('results-resizer');
-  if(!grid||!drawer||!handle)return;
-  const saved=parseInt(localStorage.getItem('cm_results_height')||'',10);
-  if(Number.isFinite(saved))drawer.style.setProperty('--results-height',saved+'px');
-
-  let dragging=false,startY=0,startHeight=256;
-  const clampHeight=(height)=>{
-    const total=grid.getBoundingClientRect().height;
-    return Math.max(110,Math.min(height,total-44));
-  };
-  const move=(event)=>{
-    if(!dragging)return;
-    const next=clampHeight(startHeight+(startY-event.clientY));
-    drawer.style.height=next+'px';
-    if(editor)editor.layout();
-  };
-  const stop=()=>{
-    if(!dragging)return;
-    dragging=false;
-    document.body.classList.remove('workspace-row-dragging');
-    const height=parseInt(drawer.style.height,10)||256;
-    drawer.style.setProperty('--results-height',height+'px');
-    localStorage.setItem('cm_results_height',height+'px');
-    window.removeEventListener('pointermove',move);
-    window.removeEventListener('pointerup',stop);
-  };
-  handle.addEventListener('pointerdown',event=>{
-    if(window.innerWidth<1000)return;
-    event.preventDefault();
-    dragging=true;startY=event.clientY;
-    startHeight=parseInt(drawer.getBoundingClientRect().height,10)||256;
-    document.body.classList.add('workspace-row-dragging');
-    window.addEventListener('pointermove',move);
-    window.addEventListener('pointerup',stop);
-  });
-}
-
-let problemSearchTimer=null;
-$('problem-search').addEventListener('input',()=>{
-  clearTimeout(problemSearchTimer);
-  problemSearchTimer=setTimeout(()=>{
-    fetchProblems({reset:true}).catch(err=>{
-      $('problem-list').innerHTML='<div class="p-4 text-xs text-rose-600">'+esc(err.message||'Unable to load problems.')+'</div>';
-    });
-  },250);
-});
-document.querySelectorAll('.difficulty-btn').forEach(btn=>btn.addEventListener('click',()=>{
-  currentDifficulty=btn.dataset.difficulty;
-  document.querySelectorAll('.difficulty-btn').forEach(b=>{
-    b.classList.remove('active','bg-primary-container','text-white');
-    b.classList.add('bg-surface-container','text-slate-500');
-  });
-  btn.classList.remove('bg-surface-container','text-slate-500');
-  btn.classList.add('active','bg-primary-container','text-white');
-  fetchProblems({reset:true}).catch(err=>{
-    $('problem-list').innerHTML='<div class="p-4 text-xs text-rose-600">'+esc(err.message||'Unable to load problems.')+'</div>';
-  });
-}));
-$('load-more-problems')?.addEventListener('click',async()=>{
-  const button=$('load-more-problems');
-  if(!button)return;
-  button.disabled=true;
-  button.textContent='Loading...';
-  try{await fetchProblems();}catch(err){
-    button.disabled=false;
-    button.textContent='Retry loading';
-    toast(err.message||'Unable to load more problems.');
-  }
-});
-
-$('problem-browser-toggle').addEventListener$('problem-browser-toggle').addEventListener('click',()=>{
-  setProblemExplorer(document.getElementById('problem-explorer').classList.contains('hidden'));
-});
-$('language').addEventListener('change',()=>{
-  $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
-  if(current){$('mentor-context').textContent=`${current.title} · ${$('language').value}`;loadDraftOrStarter();}
-});
-$('reset-code').addEventListener('click',()=>{
-  if(!current)return;
-  localStorage.removeItem(draftKey());
-  setEditorValue(starterCode(current,$('language').value),LANG_IDS[$('language').value]);
-  $('header-save').textContent='Starter code';
-});
-$('format-code').addEventListener('click',()=>toast('Formatting will be connected to the selected language formatter.'));
-$('run-btn').addEventListener('click',()=>execute('run'));
-$('submit-btn').addEventListener('click',()=>execute('submit'));
-$('results-toggle').addEventListener('click',()=>{
-  const body=$('results-body'),drawer=$('results-drawer'),resizer=$('results-resizer');
-  const collapsed=body.classList.toggle('hidden');
-  $('results-toggle-icon').textContent=collapsed?'expand_less':'expand_more';
-  drawer.style.height=collapsed?'44px':(localStorage.getItem('cm_results_height')||'256px');
-  if(resizer)resizer.classList.toggle('hidden',false);
-});
-$('clear-results').addEventListener('click',()=>{
-  $('results-drawer').classList.add('hidden');$('results-drawer').classList.remove('flex');
-  $('results-resizer')?.classList.add('hidden');
-  $('results-body').innerHTML='';setExecutionBadge('','—');$('execution-meta').textContent='';
-});
-$('home-btn').addEventListener('click',()=>location.href='dashboard.html');
-$('settings-btn').addEventListener('click',()=>location.href='settings.html');
-
-function toggleAccount(){
-  const menu=$('account-menu');
-  const btn=$('account-btn');
-  const open=!menu.classList.contains('hidden');
-  menu.classList.toggle('hidden',open);
-  btn.setAttribute('aria-expanded',String(!open));
-}
-function closeAccount(){
-  const menu=$('account-menu');
-  if(!menu)return;
-  menu.classList.add('hidden');
-  $('account-btn')?.setAttribute('aria-expanded','false');
-}
-$('account-btn').addEventListener('click',e=>{e.stopPropagation();toggleAccount();});
-document.addEventListener('click',e=>{
-  const menu=$('account-menu');
-  if(menu&&!menu.contains(e.target)&&!$('account-btn').contains(e.target))closeAccount();
-});
-document.querySelectorAll('[data-account-action]').forEach(button=>button.addEventListener('click',()=>{
-  const action=button.dataset.accountAction;
-  closeAccount();
-  if(action==='logout'){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');}
-  else if(action==='preferences'||action==='profile')location.replace('preferences.html');
-  else if(action==='settings')location.replace('settings.html');
-}));
-document.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){
-    closeAccount();
-    if($('mentor-panel')?.classList.contains('mentor-panel-fullscreen'))toggleMentorFullscreen(false);
-  }
-});
-
-function mentorStorageKey(){
-  return current ? userStoragePrefix()+'_mentor_chat_'+current.slug : userStoragePrefix()+'_mentor_chat_none';
-}
-
-function cleanMentorText(value){
-  let text=String(value||'').replace(/\r/g,'');
-  text=text.replace(/\*\*([^*]+)\*\*/g,'$1');
-  text=text.replace(/__([^_]+)__/g,'$1');
-  text=text.replace(/\*([^*]+)\*/g,'$1');
-  text=text.replace(/^#{1,6}\s*/gm,'');
-  text=text.replace(/^\s*[-•]\s+/gm,'');
-  text=text.replace(/^\s*\d+[.)]\s+/gm,'');
-  text=text.replace(/\`\`\`[a-zA-Z0-9_+-]*\n?/g,'');
-  text=text.replace(/\`([^\`]+)\`/g,'$1');
-  text=text.replace(/\[([^\]]+)\]\([^)]*\)/g,'$1');
-  return text.replace(/\n{3,}/g,'\n\n').trim();
-}
-
-function mentorTypingMarkup(){
-  return '<div class="mentor-agent"><div><div class="mentor-label">AI Mentor</div><div class="mentor-bubble"><span class="mentor-typing"><span></span><span></span><span></span>Thinking</span></div></div></div>';
-}
-
-function renderMentorChat(){
-  const chat=$('mentor-chat');
-  if(!chat)return;
-  if(!current){
-    chat.innerHTML='<div class="mentor-welcome rounded-xl bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">Choose a problem to start a mentor conversation.</div>';
-    return;
-  }
+function renderMentor(){
+  const host=$('mentor-messages');
   if(!mentorMessages.length){
-    chat.innerHTML='<div class="mentor-welcome rounded-xl bg-[#1b253b] border border-slate-700/60 p-3 text-[11px] text-slate-400 leading-5">Ask a question or use one of the guidance actions below. Your conversation stays visible while you work.</div>';
+    host.innerHTML='<div class="text-[11px] text-slate-500">Ask for a hint, debugging help, complexity analysis, edge cases, or a conceptual explanation.</div>';
     return;
   }
-  chat.innerHTML=mentorMessages.map((m,index)=>{
-    const role=m.role==='user'?'user':'agent';
-    const label=role==='user'?'You':'AI Mentor';
-    const patch=m.patch&&role==='agent'
-      ? '<div class="mentor-patch"><div class="mentor-patch-note">Small suggested change only. Understand it and try the fix yourself first.</div><button type="button" data-mentor-apply="'+index+'">Apply suggested change</button></div>'
-      : '';
-    return '<div class="mentor-'+role+'"><div><div class="mentor-label">'+label+'</div><div class="mentor-bubble">'+esc(cleanMentorText(m.text))+patch+'</div></div></div>';
+  host.innerHTML=mentorMessages.map(m=>{
+    const user=m.role==='user';
+    return '<div class="'+(user?'text-right':'text-left')+'"><div class="text-[9px] text-slate-500 mb-1">'+(user?'You':'AI Mentor')+'</div><div class="mentor-msg inline-block max-w-[90%] text-left px-3 py-2 rounded-xl '+(user?'bg-indigo-600':'bg-slate-800 border border-slate-700')+' text-[11px]">'+esc(m.text)+'</div></div>';
   }).join('');
-  chat.querySelectorAll('[data-mentor-apply]').forEach(button=>{
-    button.addEventListener('click',()=>applyMentorPatch(Number(button.dataset.mentorApply)));
-  });
-  chat.scrollTop=chat.scrollHeight;
+  host.scrollTop=host.scrollHeight;
 }
-
-function mentorSessionStorageKey(){
-  return current ? userStoragePrefix()+'_mentor_session_'+current.slug : userStoragePrefix()+'_mentor_session_none';
-}
-
-function saveMentorChat(){
-  if(current&&mentorSessionId){
-    localStorage.setItem(mentorSessionStorageKey(),String(mentorSessionId));
-  }
-}
-
-async function loadMentorChat(){
-  mentorSessionId=null;
-  mentorMessages=[];
-  hintLevel=1;
-  renderMentorChat();
-  if(!current||!token())return;
-
+async function loadMentorHistory(){
   try{
-    const cached=parseInt(localStorage.getItem(mentorSessionStorageKey())||'',10);
-    let sessionId=Number.isFinite(cached)?cached:null;
-
-    if(sessionId){
-      const sessionRes=await fetch(API+'/mentor/sessions/'+sessionId,{headers:{Authorization:'Bearer '+token()}});
-      if(sessionRes.ok){
-        const session=await sessionRes.json();
-        if(session.problem_slug===current.slug){
-          mentorSessionId=session.id;
-          mentorMessages=(session.messages||[]).map(m=>({role:m.role==='user'?'user':'agent',text:m.content}));
-          const hintValues=(session.messages||[]).map(m=>Number(m.hint_level)).filter(Number.isFinite);
-          if(hintValues.length)hintLevel=Math.max(1,Math.min(4,Math.max(...hintValues)));
-          renderMentorChat();
-          return;
-        }
-      }
-      localStorage.removeItem(mentorSessionStorageKey());
-    }
-
-    const listRes=await fetch(API+'/mentor/sessions?scope=practice&problem_slug='+encodeURIComponent(current.slug),{
-      headers:{Authorization:'Bearer '+token()}
-    });
-    if(!listRes.ok)return;
-    const sessions=await listRes.json();
-    if(!sessions.length)return;
-
-    const sessionRes=await fetch(API+'/mentor/sessions/'+sessions[0].id,{headers:{Authorization:'Bearer '+token()}});
-    if(!sessionRes.ok)return;
-    const session=await sessionRes.json();
-    mentorSessionId=session.id;
-    localStorage.setItem(mentorSessionStorageKey(),String(mentorSessionId));
-    mentorMessages=(session.messages||[]).map(m=>({role:m.role==='user'?'user':'agent',text:m.content}));
-    const hintValues=(session.messages||[]).map(m=>Number(m.hint_level)).filter(Number.isFinite);
-    if(hintValues.length)hintLevel=Math.max(1,Math.min(4,Math.max(...hintValues)));
-    renderMentorChat();
-  }catch(err){
-    console.warn('Mentor history load failed:',err);
-  }
+    const res=await fetch(API+'/mentor/sessions?scope=practice&problem_slug='+encodeURIComponent(problem.slug),{headers:{Authorization:'Bearer '+token()}});
+    if(!res.ok)return;
+    const sessions=await res.json();
+    if(!sessions.length){renderMentor();return}
+    mentorSessionId=sessions[0].id;
+    const detail=await fetch(API+'/mentor/sessions/'+mentorSessionId,{headers:{Authorization:'Bearer '+token()}});
+    if(!detail.ok)return;
+    const data=await detail.json();
+    mentorMessages=(data.messages||[]).map(m=>({role:m.role==='user'?'user':'assistant',text:m.content}));
+    renderMentor();
+  }catch(_err){renderMentor()}
 }
-
-async function applyMentorPatch(index){
-  const message=mentorMessages[index];
-  const patch=message?.patch;
-  if(!editor||!patch){toast('No suggested code change is available.');return;}
-  const model=editor.getModel();
-  const start=Number(patch.start_line);
-  const end=Number(patch.end_line);
-  if(!model||!Number.isInteger(start)||!Number.isInteger(end)||start<1||end<start||end>model.getLineCount()){
-    toast('The suggested change no longer matches the current code.');
-    return;
-  }
-  const range=new monaco.Range(start,1,end,model.getLineMaxColumn(end));
-  editor.pushUndoStop();
-  editor.executeEdits('ai-mentor',[
-    {range,text:String(patch.replacement||''),forceMoveMarkers:true}
-  ]);
-  editor.pushUndoStop();
-  localStorage.setItem(draftKey(),editor.getValue());
-  $('header-save').textContent='Draft saved';
-  clearErrorLineHighlight();
-  editor.revealLineInCenter(start);
-  editor.focus();
-  toast('Suggested change applied. Review it and run the tests.');
-}
-
-async function clearMentorChat(){
-  const oldSessionId=mentorSessionId;
-  mentorMessages=[];
-  hintLevel=1;
-  mentorSessionId=null;
-  if(current){
-    localStorage.removeItem(mentorStorageKey());
-    localStorage.removeItem(mentorSessionStorageKey());
-    localStorage.removeItem(userStoragePrefix()+'_mentor_hint_'+current.slug);
-  }
-  renderMentorChat();
-  if(oldSessionId){
-    try{
-      await fetch(API+'/mentor/sessions/'+oldSessionId,{method:'DELETE',headers:{Authorization:'Bearer '+token()}});
-    }catch(err){console.warn('Mentor session delete failed:',err);}
-  }
-}
-
-function maybeOpenMentorFromDashboard(){
-  if(!pendingMentorOpen||!current||!editor)return;
-  pendingMentorOpen=false;
-  toggleMentor();
-  if(pendingMentorQuestion){
-    const question=pendingMentorQuestion;
-    pendingMentorQuestion=null;
-    setTimeout(()=>askMentor('question',question),100);
-  }
-}
-
-function toggleMentor(){
-  $('mentor-panel').classList.toggle('hidden');
-  $('mentor-panel').classList.toggle('flex');
-  if(!$('mentor-panel').classList.contains('hidden')){
-    renderMentorChat();
-    setTimeout(()=>$('mentor-input')?.focus(),50);
-  }
-}
-$('mentor-trigger').addEventListener('click',toggleMentor);
-$('mentor-close').addEventListener('click',toggleMentor);
-$('mentor-clear').addEventListener('click',clearMentorChat);
-
-function toggleMentorFullscreen(force){
-  const panel=$('mentor-panel');
-  const icon=$('mentor-fullscreen-icon');
-  if(!panel||!icon)return;
-  const next=typeof force==='boolean'?force:!panel.classList.contains('mentor-panel-fullscreen');
-  panel.classList.toggle('mentor-panel-fullscreen',next);
-  icon.textContent=next?'fullscreen_exit':'fullscreen';
-  const button=$('mentor-fullscreen');
-  button?.setAttribute('aria-label',next?'Exit fullscreen':'Open AI Mentor fullscreen');
-  button?.setAttribute('title',next?'Exit fullscreen':'Fullscreen');
-  if(next){
-    panel.classList.remove('hidden');
-    panel.classList.add('flex');
-    renderMentorChat();
-    setTimeout(()=>$('mentor-input')?.focus(),50);
-  }
-  requestAnimationFrame(()=>editor?.layout?.());
-}
-$('mentor-fullscreen').addEventListener('click',()=>toggleMentorFullscreen());
-
-
 async function askMentor(action,question=null){
-  if(!current){toast('Select a problem first.');return}
-  if(!editor){toast('Code editor is still loading.');return}
-  const requestId=++mentorRequestId;
-  const userText=question||({hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity?',edge:'What edge cases should I test?',modify:'Show me the minimal code change needed to fix the issue. Do not give me the full solution.'}[action]||'Help me with this problem.');
-  mentorMessages.push({role:'user',text:userText});
-  saveMentorChat();
-  renderMentorChat();
-  const chat=$('mentor-chat');
-  chat.insertAdjacentHTML('beforeend',mentorTypingMarkup());
-  chat.scrollTop=chat.scrollHeight;
-  document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=true);
+  if(!problem||!editor)return;
+  const presets={hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity of my current approach?',edge:'What edge cases should I test?'};
+  const text=question||presets[action]||'Help me with this problem.';
+  mentorMessages.push({role:'user',text});renderMentor();
   $('mentor-send').disabled=true;
-  $('mentor-input').disabled=true;
-
+  document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=true);
   try{
     const res=await fetch(API+'/mentor/analyze',{
       method:'POST',
       headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
       body:JSON.stringify({
-        problem_slug:current.slug,
+        problem_slug:problem.slug,
         language:$('language').value,
         code:editor.getValue(),
-        action,
-        question,
+        action:action||'question',
+        question:action==='question'?text:null,
         hint_level:hintLevel,
         execution:lastExecution,
         session_id:mentorSessionId
       })
     });
-    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
-    if(requestId!==mentorRequestId)return;
-    chat.querySelector('.mentor-agent:last-child')?.remove();
     mentorSessionId=data.session_id||mentorSessionId;
-    saveMentorChat();
-    if(data.error_line)highlightErrorLine(data.error_line);
-    mentorMessages.push({role:'agent',text:data.answer||'The mentor returned no explanation.',patch:data.patch||null});
-    if(action==='hint'){
-      hintLevel=Math.min(4,hintLevel+1);
-      localStorage.setItem(userStoragePrefix()+'_mentor_hint_'+current.slug,String(hintLevel));
-    }
-    saveMentorChat();
-    renderMentorChat();
+    mentorMessages.push({role:'assistant',text:data.answer||'No mentor response.'});
+    if(action==='hint')hintLevel=Math.min(4,hintLevel+1);
+    renderMentor();
   }catch(err){
-    if(requestId!==mentorRequestId)return;
-    chat.querySelector('.mentor-agent:last-child')?.remove();
-    const networkMessage=err instanceof TypeError && (err.message||'').toLowerCase().includes('fetch')
-      ? 'Unable to reach the CodeMentor backend. Make sure FastAPI is running on http://127.0.0.1:8000.'
-      : (err.message||'Unable to contact the AI Mentor.');
-    mentorMessages.push({role:'agent',text:networkMessage});
-    saveMentorChat();
-    renderMentorChat();
+    mentorMessages.push({role:'assistant',text:err.message||'Unable to contact AI Mentor.'});
+    renderMentor();
   }finally{
-    if(requestId===mentorRequestId){
-      document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=false);
-      $('mentor-send').disabled=false;
-      $('mentor-input').disabled=false;
-    }
+    $('mentor-send').disabled=false;
+    document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=false);
   }
 }
-document.querySelectorAll('.mentor-action').forEach(b=>b.addEventListener('click',()=>askMentor(b.dataset.action)));
-$('mentor-send').addEventListener('click',()=>{
-  const q=$('mentor-input').value.trim();
-  if(!q){$('mentor-input').focus();return}
-  $('mentor-input').value='';
-  askMentor('question',q);
-});
-$('mentor-input').addEventListener('input',()=>{
-  const el=$('mentor-input');
-  el.style.height='auto';
-  const maxHeight=96;
-  const nextHeight=Math.min(el.scrollHeight,maxHeight);
-  el.style.height=nextHeight+'px';
-  el.style.overflowY=el.scrollHeight>maxHeight?'auto':'hidden';
-});
-$('mentor-input').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();$('mentor-send').click();}
-});
-
-
-async function fetchProblems({reset=false}={}){
-  if(!token())return;
-  const requestId=++problemRequestId;
-  const offset=reset?0:problemOffset;
-  const params=new URLSearchParams({limit:'100',offset:String(offset)});
-  if(currentDifficulty)params.set('difficulty',currentDifficulty);
-  const q=$('problem-search').value.trim();
-  if(q)params.set('search',q);
-
-  const response=await fetch(API+'/problems?'+params.toString(),{headers:{Authorization:'Bearer '+token()}});
-  if(response.status===401){
-    localStorage.removeItem(TOKEN_KEY);
-    location.replace('auth.html');
-    return;
-  }
-  if(!response.ok){
-    let detail='';
-    try{const body=await response.json();detail=body.detail?' — '+body.detail:'';}catch(_err){}
-    throw new Error('Unable to load problems (HTTP '+response.status+')'+detail);
-  }
-
-  const data=await response.json();
-  if(!Array.isArray(data.items))throw new Error('Problems API returned an unexpected response shape.');
-  if(requestId!==problemRequestId)return null;
-
-  if(reset)problems=[];
-  problems=problems.concat(data.items);
-  problemTotal=Number(data.total)||problems.length;
-  problemOffset=Number(data.offset||0)+data.items.length;
-  problemHasMore=Boolean(data.has_more);
-  renderProblems();
-  return data;
+function renderResults(data){
+  lastExecution=data;
+  $('results').classList.remove('hidden');
+  $('result-badge').textContent=data.status||'Complete';
+  const host=$('result-body');
+  host.innerHTML=(data.results||[]).map(t=>{
+    const pass=!!t.passed;
+    return '<div class="rounded-lg border '+(pass?'border-emerald-800':'border-rose-800')+' bg-slate-950 p-3"><div class="flex justify-between text-[10px]"><span>'+esc(t.test||'Test')+' · '+esc(t.status||'')+'</span><span>'+esc(t.runtime_ms||'')+' ms</span></div>'+(t.message?'<div class="mt-1 text-[10px] text-slate-400">'+esc(t.message)+'</div>':'')+'<\/div>';
+  }).join('')||'<div class="text-xs text-slate-500">No test results.</div>';
 }
-
+async function execute(mode){
+  if(!problem||!editor)return;
+  const code=editor.getValue();
+  if(!code.trim()){toast('Write code first.');return}
+  $('run-btn').disabled=true;$('submit-btn').disabled=true;
+  $('execution-status').textContent=mode==='submit'?'Submitting…':'Running…';
+  try{
+    const res=await fetch(API+'/execution/run',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
+      body:JSON.stringify({problem_slug:problem.slug,language:$('language').value,code,mode})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+    if(!res.ok)throw new Error(data.detail||'Execution failed.');
+    renderResults(data);
+    $('execution-status').textContent=(data.status||'Complete')+' · '+(data.summary||'');
+  }catch(err){
+    $('execution-status').textContent=err.message||'Execution failed.';
+    $('results').classList.remove('hidden');
+    $('result-body').innerHTML='<div class="text-xs text-rose-400 p-3">'+esc(err.message||'Execution failed.')+'</div>';
+  }finally{
+    $('run-btn').disabled=false;$('submit-btn').disabled=false;
+  }
+}
+function initEditor(){
+  require.config({paths:{vs:'https://cdn.jsdelivr.net/npm/monaco-editor/min/vs'}});
+  require(['vs/editor/editor.main'],()=>{
+    editor=monaco.editor.create($('editor'),{
+      value:'',
+      language:LANG_IDS[$('language').value],
+      theme:'vs-dark',
+      automaticLayout:true,
+      fontFamily:'JetBrains Mono, monospace',
+      fontSize:13,
+      minimap:{enabled:true},
+      padding:{top:14,bottom:14},
+      scrollBeyondLastLine:false
+    });
+    editor.onDidChangeModelContent(()=>{
+      if(!problem)return;
+      localStorage.setItem(draftKey(),editor.getValue());
+      $('save-status').textContent='Saved locally';
+    });
+    if(problem)loadDraft();
+    $('run-btn').disabled=!problem;
+    $('submit-btn').disabled=!problem;
+  },err=>showError('Code editor failed to load. Refresh the page.'));
+}
 async function load(){
   if(!requireAuth())return;
+  const [profileRes,userRes]=await Promise.all([
+    fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
+    fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
+  ]);
+  if(profileRes.status===401||userRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+  const profile=profileRes.ok?await profileRes.json():{};
+  const user=userRes.ok?await userRes.json():{};
+  userId=String(user.id||'unknown');
+  $('account-name').textContent=profile.full_name||'CodeMentor User';
+  $('account-email').textContent=user.email||'Signed in';
+  if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language))$('language').value=profile.preferred_language;
+
+  const slug=new URLSearchParams(location.search).get('problem');
+  if(!slug){location.replace('practice.html');return}
+
   try{
-    const [profileRes,userRes]=await Promise.all([
-      fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
-      fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
-    ]);
-
-    if(profileRes.status===401||userRes.status===401){
-      localStorage.removeItem(TOKEN_KEY);
-      location.replace('auth.html');
-      return;
+    const res=await fetch(API+'/problems/'+encodeURIComponent(slug),{headers:{Authorization:'Bearer '+token()}});
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+    if(!res.ok){
+      const body=await res.json().catch(()=>({}));
+      throw new Error(body.detail||'Problem not found.');
     }
-
-    const profile=profileRes.ok?await profileRes.json():{};
-    const user=userRes.ok?await userRes.json():{};
-    currentUserId=String(user.id||'unknown');
-
-    $('account-name').textContent=profile.full_name||'CodeMentor User';
-    $('account-email').textContent=user.email||'Signed in';
-
-    if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language)){
-      $('language').value=profile.preferred_language;
-    }
-    $('file-label').textContent=FILE_NAMES[$('language').value]||'solution.txt';
-
-    const params=new URLSearchParams(location.search);
-    const requested=params.get('problem');
-    pendingMentorOpen=params.get('mentor')==='1';
-    pendingMentorQuestion=(params.get('question')||'').trim()||null;
-
-    if(!requested){
-      location.replace('practice.html');
-      return;
-    }
-
-    const response=await fetch(API+'/problems/'+encodeURIComponent(requested),{
-      headers:{Authorization:'Bearer '+token()}
-    });
-
-    if(response.status===401){
-      localStorage.removeItem(TOKEN_KEY);
-      location.replace('auth.html');
-      return;
-    }
-
-    if(!response.ok){
-      let detail='';
-      try{
-        const body=await response.json();
-        detail=body.detail?' — '+body.detail:'';
-      }catch(_err){}
-      throw new Error('Unable to load this problem (HTTP '+response.status+')'+detail);
-    }
-
-    const problem=await response.json();
-    selectProblem(problem);
-    maybeOpenMentorFromDashboard();
+    problem=await res.json();
+    renderProblem();
+    $('language').dispatchEvent(new Event('change'));
+    $('run-btn').disabled=false;$('submit-btn').disabled=false;
+    await loadMentorHistory();
   }catch(err){
-    console.error('Problem loading failed:',err);
-    $('problem-title').textContent='Unable to load problem';
-    $('problem-description').textContent=err.message||'Unable to load the requested problem.';
-    $('problem-empty').classList.add('hidden');
-    $('problem-details').classList.remove('hidden');
-    $('execution-status').textContent='Problem loading failed.';
+    showError(err.message||'Unable to load the requested problem.');
   }
 }
-
-
-initMonaco();
-initWorkspaceSplitter();
-initResultsResizer();
-setProblemExplorer(false);
+$('back-btn').addEventListener('click',()=>location.href='practice.html');
+$('account-btn').addEventListener('click',e=>{e.stopPropagation();$('account-menu').classList.toggle('hidden')});
+document.addEventListener('click',e=>{if(!$('account-menu').contains(e.target)&&e.target!==$('account-btn'))$('account-menu').classList.add('hidden')});
+$('logout-btn').addEventListener('click',()=>{localStorage.removeItem(TOKEN_KEY);location.replace('auth.html')});
+$('language').addEventListener('change',()=>{
+  if(!editor||!problem)return;
+  monaco.editor.setModelLanguage(editor.getModel(),LANG_IDS[$('language').value]);
+  loadDraft();
+});
+$('reset-btn').addEventListener('click',()=>{if(!problem||!editor)return;localStorage.removeItem(draftKey());editor.setValue(starterCode($('language').value));$('save-status').textContent='Starter'});
+$('run-btn').addEventListener('click',()=>execute('run'));
+$('submit-btn').addEventListener('click',()=>execute('submit'));
+$('clear-results').addEventListener('click',()=>{$('results').classList.add('hidden');$('result-body').innerHTML='';lastExecution=null});
+$('mentor-open').addEventListener('click',()=>{$('mentor-panel').classList.remove('hidden');$('mentor-panel').classList.add('flex');renderMentor()});
+$('mentor-close').addEventListener('click',()=>{$('mentor-panel').classList.add('hidden');$('mentor-panel').classList.remove('flex')});
+$('mentor-clear').addEventListener('click',async()=>{mentorMessages=[];mentorSessionId=null;renderMentor()});
+document.querySelectorAll('.mentor-action').forEach(b=>b.addEventListener('click',()=>askMentor(b.dataset.mentor)));
+$('mentor-send').addEventListener('click',()=>{const q=$('mentor-input').value.trim();if(q){$('mentor-input').value='';askMentor('question',q)}});
+$('mentor-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();$('mentor-send').click()}});
+$('splitter').addEventListener('pointerdown',e=>{
+  const main=document.querySelector('main');
+  const move=ev=>{const width=Math.max(320,Math.min(main.clientWidth-450,ev.clientX));main.style.gridTemplateColumns=width+'px 6px minmax(0,1fr)'};
+  const up=()=>{window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)};
+  window.addEventListener('pointermove',move);window.addEventListener('pointerup',up);
+});
+initEditor();
 load();
 </script>
 </body>
