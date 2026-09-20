@@ -206,7 +206,7 @@ tailwind.config = {
 <div class="xl:col-span-4 flex flex-col gap-6">
 <section id="dashboard-mentor-card" class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
   <div class="p-6 bg-gradient-to-br from-primary-container via-primary to-primary text-on-primary">
-    <div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-xl bg-surface-container-lowest text-primary flex items-center justify-center"><span class="material-symbols-outlined">smart_toy</span></div><div><h3 class="font-bold">Ask your AI Mentor</h3><span class="font-mono text-[10px] text-on-primary">Mentor engine</span></div></div><span class="px-2.5 py-1 rounded-full bg-white/15 text-xs">Ready</span></div>
+    <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-3 min-w-0"><div class="w-10 h-10 rounded-xl bg-surface-container-lowest text-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined">smart_toy</span></div><div><h3 class="font-bold">Ask your AI Mentor</h3><span class="font-mono text-[10px] text-on-primary">Mentor engine</span></div></div><a href="mentor.html" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold">Open full mentor</a></div>
     <p class="text-sm text-on-primary mt-4 opacity-90">Ask about an approach, a bug, an edge case, or what to practice next. Get the answer directly here, then continue into Live Practice when you want to work on code.</p>
   </div>
   <div class="p-6">
@@ -314,10 +314,7 @@ function startRecommendation(){
 function handleAction(action){
   if(action==='problem') startRecommendation();
   else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
-  else if(action==='mentor'){
-    document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
-    window.setTimeout(()=>document.getElementById('mentor-input')?.focus(),160);
-  }
+  else if(action==='mentor') window.location.replace('mentor.html');
   else if(action==='analytics') window.location.replace('analytics.html');
 }
 const skillCatalog = {
@@ -505,10 +502,7 @@ document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click'
 document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>{
   const target=b.dataset.nav||b.dataset.side;
   if(target==='practice') window.location.replace('practice.html');
-  else if(target==='mentor'){
-    document.getElementById('dashboard-mentor-card')?.scrollIntoView({behavior:'smooth',block:'center'});
-    window.setTimeout(()=>document.getElementById('mentor-input')?.focus(),160);
-  }
+  else if(target==='mentor') window.location.replace('mentor.html');
   else if(target==='analytics') window.location.replace('analytics.html');
   else navNotice((b.textContent||'Module').trim());
 }));
@@ -584,7 +578,7 @@ async function askDashboardMentor(question){
     dashboardMentorSessionId=data.session_id||dashboardMentorSessionId;
     dashboardMentorMessages.push({role:'ai',text:data.answer||'The mentor returned no explanation.'});
   }catch(err){
-    dashboardMentorMessages.push({role:'ai',text:err.message||'Unable to contact the AI Mentor.'});
+    const message=err.message||'Unable to contact the AI Mentor.'; dashboardMentorMessages.push({role:'ai',text:message.includes('GEMINI_API_KEY')?'AI Mentor is not configured yet. Add GEMINI_API_KEY to backend/.env and restart the FastAPI server.':message});
   }finally{
     input.disabled=false; responseButton.disabled=false; input.value=''; input.focus();
     renderDashboardMentor();
