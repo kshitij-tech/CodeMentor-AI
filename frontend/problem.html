@@ -1107,7 +1107,8 @@ async function load(){
 
     await fetchProblems({reset:true});
 
-    currentUserId=String(user.id||'unknown');\n    const requested=params.get('problem')||localStorage.getItem(userStoragePrefix()+'_current_problem');
+    currentUserId=String(user.id||'unknown');
+    const requested=params.get('problem')||localStorage.getItem(userStoragePrefix()+'_current_problem');
     let chosen=requested?problems.find(p=>p.slug===requested):null;
     if(requested&&!chosen){
       try{
@@ -1131,10 +1132,10 @@ async function load(){
   }
 }
 
-initMonaco();initMonaco();
+initMonaco();
 initWorkspaceSplitter();
 initResultsResizer();
-setProblemExplorer(true);
+setProblemExplorer(false);
 load();
 </script>
 </body>
