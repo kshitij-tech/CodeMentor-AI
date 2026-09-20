@@ -160,7 +160,7 @@ let lastExecution=null;
 
 const $=id=>document.getElementById(id);
 function token(){return localStorage.getItem(TOKEN_KEY)}
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c))}
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(msg){const e=$('toast');e.textContent=msg;e.classList.remove('hidden');clearTimeout(window.__toast);window.__toast=setTimeout(()=>e.classList.add('hidden'),2200)}
 function requireAuth(){if(!token()){location.replace('auth.html');return false}return true}
 function storagePrefix(){return 'codementor:user:'+userId}
