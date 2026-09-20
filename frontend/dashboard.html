@@ -306,7 +306,7 @@ function navNotice(area){ toast(area + ' will be connected in the next implement
 let currentRecommendation=null;
 function startRecommendation(){
   const slug=currentRecommendation?.problem?.slug;
-  if(slug) window.location.replace('practice.html?problem='+encodeURIComponent(slug));
+  if(slug) window.location.replace('problem.html?problem='+encodeURIComponent(slug));
   else window.location.replace('practice.html');
 }
 function handleAction(action){
