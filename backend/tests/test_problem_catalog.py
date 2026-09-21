@@ -69,7 +69,7 @@ class ProblemCatalogTests(unittest.TestCase):
         report = audit_problems([first, second])
         self.assertEqual(report["total"], 2)
         self.assertEqual(report["clean"], 2)
-        self.assertEqual(len(report["duplicates"]), 1)
+        self.assertEqual(len(report["duplicates"]["same_content"]), 1)
 
     def test_canonical_topic_catalog_is_stable(self):
         self.assertIn("Binary Search", CANONICAL_TOPICS)
