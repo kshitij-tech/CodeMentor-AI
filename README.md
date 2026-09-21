@@ -49,3 +49,21 @@ The catalogue layer normalizes supported difficulties to Easy, Medium, or Hard, 
 The canonical taxonomy is also exposed through:
 
     GET /problems/taxonomy
+
+
+## Code execution sandbox
+
+The execution service supports two modes during development:
+
+    EXECUTION_SANDBOX=local
+
+For production, set:
+
+    EXECUTION_SANDBOX=docker
+    EXECUTION_DOCKER_IMAGE=codementor-python-runner:latest
+
+Build the runner image from the repository root:
+
+    docker build -t codementor-python-runner:latest -f docker/python-runner/Dockerfile docker/python-runner
+
+Docker execution disables networking, drops Linux capabilities, uses a read-only workspace, applies CPU/memory/process limits, and removes the container after execution. The local runner remains available for development only; production configuration rejects unsandboxed execution.
