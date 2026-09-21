@@ -179,20 +179,11 @@ tailwind.config = {
 
 <section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
   <div class="flex items-center justify-between gap-3">
-    <div><h3 class="text-lg font-bold">DSA Skill Mastery Matrix</h3><p class="text-xs text-on-surface-variant">Click any topic to inspect its current mastery state and recommended next action.</p></div>
-    <span class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low">10 tracked topics</span>
+    <div><h3 class="text-lg font-bold">DSA Skill Mastery Matrix</h3><p class="text-xs text-on-surface-variant">These topics come directly from the Practice problem catalogue, so the names stay consistent.</p></div>
+    <span id="skill-topic-count" class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low">Loading topics…</span>
   </div>
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-    <button class="skill-card w-full text-left" data-topic="Arrays & Strings" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Hashing & Hash Maps" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Two Pointers" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Binary Search" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Linked Lists" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Trees & BST" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Graphs (BFS/DFS)" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Dynamic Programming" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Backtracking" type="button"></button>
-    <button class="skill-card w-full text-left" data-topic="Greedy Algorithms" type="button"></button>
+  <div id="skill-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+    <div class="col-span-full p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Loading problem topics…</div>
   </div>
 </section>
 
@@ -361,20 +352,67 @@ function closeSkillModal(){
 }
 
 let analyticsSnapshot=null;
+let practiceTopicFacets=[];
+
 function renderSkills(){
-  const topics=['Arrays & Strings','Hashing & Hash Maps','Two Pointers','Binary Search','Linked Lists','Trees & BST','Graphs (BFS/DFS)','Dynamic Programming','Backtracking','Greedy Algorithms'];
+  const grid=document.getElementById('skill-grid');
+  const count=document.getElementById('skill-topic-count');
+  if(!grid)return;
+
+  const topics=practiceTopicFacets
+    .map(item=>String(item?.name||'').trim())
+    .filter(Boolean);
+
+  if(count)count.textContent=topics.length+' catalogue topics';
+
+  if(!topics.length){
+    grid.innerHTML='<div class="col-span-full p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">No problem topics are available yet.</div>';
+    return;
+  }
+
   const statsByTopic=Object.fromEntries((analyticsSnapshot?.topics||[]).map(item=>[item.topic,item]));
-  const host=document.querySelectorAll('.skill-card');
-  host.forEach((el,i)=>{
-    const topic=topics[i];
+  grid.innerHTML=topics.map(topic=>{
     const stat=statsByTopic[topic]||{mastery:0,solved_problems:0,attempted_problems:0,acceptance_rate:0};
     const mastery=Math.max(0,Math.min(100,Number(stat.mastery)||0));
     const status=stat.attempted_problems?'Tracked':'No attempts';
-    el.className='skill-card w-full text-left p-3.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all focus:outline-none focus:ring-2 focus:ring-primary/20';
-    el.setAttribute('aria-label','Open '+topic+' skill details');
-    el.setAttribute('title','Open '+topic+' skill details');
-    el.innerHTML='<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+esc(topic)+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">'+status+'</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div><div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:'+mastery+'%"></div></div><div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>'+stat.solved_problems+' solved in app</span><span>'+mastery+'% mastery</span></div>';
+    return '<button class="skill-card w-full text-left p-3.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all focus:outline-none focus:ring-2 focus:ring-primary/20" data-topic="'+esc(topic)+'" type="button" aria-label="Open '+esc(topic)+' skill details" title="Open '+esc(topic)+' skill details">'+
+      '<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+esc(topic)+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">'+status+'</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div>'+
+      '<div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:'+mastery+'%"></div></div>'+
+      '<div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>'+stat.solved_problems+' solved in app</span><span>'+mastery+'% mastery</span></div>'+
+    '</button>';
+  }).join('');
+
+  grid.querySelectorAll('.skill-card').forEach(card=>{
+    card.addEventListener('click',()=>openSkillModal(card.dataset.topic));
+    card.addEventListener('keydown',event=>{
+      if(event.key==='Enter'||event.key===' '){
+        event.preventDefault();
+        openSkillModal(card.dataset.topic);
+      }
+    });
   });
+}
+
+async function loadPracticeTopics(){
+  try{
+    const res=await fetch(API_BASE_URL+'/problems/topics',{headers:{Authorization:'Bearer '+token()}});
+    if(res.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace('auth.html');
+      return;
+    }
+    if(!res.ok)throw new Error('Problem topic request failed.');
+    const data=await res.json();
+    practiceTopicFacets=data.topics||[];
+    renderSkills();
+  }catch(err){
+    console.warn('Problem topics load failed:',err);
+    practiceTopicFacets=[];
+    const count=document.getElementById('skill-topic-count');
+    if(count)count.textContent='Topics unavailable';
+    const grid=document.getElementById('skill-grid');
+    if(grid)grid.innerHTML='<div class="col-span-full p-4 rounded-xl bg-surface-container-low text-xs text-error">Unable to load the Practice topic catalogue.</div>';
+  }
 }
 function renderRecommendation(data){
   currentRecommendation=data;
@@ -453,6 +491,7 @@ async function loadDashboard(){
   if(!requireAuth()) return;
   renderSkills();
   void loadDashboardMentor();
+  void loadPracticeTopics();
 
   const headers={headers:{Authorization:'Bearer '+token()}};
 
@@ -519,10 +558,6 @@ async function loadDashboard(){
 
   renderSkills();
 }
-document.querySelectorAll('.skill-card').forEach(card=>{
-  card.addEventListener('click',()=>openSkillModal(card.dataset.topic));
-  card.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();openSkillModal(card.dataset.topic);}});
-});
 document.getElementById('close-skill-modal')?.addEventListener('click',closeSkillModal);
 document.getElementById('skill-modal')?.addEventListener('click',event=>{if(event.target.id==='skill-modal')closeSkillModal();});
 
