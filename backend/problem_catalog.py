@@ -188,7 +188,7 @@ def is_english_problem(title: Any, description: Any) -> bool:
 
 _EXAMPLES_SECTION_PATTERNS = (
     re.compile(
-        r"(?is)\bexamples?\s*:?\s*(?=(?:(?:\d+[.\):-]\s*)|(?:[-*]\s*))?input\s*:)",
+        r"(?is)\bexamples?\s*:?\s*(?=(?:(?:example\s+\d+\s*:?|\d+[.\):-]\s*|[-*]\s*)?\s*input\s*:)",
     ),
     re.compile(r"(?is)\bexample\s+\d+\s*:?\s*(?=input\s*:)")
 )
