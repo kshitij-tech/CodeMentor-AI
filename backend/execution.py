@@ -8,10 +8,12 @@ import base64
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -40,6 +42,135 @@ BLOCKED_CALLS = {"open", "eval", "exec", "compile", "__import__", "input"}
 
 class CodeRejectedError(ValueError):
     pass
+
+
+EXECUTION_SANDBOX = os.getenv("EXECUTION_SANDBOX", "local").strip().lower()
+EXECUTION_DOCKER_IMAGE = os.getenv(
+    "EXECUTION_DOCKER_IMAGE",
+    "codementor-python-runner:latest",
+).strip()
+APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
+PRODUCTION_ENVS = {"prod", "production"}
+
+
+def _sandbox_mode() -> str:
+    if EXECUTION_SANDBOX not in {"local", "docker"}:
+        raise CodeRejectedError(
+            "Invalid EXECUTION_SANDBOX. Use 'docker' or 'local'."
+        )
+
+    if APP_ENV in PRODUCTION_ENVS and EXECUTION_SANDBOX != "docker":
+        raise CodeRejectedError(
+            "Production execution requires EXECUTION_SANDBOX=docker."
+        )
+
+    if EXECUTION_SANDBOX == "docker" and not shutil.which("docker"):
+        raise CodeRejectedError(
+            "Docker execution is enabled, but the Docker CLI was not found."
+        )
+
+    return EXECUTION_SANDBOX
+
+
+def _run_python_process(
+    script_path: str,
+    workdir: str,
+    *,
+    input_data: str | None,
+    timeout_seconds: float,
+    env: dict[str, str] | None,
+):
+    mode = _sandbox_mode()
+    timeout_seconds = max(0.1, float(timeout_seconds))
+    docker_name = None
+
+    if mode == "local":
+        creationflags = 0
+        start_new_session = False
+        if os.name == "nt":
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        else:
+            start_new_session = True
+
+        command = [sys.executable, "-I", "-B", script_path]
+        try:
+            return subprocess.run(
+                command,
+                cwd=workdir,
+                env=env,
+                input=input_data,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+                check=False,
+                creationflags=creationflags,
+                start_new_session=start_new_session,
+            )
+        except subprocess.TimeoutExpired:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/T", "/F", "/PID", str(getattr(locals().get("completed", None), "pid", 0))],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+            raise
+
+    docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
+    script_name = os.path.basename(script_path)
+    mounted_workdir = os.path.abspath(workdir)
+    command = [
+        "docker",
+        "run",
+        "--rm",
+        "--name",
+        docker_name,
+        "--network",
+        "none",
+        "--cpus",
+        "1",
+        "--memory",
+        "256m",
+        "--pids-limit",
+        "64",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=64m",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--user",
+        "65532:65532",
+        "-v",
+        f"{mounted_workdir}:/workspace:ro",
+        "-w",
+        "/workspace",
+        EXECUTION_DOCKER_IMAGE,
+        "python",
+        "-I",
+        "-B",
+        f"/workspace/{script_name}",
+    ]
+
+    try:
+        return subprocess.run(
+            command,
+            input=input_data,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        subprocess.run(
+            ["docker", "rm", "-f", docker_name],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        raise
 
 
 @dataclass
@@ -166,15 +297,12 @@ def run_python_stdio_tests(
             started = time.perf_counter()
 
             try:
-                completed = subprocess.run(
-                    [sys.executable, "-I", script_path],
-                    cwd=workdir,
+                completed = _run_python_process(
+                    script_path,
+                    workdir,
+                    input_data=input_data,
+                    timeout_seconds=max(0.1, float(time_limit_seconds)),
                     env=env,
-                    input=input_data,
-                    capture_output=True,
-                    text=True,
-                    timeout=max(0.1, float(time_limit_seconds)),
-                    check=False,
                 )
                 runtime_ms = int((time.perf_counter() - started) * 1000)
             except subprocess.TimeoutExpired:
@@ -327,14 +455,12 @@ def run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[Test
             }
 
             try:
-                completed = subprocess.run(
-                    [sys.executable, "-I", script_path],
-                    cwd=workdir,
+                completed = _run_python_process(
+                    script_path,
+                    workdir,
+                    input_data=None,
+                    timeout_seconds=TIMEOUT_SECONDS,
                     env=env,
-                    capture_output=True,
-                    text=True,
-                    timeout=TIMEOUT_SECONDS,
-                    check=False,
                 )
             except subprocess.TimeoutExpired:
                 outcomes.append(
