@@ -1,19 +1,36 @@
 /* Shared CodeMentor AI interaction layer */
+html { scroll-behavior: smooth; }
+body {
+  opacity: 1;
+  transition: opacity .16s ease;
+}
+
 button, a, [role="button"], select, input[type="button"], input[type="submit"] {
   -webkit-tap-highlight-color: transparent;
 }
 
 .cm-interactive {
-  transition: transform .10s ease, box-shadow .10s ease, filter .10s ease, background-color .10s ease, opacity .10s ease;
+  transition:
+    transform .12s ease,
+    box-shadow .14s ease,
+    filter .14s ease,
+    background-color .14s ease,
+    border-color .14s ease,
+    color .14s ease,
+    opacity .14s ease;
 }
 
 .cm-interactive:not(:disabled):hover {
   transform: translateY(-1px);
 }
 
-.cm-interactive:not(:disabled):active,
-.cm-click-pop {
-  transform: scale(.97);
+.cm-interactive:not(:disabled):active {
+  transform: translateY(1px) scale(.985);
+}
+
+.cm-interactive:focus-visible {
+  outline: 2px solid rgba(67,56,202,.45);
+  outline-offset: 2px;
 }
 
 .cm-ripple-host {
@@ -23,109 +40,116 @@ button, a, [role="button"], select, input[type="button"], input[type="submit"] {
 
 .cm-ripple {
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
   pointer-events: none;
   background: currentColor;
   opacity: .18;
-  transform: translate(-50%, -50%) scale(0);
-  animation: cm-ripple .28s ease-out forwards;
+  transform: translate(-50%,-50%) scale(0);
+  animation: cm-ripple .52s ease-out forwards;
 }
 
-@keyframes cm-ripple {
-  0% { transform: translate(-50%, -50%) scale(0); opacity: .20; }
-  100% { transform: translate(-50%, -50%) scale(15); opacity: 0; }
+.cm-click-pop {
+  animation: cm-click-pop .18s ease-out;
 }
 
-@keyframes cm-message-enter {
-  0% { opacity: 0; transform: translateY(10px) scale(.985); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+.cm-menu {
+  transform-origin: top right;
+}
+
+.cm-menu:not(.hidden) {
+  animation: cm-menu-in .14s ease-out;
+}
+
+.cm-loading {
+  pointer-events: none;
+}
+
+.cm-loading::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  margin-left: 7px;
+  display: inline-block;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: cm-spin .7s linear infinite;
+}
+
+.cm-busy-dots::after {
+  content: "…";
+  display: inline-block;
+  width: 1.25em;
+  animation: cm-dots 1s steps(3,end) infinite;
 }
 
 .cm-message-enter {
-  animation: cm-message-enter .18s cubic-bezier(.2,.75,.25,1) both;
+  animation: cm-message-in .16s ease-out both;
 }
 
-@keyframes cm-panel-enter {
-  0% { opacity: 0; transform: translateY(10px) scale(.985); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes cm-menu-enter {
-  0% { opacity: 0; transform: translateY(-5px) scale(.98); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+body.cm-page-leaving {
+  opacity: 0;
 }
 
 #account-menu:not(.hidden),
 [data-account-menu]:not(.hidden) {
   transform-origin: top right;
-  animation: cm-menu-enter .12s ease-out both;
+  animation: cm-menu-in .12s ease-out both;
 }
 
 #mentor-panel:not(.hidden) {
   transform-origin: bottom right;
-  animation: cm-panel-enter .16s cubic-bezier(.2,.75,.25,1) both;
+  animation: cm-panel-in .16s cubic-bezier(.2,.75,.25,1) both;
 }
 
-button:disabled, [role="button"][aria-disabled="true"] {
+button:disabled,
+[role="button"][aria-disabled="true"] {
   cursor: not-allowed;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .cm-interactive,
-  .cm-ripple,
-  .cm-message-enter,
-  #account-menu:not(.hidden),
-  [data-account-menu]:not(.hidden),
-  #mentor-panel:not(.hidden) {
-    animation: none !important;
-    transition: none !important;
+@keyframes cm-ripple {
+  to {
+    opacity: 0;
+    transform: translate(-50%,-50%) scale(18);
   }
 }
 
-/* Phase 1 interaction layer */
-html { scroll-behavior: smooth; }
-body { opacity: 1; transition: opacity .16s ease; }
-body.cm-page-leaving { opacity: 0; }
-.cm-interactive {
-  transition: transform .12s ease, box-shadow .14s ease, filter .14s ease,
-    background-color .14s ease, border-color .14s ease, color .14s ease, opacity .14s ease;
+@keyframes cm-click-pop {
+  50% { filter: brightness(1.06); }
 }
-.cm-interactive:active:not(:disabled) { transform: translateY(1px) scale(.985); }
-.cm-interactive:focus-visible { outline: 2px solid rgba(67,56,202,.45); outline-offset: 2px; }
-.cm-ripple-host { position: relative; overflow: hidden; }
-.cm-ripple {
-  position: absolute; width: 10px; height: 10px; border-radius: 999px;
-  background: currentColor; opacity: .18; pointer-events: none;
-  transform: translate(-50%,-50%) scale(0);
-  animation: cm-ripple .52s ease-out forwards;
-}
-.cm-click-pop { animation: cm-click-pop .18s ease-out; }
-.cm-menu { transform-origin: top right; }
-.cm-menu:not(.hidden) { animation: cm-menu-in .14s ease-out; }
-.cm-loading { pointer-events: none; }
-.cm-loading .cm-loading-label { opacity: .55; }
-.cm-loading::after {
-  content: ""; width: 12px; height: 12px; margin-left: 7px;
-  display: inline-block; vertical-align: -2px;
-  border: 2px solid currentColor; border-right-color: transparent;
-  border-radius: 50%; animation: cm-spin .7s linear infinite;
-}
-.cm-busy-dots::after {
-  content: "…"; display: inline-block; width: 1.25em;
-  animation: cm-dots 1s steps(3,end) infinite;
-}
-.cm-message-enter { animation: cm-message-in .16s ease-out both; }
 
-@keyframes cm-ripple { to { opacity: 0; transform: translate(-50%,-50%) scale(18); } }
-@keyframes cm-click-pop { 50% { filter: brightness(1.06); } }
-@keyframes cm-menu-in { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes cm-spin { to { transform: rotate(360deg); } }
-@keyframes cm-dots { 0% { content: "."; } 33% { content: ".."; } 66%,100% { content: "..."; } }
-@keyframes cm-message-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cm-menu-in {
+  from { opacity: 0; transform: translateY(-5px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cm-panel-in {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes cm-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cm-dots {
+  0% { content: "."; }
+  33% { content: ".."; }
+  66%,100% { content: "..."; }
+}
+
+@keyframes cm-message-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *,*::before,*::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  *,*::before,*::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
 }
