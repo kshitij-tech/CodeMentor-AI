@@ -50,19 +50,36 @@ def execute_code(
 
     if problem.execution_mode == "stdio":
         metadata = problem.package_metadata or {}
-        if not metadata.get("judge_supported", False):
+        cases = problem.test_cases or []
+
+        # Do not rely only on the historical judge_supported import flag.
+        # Standard .in/.ans test cases can be judged by the default validator
+        # even when older package metadata marked the record unsupported.
+        uses_custom_validator = any(
+            bool(case.get("validator_name"))
+            for case in cases
+        )
+        type_values = set(str(item).lower() for item in (metadata.get("type") or []))
+        validation_text = str(metadata.get("validation") or "").lower()
+        unsupported_format = bool(
+            {"interactive", "multi-pass", "submit-answer", "score"} & type_values
+            or any(
+                token in validation_text.split()
+                for token in {"interactive", "score"}
+            )
+        )
+
+        if unsupported_format or (uses_custom_validator and not metadata.get("judge_supported", False)):
             return {
                 "status": "Unsupported Problem Format",
                 "summary": (
-                    "This package uses a custom, interactive, scoring, or otherwise "
-                    "unsupported validator. It is imported for cataloging but cannot "
-                    "be judged by the local runner yet."
+                    "This problem uses an interactive, scoring, or custom validator "
+                    "that is not supported by the current execution runner."
                 ),
                 "error_line": None,
                 "results": [],
             }
 
-        cases = problem.test_cases or []
         if request.mode == "run":
             sample_cases = [
                 case for case in cases if case.get("visibility") == "sample"
