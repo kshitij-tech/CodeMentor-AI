@@ -3,6 +3,7 @@
     root.querySelectorAll('button, a, [role="button"], select, input[type="button"], input[type="submit"]').forEach(el => {
       el.classList.add('cm-interactive');
       if (el.matches('button, a, [role="button"]')) el.classList.add('cm-ripple-host');
+      if (el.id === 'account-menu' || el.id === 'account-menu-button' || el.id === 'account-menu-dropdown') el.classList.add('cm-menu');
     });
   }
 
@@ -49,7 +50,26 @@
     if (target) addRipple(target, event);
   }, { passive: true });
 
+  function wireNavigationTransitions() {
+    document.addEventListener('click', event => {
+      const anchor = event.target.closest('a[href]');
+      if (!anchor) return;
+      if (anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('javascript:')) return;
+      let url;
+      try { url = new URL(href, window.location.href); } catch (_) { return; }
+      if (url.origin !== window.location.origin) return;
+      if (url.href === window.location.href) return;
+      event.preventDefault();
+      document.body.classList.add('cm-page-leaving');
+      window.setTimeout(() => { window.location.href = url.href; }, 150);
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    document.body.classList.add('cm-page-enter');
+    wireNavigationTransitions();
     addInteractiveClass();
     observeMessages();
 
