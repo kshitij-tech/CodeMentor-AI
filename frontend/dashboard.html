@@ -316,6 +316,7 @@ function handleAction(action){
   else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
   else if(action==='mentor') window.location.replace('mentor.html');
   else if(action==='analytics') window.location.replace('analytics.html');
+  else if(action==='career') window.location.replace('career.html');
 }
 const skillCatalog = {
   'Arrays & Strings': {focus:'Array traversal, strings, prefix techniques, sliding windows, and in-place transformations.', next:'Start with array/string problems and let the mentor identify recurring edge-case mistakes.'},
@@ -504,6 +505,7 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
   if(target==='practice') window.location.replace('practice.html');
   else if(target==='mentor') window.location.replace('mentor.html');
   else if(target==='analytics') window.location.replace('analytics.html');
+  else if(target==='career') window.location.replace('career.html');
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
