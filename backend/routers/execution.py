@@ -105,6 +105,17 @@ def execute_code(
             )
         )
 
+        if request.language != "Python" and uses_custom_validator:
+            return {
+                "status": "Unsupported Problem Format",
+                "summary": (
+                    "This problem uses a custom validator that is currently "
+                    "available only through the Python judge path."
+                ),
+                "error_line": None,
+                "results": [],
+            }
+
         if unsupported_format or (uses_custom_validator and not metadata.get("judge_supported", False)):
             return {
                 "status": "Unsupported Problem Format",
@@ -192,6 +203,8 @@ def execute_code(
         overall = "Time Limit Exceeded"
     elif any(outcome.status == "Output Limit Exceeded" for outcome in outcomes):
         overall = "Output Limit Exceeded"
+    elif any(outcome.status == "Compile Error" for outcome in outcomes):
+        overall = "Compile Error"
     elif any(outcome.status == "Runtime Error" for outcome in outcomes):
         overall = "Runtime Error"
 
