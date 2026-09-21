@@ -20,6 +20,30 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 #results-resizer:hover,#results-resizer:active{background:#6366f1}
 #results{min-height:140px}
 #result-body{min-height:0;overscroll-behavior:contain}
+#mentor-panel{
+  height:min(560px,calc(100vh - 10rem));
+  max-height:calc(100vh - 10rem);
+  min-height:0;
+  overflow:hidden;
+}
+.mentor-thinking{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.mentor-thinking .dot{
+  width:4px;
+  height:4px;
+  border-radius:9999px;
+  background:#94a3b8;
+  animation:mentorThinkingDot 1.2s infinite ease-in-out;
+}
+.mentor-thinking .dot:nth-child(2){animation-delay:.15s}
+.mentor-thinking .dot:nth-child(3){animation-delay:.3s}
+@keyframes mentorThinkingDot{
+  0%,60%,100%{opacity:.35;transform:translateY(0)}
+  30%{opacity:1;transform:translateY(-2px)}
+}
 
 @media (max-width: 767px) {
   html,body { height:auto; min-height:100%; overflow:auto; }
@@ -54,7 +78,9 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
     left:1rem;
     width:auto;
     bottom:4.75rem;
-    max-height:calc(100vh - 6rem);
+    top:4.5rem;
+    height:auto;
+    max-height:none;
   }
 }
 </style>
@@ -199,6 +225,7 @@ let problem=null;
 let editor=null;
 let mentorSessionId=null;
 let mentorMessages=[];
+let mentorThinking=false;
 let hintLevel=1;
 let lastExecution=null;
 
@@ -254,14 +281,18 @@ function renderProblem(){
 }
 function renderMentor(){
   const host=$('mentor-messages');
-  if(!mentorMessages.length){
-    host.innerHTML='<div class="text-[11px] text-slate-500">Ask for a hint, debugging help, complexity analysis, edge cases, or a conceptual explanation.</div>';
-    return;
+  let html=mentorMessages.length
+    ? mentorMessages.map(m=>{
+        const user=m.role==='user';
+        return '<div class="'+(user?'text-right':'text-left')+'"><div class="text-[9px] text-slate-500 mb-1">'+(user?'You':'AI Mentor')+'</div><div class="mentor-msg inline-block max-w-[90%] text-left px-3 py-2 rounded-xl '+(user?'bg-indigo-600':'bg-slate-800 border border-slate-700')+' text-[11px]">'+esc(m.text)+'</div></div>';
+      }).join('')
+    : '<div class="text-[11px] text-slate-500">Ask for a hint, debugging help, complexity analysis, edge cases, or a conceptual explanation.</div>';
+
+  if(mentorThinking){
+    html+='<div class="text-left"><div class="text-[9px] text-slate-500 mb-1">AI Mentor</div><div class="mentor-msg inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-[11px]"><span>Thinking</span><span class="mentor-thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span></div></div>';
   }
-  host.innerHTML=mentorMessages.map(m=>{
-    const user=m.role==='user';
-    return '<div class="'+(user?'text-right':'text-left')+'"><div class="text-[9px] text-slate-500 mb-1">'+(user?'You':'AI Mentor')+'</div><div class="mentor-msg inline-block max-w-[90%] text-left px-3 py-2 rounded-xl '+(user?'bg-indigo-600':'bg-slate-800 border border-slate-700')+' text-[11px]">'+esc(m.text)+'</div></div>';
-  }).join('');
+
+  host.innerHTML=html;
   host.scrollTop=host.scrollHeight;
 }
 async function loadMentorHistory(){
@@ -282,7 +313,9 @@ async function askMentor(action,question=null){
   if(!problem||!editor)return;
   const presets={hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity of my current approach?',edge:'What edge cases should I test?'};
   const text=question||presets[action]||'Help me with this problem.';
-  mentorMessages.push({role:'user',text});renderMentor();
+  mentorMessages.push({role:'user',text});
+  mentorThinking=true;
+  renderMentor();
   $('mentor-send').disabled=true;
   document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=true);
   try{
@@ -310,8 +343,10 @@ async function askMentor(action,question=null){
     mentorMessages.push({role:'assistant',text:err.message||'Unable to contact AI Mentor.'});
     renderMentor();
   }finally{
+    mentorThinking=false;
     $('mentor-send').disabled=false;
     document.querySelectorAll('.mentor-action').forEach(b=>b.disabled=false);
+    renderMentor();
   }
 }
 function renderResults(data){
