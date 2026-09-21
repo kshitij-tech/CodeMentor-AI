@@ -20,6 +20,14 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 #results-resizer:hover,#results-resizer:active{background:#6366f1}
 #results{min-height:140px}
 #result-body{min-height:0;overscroll-behavior:contain}
+#syntax-status{
+  min-width:0;
+}
+.monaco-syntax-marker{
+  text-decoration: wavy underline;
+  text-decoration-color:#f87171;
+  text-decoration-thickness:2px;
+}
 #mentor-panel{
   height:min(560px,calc(100vh - 10rem));
   max-height:calc(100vh - 10rem);
@@ -174,6 +182,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 
     <div class="h-12 shrink-0 bg-[#111827] border-t border-white/10 px-3 flex items-center justify-between">
       <span id="execution-status" class="text-[10px] text-slate-500 truncate">Ready</span>
+      <span id="syntax-status" class="hidden max-w-[46%] text-[10px] text-rose-400 truncate" title=""></span>
       <div class="flex items-center gap-2">
         <button id="run-btn" disabled class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-[10px] font-semibold disabled:opacity-40">
           <span class="material-symbols-outlined align-middle text-[14px]">play_arrow</span> Run
@@ -227,6 +236,8 @@ let mentorSessionId=null;
 let mentorMessages=[];
 let mentorThinking=false;
 let hintLevel=1;
+let syntaxTimer=null;
+let syntaxRequestId=0;
 let lastExecution=null;
 
 const $=id=>document.getElementById(id);
@@ -236,6 +247,93 @@ function toast(msg){const e=$('toast');e.textContent=msg;e.classList.remove('hid
 function requireAuth(){if(!token()){location.replace('auth.html');return false}return true}
 function storagePrefix(){return 'codementor:user:'+userId}
 function draftKey(){return problem?storagePrefix()+':draft:'+problem.slug+':'+$('language').value:null}
+
+function clearSyntaxMarkers(){
+  if(!editor)return;
+  monaco.editor.setModelMarkers(editor.getModel(),'codementor-syntax',[]);
+  const status=$('syntax-status');
+  status.classList.add('hidden');
+  status.textContent='';
+  status.title='';
+}
+
+function showSyntaxDiagnostic(diagnostic){
+  if(!editor)return;
+  const model=editor.getModel();
+  if(!diagnostic||diagnostic.valid){
+    clearSyntaxMarkers();
+    return;
+  }
+
+  const line=Math.max(1,Number(diagnostic.line)||1);
+  const column=Math.max(1,Number(diagnostic.column)||1);
+  const endLine=Math.max(line,Number(diagnostic.end_line)||line);
+  const endColumn=Math.max(
+    column+1,
+    Number(diagnostic.end_column)||column+1
+  );
+
+  monaco.editor.setModelMarkers(model,'codementor-syntax',[{
+    severity:monaco.MarkerSeverity.Error,
+    message:String(diagnostic.message||'Syntax error.'),
+    startLineNumber:line,
+    startColumn:column,
+    endLineNumber:endLine,
+    endColumn:endColumn,
+    source:'CodeMentor'
+  }]);
+
+  const status=$('syntax-status');
+  const message='Syntax error · line '+line+' · '+String(diagnostic.message||'Syntax error.');
+  status.textContent=message;
+  status.title=message;
+  status.classList.remove('hidden');
+}
+
+async function validateSyntax(){
+  if(!editor||!problem)return;
+  const language=$('language').value;
+  if(language!=='Python'){
+    clearSyntaxMarkers();
+    return;
+  }
+
+  const request=++syntaxRequestId;
+  try{
+    const res=await fetch(API+'/execution/validate',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        Authorization:'Bearer '+token()
+      },
+      body:JSON.stringify({
+        problem_slug:problem.slug,
+        language,
+        code:editor.getValue(),
+        mode:'run'
+      })
+    });
+    if(request!==syntaxRequestId)return;
+    if(res.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace('auth.html');
+      return;
+    }
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){
+      clearSyntaxMarkers();
+      return;
+    }
+    showSyntaxDiagnostic(data);
+  }catch(_err){
+    if(request===syntaxRequestId)clearSyntaxMarkers();
+  }
+}
+
+function scheduleSyntaxValidation(){
+  clearTimeout(syntaxTimer);
+  syntaxTimer=setTimeout(()=>{void validateSyntax()},280);
+}
 
 function cleanProblemDescription(value){
   const text=String(value??'').trim();
@@ -264,6 +362,7 @@ function loadDraft(){
   const saved=localStorage.getItem(draftKey());
   editor.setValue(saved!==null?saved:starterCode($('language').value));
   $('save-status').textContent=saved!==null?'Draft restored':'Starter';
+  scheduleSyntaxValidation();
 }
 function renderProblem(){
   $('header-title').textContent=problem.title;
@@ -408,6 +507,7 @@ function initEditor(){
       if(!problem)return;
       localStorage.setItem(draftKey(),editor.getValue());
       $('save-status').textContent='Saved locally';
+      scheduleSyntaxValidation();
     });
     if(problem)loadDraft();
     $('run-btn').disabled=!problem;
@@ -484,7 +584,9 @@ $('logout-btn').addEventListener('click',()=>{localStorage.removeItem(TOKEN_KEY)
 $('language').addEventListener('change',()=>{
   if(!editor||!problem)return;
   monaco.editor.setModelLanguage(editor.getModel(),LANG_IDS[$('language').value]);
+  clearSyntaxMarkers();
   loadDraft();
+  scheduleSyntaxValidation();
 });
 $('reset-btn').addEventListener('click',()=>{if(!problem||!editor)return;localStorage.removeItem(draftKey());editor.setValue(starterCode($('language').value));$('save-status').textContent='Starter'});
 $('run-btn').addEventListener('click',()=>execute('run'));
