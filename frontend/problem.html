@@ -455,7 +455,7 @@ $('reset-btn').addEventListener('click',()=>{if(!problem||!editor)return;localSt
 $('run-btn').addEventListener('click',()=>execute('run'));
 $('submit-btn').addEventListener('click',()=>execute('submit'));
 $('clear-results').addEventListener('click',()=>{$('results').classList.add('hidden');$('result-body').innerHTML='';lastExecution=null});
-$('mentor-open').addEventListener('click',()=>{$('mentor-panel').classList.remove('hidden');$('mentor-panel').classList.add('flex');renderMentor()});
+$('mentor-open').addEventListener('click',()=>{const panel=$('mentor-panel');const isOpen=!panel.classList.contains('hidden');panel.classList.toggle('hidden',isOpen);panel.classList.toggle('flex',!isOpen);if(!isOpen)renderMentor()});
 $('mentor-close').addEventListener('click',()=>{$('mentor-panel').classList.add('hidden');$('mentor-panel').classList.remove('flex')});
 $('mentor-clear').addEventListener('click',async()=>{mentorMessages=[];mentorSessionId=null;renderMentor()});
 document.querySelectorAll('.mentor-action').forEach(b=>b.addEventListener('click',()=>askMentor(b.dataset.mentor)));
