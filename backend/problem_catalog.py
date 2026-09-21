@@ -270,23 +270,34 @@ def quality_flags(problem: dict[str, Any]) -> list[str]:
     return flags
 
 
-def duplicate_fingerprint(problem: dict[str, Any]) -> str:
+def _content_fingerprint(problem: dict[str, Any]) -> str:
+    title = normalize_text(problem.get("title")).lower()
+    description = normalize_text(problem.get("description")).lower()
+    normalized = re.sub(r"[^a-z0-9]+", " ", f"{title} {description}").strip()
+    return hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
+
+def _external_fingerprint(problem: dict[str, Any]) -> str | None:
     source = normalize_text(problem.get("source")).lower()
     external_id = normalize_text(problem.get("external_id")).lower()
-    if source and external_id:
-        raw = f"external:{source}:{external_id}"
-    else:
-        title = normalize_text(problem.get("title")).lower()
-        description = normalize_text(problem.get("description")).lower()
-        normalized = re.sub(r"[^a-z0-9]+", " ", f"{title} {description}").strip()
-        raw = f"content:{normalized}"
-    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    if not source or not external_id:
+        return None
+    return hashlib.sha256(
+        f"external:{source}:{external_id}".encode("utf-8")
+    ).hexdigest()
+
+
+def duplicate_fingerprint(problem: dict[str, Any]) -> str:
+    return _external_fingerprint(problem) or _content_fingerprint(problem)
 
 
 def audit_problems(problems: Iterable[dict[str, Any]]) -> dict[str, Any]:
     items = list(problems)
     issue_counts: Counter[str] = Counter()
-    fingerprint_map: dict[str, list[str]] = {}
+    fingerprints: dict[str, dict[str, list[str]]] = {
+        "external": defaultdict(list),
+        "content": defaultdict(list),
+    }
 
     clean = 0
     for problem in items:
@@ -296,25 +307,36 @@ def audit_problems(problems: Iterable[dict[str, Any]]) -> dict[str, Any]:
         if not flags:
             clean += 1
 
-        fingerprint = duplicate_fingerprint(problem)
-        fingerprint_map.setdefault(fingerprint, []).append(
-            normalize_text(problem.get("slug")) or normalize_text(problem.get("title"))
-        )
+        label = normalize_text(problem.get("slug")) or normalize_text(problem.get("title"))
+        external = _external_fingerprint(problem)
+        if external:
+            fingerprints["external"][external].append(label)
+        fingerprints["content"][_content_fingerprint(problem)].append(label)
 
-    duplicates = {
-        fingerprint: slugs
-        for fingerprint, slugs in fingerprint_map.items()
-        if len(slugs) > 1
+    external_duplicates = {
+        key: labels
+        for key, labels in fingerprints["external"].items()
+        if len(labels) > 1
+    }
+    content_duplicates = {
+        key: labels
+        for key, labels in fingerprints["content"].items()
+        if len(labels) > 1
     }
 
-    if duplicates:
-        issue_counts["duplicates"] = len(duplicates)
+    duplicate_groups = {
+        "external_id": external_duplicates,
+        "same_content": content_duplicates,
+    }
+    duplicate_count = sum(len(groups) for groups in duplicate_groups.values())
+    if duplicate_count:
+        issue_counts["duplicates"] = duplicate_count
 
     return {
         "total": len(items),
         "clean": clean,
         "issues": dict(sorted(issue_counts.items())),
-        "duplicates": duplicates,
+        "duplicates": duplicate_groups,
     }
 
 
