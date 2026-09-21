@@ -127,7 +127,7 @@ def syntax_diagnostic(source: str) -> dict[str, object]:
 EXECUTION_SANDBOX = os.getenv("EXECUTION_SANDBOX", "local").strip().lower()
 EXECUTION_DOCKER_IMAGE = os.getenv(
     "EXECUTION_DOCKER_IMAGE",
-    "codementor-python-runner:latest",
+    "codementor-multi-runtime:latest",
 ).strip()
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 PRODUCTION_ENVS = {"prod", "production"}
