@@ -267,7 +267,10 @@ async function load(){
   try{
     await Promise.all([facetsPromise,problemsPromise]);
   }catch(err){
-    $('error').textContent=err.message||'Unable to load Practice.';
+    const message=err instanceof TypeError && /fetch/i.test(err.message)
+      ? 'Cannot reach the CodeMentor API at '+API+'. Start or restart the FastAPI backend, then refresh this page.'
+      : (err.message||'Unable to load Practice.');
+    $('error').textContent=message;
     $('error').classList.remove('hidden');
   }
 }
