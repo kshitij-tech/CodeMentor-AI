@@ -13,7 +13,8 @@ router = APIRouter(prefix="/problems", tags=["Problems"])
 
 
 from backend.problem_catalog import (
-    VALID_DIFFICULTIES,
+    CANONICAL_TOPICS,
+    TOPIC_HIERARCHY,
     canonicalize_topics,
     is_english_problem,
     normalize_difficulty,
@@ -219,6 +220,27 @@ def list_problem_topics(
         "total": _catalog_cache["total"],
         "topics": _catalog_cache["topics"],
         "difficulties": _catalog_cache["difficulties"],
+    }
+
+
+@router.get("/taxonomy")
+def problem_taxonomy(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _catalog_rows(db)
+    active_topics = {item["name"] for item in _catalog_cache["topics"]}
+    return {
+        "topics": [
+            {
+                "name": topic,
+                "active": topic in active_topics,
+                "subtopics": sorted(TOPIC_HIERARCHY.get(topic, {}).get("subtopics", [])),
+                "patterns": sorted(TOPIC_HIERARCHY.get(topic, {}).get("patterns", [])),
+            }
+            for topic in CANONICAL_TOPICS
+        ],
+        "difficulties": ["Easy", "Medium", "Hard"],
     }
 
 
