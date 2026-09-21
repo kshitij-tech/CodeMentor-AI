@@ -20,6 +20,43 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
 #results-resizer:hover,#results-resizer:active{background:#6366f1}
 #results{min-height:140px}
 #result-body{min-height:0;overscroll-behavior:contain}
+
+@media (max-width: 767px) {
+  html,body { height:auto; min-height:100%; overflow:auto; }
+  body { min-width:0; }
+  header { position:sticky; top:0; z-index:60; }
+  main {
+    height:auto;
+    min-height:calc(100vh - 3.5rem);
+    display:flex;
+    flex-direction:column;
+  }
+  main > section:first-child {
+    flex:0 0 42vh;
+    min-height:280px;
+    border-right:0;
+    border-bottom:1px solid #e2e8f0;
+  }
+  #splitter { display:none; }
+  main > section:last-child {
+    flex:1 1 auto;
+    min-height:58vh;
+  }
+  #results {
+    max-height:70vh;
+  }
+  #mentor-open {
+    right:1rem;
+    bottom:4.75rem;
+  }
+  #mentor-panel {
+    right:1rem;
+    left:1rem;
+    width:auto;
+    bottom:4.75rem;
+    max-height:calc(100vh - 6rem);
+  }
+}
 </style>
   <link rel="stylesheet" href="ui.css">
   <script src="ui.js" defer></script>
