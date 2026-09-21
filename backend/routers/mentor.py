@@ -83,23 +83,27 @@ def _get_or_create_session(
     return session
 
 
-def _history(db: Session, session_id: int) -> list[dict[str, str]]:
+def _history(db: Session, session_id: int, limit: int = 8) -> list[dict[str, str]]:
     messages = (
         db.query(MentorMessage)
         .filter(MentorMessage.session_id == session_id)
-        .order_by(MentorMessage.created_at.asc(), MentorMessage.id.asc())
+        .order_by(MentorMessage.created_at.desc(), MentorMessage.id.desc())
+        .limit(limit)
         .all()
     )
-    return [{"role": message.role, "content": message.content} for message in messages[-20:]]
+    messages.reverse()
+    return [{"role": message.role, "content": message.content} for message in messages]
 
 
-def _serialize_messages(db: Session, session_id: int) -> list[dict]:
+def _serialize_messages(db: Session, session_id: int, limit: int = 40) -> list[dict]:
     messages = (
         db.query(MentorMessage)
         .filter(MentorMessage.session_id == session_id)
-        .order_by(MentorMessage.created_at.asc(), MentorMessage.id.asc())
+        .order_by(MentorMessage.created_at.desc(), MentorMessage.id.desc())
+        .limit(limit)
         .all()
     )
+    messages.reverse()
     return [
         {
             "id": message.id,
@@ -145,13 +149,16 @@ def list_sessions(
         .limit(20)
         .all()
     )
-    problem_map = {p.id: p.slug for p in db.query(Problem).all()}
+    problem = None
+    if problem_id is not None:
+        problem = db.query(Problem).filter(Problem.id == problem_id).first()
+
     return [
         SessionResponse(
             id=session.id,
             title=session.title,
             scope=session.scope,
-            problem_slug=problem_map.get(session.problem_id),
+            problem_slug=problem.slug if problem is not None else None,
             updated_at=session.updated_at.isoformat(),
         )
         for session in sessions
