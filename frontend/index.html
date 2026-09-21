@@ -400,7 +400,7 @@
 <p class="mt-4 text-sm sm:text-base text-slate-600 leading-relaxed">
             Build stronger problem-solving skills with personalized guidance, structured practice, and feedback that helps you improve.
           </p>
-<form class="mt-8 flex flex-col sm:flex-row gap-3 max-w-md mx-auto" onsubmit="event.preventDefault();">
+<form id="get-started-form" class="mt-8 flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
 <input class="flex-1 bg-white border border-slate-300 rounded-full px-5 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 shadow-sm" placeholder="Enter your email..." type="email"/>
 <button class="px-6 py-3 rounded-full bg-indigo-600 text-white font-semibold text-sm hover:bg-indigo-700 shadow-sm hover:shadow transition-all whitespace-nowrap" type="submit">
               Get Started Free
@@ -431,4 +431,12 @@
 </div>
 </div>
 </footer>
+<script>
+document.getElementById('get-started-form')?.addEventListener('submit',event=>{
+  event.preventDefault();
+  const email=event.currentTarget.querySelector('input[type="email"]')?.value.trim()||'';
+  if(email)localStorage.setItem('codementor_prefill_email',email);
+  window.location.href='auth.html';
+});
+</script>
 </body></html>
