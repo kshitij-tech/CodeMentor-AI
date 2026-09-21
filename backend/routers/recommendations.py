@@ -157,6 +157,11 @@ def next_recommendation(
         key=lambda topic: topic_health(topic),
         default=chosen_topics[0] if chosen_topics else "General DSA",
     )
+    reason = (
+        f"Recommended because {weak_topic} is currently one of your less-practiced or less-stable areas."
+        if chosen_topics
+        else "Recommended as a fresh problem from the current problem set."
+    )
 
     return {
         "problem": {
