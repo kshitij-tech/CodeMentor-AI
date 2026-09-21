@@ -183,6 +183,16 @@
   <script>
     const API_BASE_URL = 'http://127.0.0.1:8000';
 
+    // Pre-fill the email entered on the landing page.
+    const prefillEmail = localStorage.getItem('codementor_prefill_email') || '';
+    if (prefillEmail) {
+      const signinEmail = document.getElementById('signin-email');
+      const signupEmail = document.getElementById('signup-email');
+      if (signinEmail) signinEmail.value = prefillEmail;
+      if (signupEmail) signupEmail.value = prefillEmail;
+      localStorage.removeItem('codementor_prefill_email');
+    }
+
     function switchTab(tab) {
       const signin = document.getElementById('form-signin');
       const signup = document.getElementById('form-signup');
