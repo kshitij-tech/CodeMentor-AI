@@ -28,6 +28,9 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
   text-decoration-color:#f87171;
   text-decoration-thickness:2px;
 }
+.monaco-syntax-error-line{
+  background:rgba(248,113,113,.08);
+}
 #mentor-panel{
   height:min(560px,calc(100vh - 10rem));
   max-height:calc(100vh - 10rem);
@@ -238,6 +241,7 @@ let mentorThinking=false;
 let hintLevel=1;
 let syntaxTimer=null;
 let syntaxRequestId=0;
+let syntaxLineDecorations=[];
 let lastExecution=null;
 
 const $=id=>document.getElementById(id);
@@ -251,6 +255,7 @@ function draftKey(){return problem?storagePrefix()+':draft:'+problem.slug+':'+$(
 function clearSyntaxMarkers(){
   if(!editor)return;
   monaco.editor.setModelMarkers(editor.getModel(),'codementor-syntax',[]);
+  syntaxLineDecorations=editor.deltaDecorations(syntaxLineDecorations,[]);
   const status=$('syntax-status');
   status.classList.add('hidden');
   status.textContent='';
@@ -282,6 +287,22 @@ function showSyntaxDiagnostic(diagnostic){
     endColumn:endColumn,
     source:'CodeMentor'
   }]);
+
+  syntaxLineDecorations=editor.deltaDecorations(
+    syntaxLineDecorations,
+    [{
+      range:{
+        startLineNumber:line,
+        startColumn:1,
+        endLineNumber:line,
+        endColumn:1
+      },
+      options:{
+        isWholeLine:true,
+        className:'monaco-syntax-error-line'
+      }
+    }]
+  );
 
   const status=$('syntax-status');
   const message='Syntax error · line '+line+' · '+String(diagnostic.message||'Syntax error.');
