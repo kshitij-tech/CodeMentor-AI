@@ -60,10 +60,12 @@ The execution service supports two modes during development:
 For production, set:
 
     EXECUTION_SANDBOX=docker
-    EXECUTION_DOCKER_IMAGE=codementor-python-runner:latest
+    EXECUTION_DOCKER_IMAGE=codementor-multi-runtime:latest
 
-Build the runner image from the repository root:
+Build the multi-language runner image from the repository root:
 
-    docker build -t codementor-python-runner:latest -f docker/python-runner/Dockerfile docker/python-runner
+    docker build -t codementor-multi-runtime:latest -f docker/multi-runtime/Dockerfile docker/multi-runtime
+
+The runtime image includes Python, C++20, Java 17, JavaScript/Node.js, TypeScript, Go, and Rust. Standard stdin/stdout problems can use these runtimes; function-style execution remains Python-only for now.
 
 Docker execution disables networking, drops Linux capabilities, uses a read-only workspace, applies CPU/memory/process limits, and removes the container after execution. Problem-specific limits are clamped to a global 10-second timeout and 1 GiB memory ceiling so imported problem metadata cannot request unbounded resources. The local runner remains available for development only; production configuration rejects unsandboxed execution.
