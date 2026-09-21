@@ -7,6 +7,8 @@ from backend.execution import (
     MAX_TIMEOUT_SECONDS,
     _sandbox_mode,
     syntax_diagnostic,
+    _language_commands,
+    LANGUAGE_EXTENSIONS,
 )
 
 
@@ -43,6 +45,29 @@ class ExecutionSandboxTests(unittest.TestCase):
         self.assertTrue(diagnostic["valid"])
         self.assertIsNone(diagnostic["line"])
         self.assertIsNone(diagnostic["column"])
+
+    def test_all_supported_languages_have_runtime_definitions(self):
+        for language in LANGUAGE_EXTENSIONS:
+            compile_command, run_command, docker_shell = _language_commands(
+                language,
+                "/tmp/solution" + LANGUAGE_EXTENSIONS[language],
+                "/tmp/codementor",
+            )
+            self.assertTrue(run_command)
+            if language in {"C++", "Java", "TypeScript", "Go", "Rust"}:
+                self.assertTrue(compile_command)
+                self.assertTrue(docker_shell)
+            else:
+                self.assertIsNone(compile_command)
+                self.assertIsNone(docker_shell)
+
+    def test_java_runtime_uses_main_class_filename(self):
+        compile_command, run_command, docker_shell = _language_commands(
+            "Java", "/tmp/Main.java", "/tmp/codementor"
+        )
+        self.assertIn("javac", compile_command)
+        self.assertEqual(run_command[-1], "Main")
+        self.assertIn("/runner/classes", docker_shell[0])
 
 
 if __name__ == "__main__":
