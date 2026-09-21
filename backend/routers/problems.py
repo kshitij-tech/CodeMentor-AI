@@ -253,8 +253,8 @@ def get_problem(
     problem = db.query(Problem).filter(Problem.slug == slug).first()
     if (
         problem is None
-        or not _is_english_problem(problem.title, problem.description)
-        or not _has_known_difficulty(problem.difficulty)
+        or not is_english_problem(problem.title, problem.description)
+        or normalize_difficulty(problem.difficulty) is None
     ):
         raise HTTPException(status_code=404, detail="Problem not found.")
     return serialize(problem)
