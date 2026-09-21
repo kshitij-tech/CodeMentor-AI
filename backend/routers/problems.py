@@ -1,5 +1,6 @@
 from collections import Counter
 import re
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -45,6 +46,94 @@ _TOPIC_ALIASES = {
 
 def _normalize_topic(value: str | None) -> str:
     return re.sub(r"[^a-z0-9]+", " ", str(value or "").strip().lower()).strip()
+
+
+_CATALOG_CACHE_TTL_SECONDS = 120.0
+_catalog_cache: dict[str, object] = {
+    "loaded_at": 0.0,
+    "rows": [],
+    "topics": [],
+    "difficulties": [],
+    "total": 0,
+}
+
+
+def _catalog_cache_valid() -> bool:
+    return (
+        bool(_catalog_cache["rows"])
+        and time.monotonic() - float(_catalog_cache["loaded_at"]) < _CATALOG_CACHE_TTL_SECONDS
+    )
+
+
+def _build_catalog_cache(db: Session) -> None:
+    rows = (
+        db.query(
+            Problem.id,
+            Problem.slug,
+            Problem.title,
+            Problem.difficulty,
+            Problem.topics,
+            Problem.source,
+            Problem.external_id,
+            Problem.external_url,
+            Problem.description,
+        )
+        .filter(Problem.difficulty.in_({"Easy", "Medium", "Hard", "easy", "medium", "hard"}))
+        .order_by(Problem.id.asc())
+        .all()
+    )
+
+    clean_rows = []
+    topic_counts: Counter[str] = Counter()
+    difficulty_counts: Counter[str] = Counter()
+
+    for row in rows:
+        if not _is_english_problem(row.title, row.description):
+            continue
+        if not _has_known_difficulty(row.difficulty):
+            continue
+
+        item = {
+            "id": row.id,
+            "slug": row.slug,
+            "title": row.title,
+            "difficulty": row.difficulty,
+            "topics": row.topics or [],
+            "source": row.source,
+            "external_id": row.external_id,
+            "external_url": row.external_url,
+        }
+        clean_rows.append(item)
+        difficulty_counts[str(row.difficulty).strip().title()] += 1
+
+        for topic in row.topics or []:
+            topic_text = str(topic).strip()
+            if topic_text:
+                topic_counts[topic_text] += 1
+
+    _catalog_cache["rows"] = clean_rows
+    _catalog_cache["topics"] = [
+        {"name": name, "count": count}
+        for name, count in sorted(
+            topic_counts.items(),
+            key=lambda item: (-item[1], item[0].lower()),
+        )
+    ]
+    _catalog_cache["difficulties"] = [
+        {"name": name, "count": count}
+        for name, count in sorted(
+            difficulty_counts.items(),
+            key=lambda item: item[0].lower(),
+        )
+    ]
+    _catalog_cache["total"] = len(clean_rows)
+    _catalog_cache["loaded_at"] = time.monotonic()
+
+
+def _catalog_rows(db: Session) -> list[dict]:
+    if not _catalog_cache_valid():
+        _build_catalog_cache(db)
+    return _catalog_cache["rows"]
 
 
 def _topic_matches(problem_topics: list[str] | None, requested_topic: str) -> bool:
@@ -119,55 +208,44 @@ def list_problems(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = (
-        db.query(
-            Problem.id,
-            Problem.slug,
-            Problem.title,
-            Problem.difficulty,
-            Problem.topics,
-            Problem.description,
-            Problem.source,
-            Problem.external_id,
-            Problem.external_url,
-        )
-        .order_by(Problem.id.asc())
-    )
+    candidates = _catalog_rows(db)
 
     if difficulty:
-        query = query.filter(Problem.difficulty.ilike(difficulty))
+        requested_difficulty = difficulty.strip().lower()
+        candidates = [
+            row for row in candidates
+            if str(row["difficulty"]).strip().lower() == requested_difficulty
+        ]
 
     if source:
-        query = query.filter(Problem.source.ilike(source))
+        requested_source = source.strip().lower()
+        candidates = [
+            row for row in candidates
+            if str(row["source"] or "").strip().lower() == requested_source
+        ]
 
     if search:
-        query = query.filter(Problem.title.ilike(f"%{search.strip()}%"))
-
-    # Existing databases may contain non-English records from earlier imports.
-    # Filter them here so the Practice catalogue stays English-only.
-    candidates = query.all()
-    candidates = [
-        row for row in candidates
-        if _is_english_problem(row.title, row.description)
-        and _has_known_difficulty(row.difficulty)
-    ]
+        needle = search.strip().lower()
+        candidates = [
+            row for row in candidates
+            if needle in str(row["title"]).lower()
+        ]
 
     if topic:
         candidates = [
             row for row in candidates
-            if _topic_matches(row.topics, topic)
+            if _topic_matches(row["topics"], topic)
         ]
 
     total = len(candidates)
     page = candidates[offset : offset + limit]
-    items = [serialize_list_row(row) for row in page]
 
     return {
-        "items": items,
+        "items": page,
         "total": total,
         "limit": limit,
         "offset": offset,
-        "has_more": offset + len(items) < total,
+        "has_more": offset + len(page) < total,
     }
 
 
@@ -176,42 +254,11 @@ def list_problem_topics(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    topic_counts: Counter[str] = Counter()
-    difficulty_counts: Counter[str] = Counter()
-
-    rows = db.query(
-        Problem.topics,
-        Problem.difficulty,
-        Problem.title,
-        Problem.description,
-    ).yield_per(1000)
-    total = 0
-    for topics, difficulty, title, description in rows:
-        if not _is_english_problem(title, description) or not _has_known_difficulty(difficulty):
-            continue
-        total += 1
-        difficulty_counts[str(difficulty)] += 1
-        for topic in topics or []:
-            topic_text = str(topic).strip()
-            if topic_text:
-                topic_counts[topic_text] += 1
-
+    _catalog_rows(db)
     return {
-        "total": total,
-        "topics": [
-            {"name": name, "count": count}
-            for name, count in sorted(
-                topic_counts.items(),
-                key=lambda item: (-item[1], item[0].lower()),
-            )
-        ],
-        "difficulties": [
-            {"name": name, "count": count}
-            for name, count in sorted(
-                difficulty_counts.items(),
-                key=lambda item: item[0].lower(),
-            )
-        ],
+        "total": _catalog_cache["total"],
+        "topics": _catalog_cache["topics"],
+        "difficulties": _catalog_cache["difficulties"],
     }
 
 
