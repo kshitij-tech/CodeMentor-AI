@@ -371,7 +371,10 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(problem)
 
     normalized["title"] = normalize_text(problem.get("title"))
-    normalized["description"] = strip_examples_from_description(\n        problem.get("description"),\n        problem.get("examples"),\n    )
+    normalized["description"] = strip_examples_from_description(
+        problem.get("description"),
+        problem.get("examples"),
+    )
     normalized["difficulty"] = normalize_difficulty(problem.get("difficulty"))
     normalized["topics"] = canonicalize_topics(problem.get("topics"))
     normalized["source"] = normalize_text(problem.get("source")) or "imported"
