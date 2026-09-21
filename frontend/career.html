@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CodeMentor AI — Career Prep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config={theme:{extend:{colors:{
+surface:'#f8f9ff','surface-container-lowest':'#ffffff','surface-container-low':'#eff4ff',
+'surface-container':'#e5eeff','surface-container-high':'#dce9ff',
+'on-surface':'#0b1c30','on-surface-variant':'#464554',
+primary:'#2a14b4','primary-container':'#4338ca','on-primary':'#ffffff'
+},fontFamily:{body:['Plus Jakarta Sans'],mono:['JetBrains Mono']}}}};
+</script>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js" defer></script>
+</head>
+<body class="bg-surface font-body text-on-surface min-h-screen">
+<header class="fixed inset-x-0 top-0 z-50 h-16 bg-white/90 backdrop-blur-xl border-b border-slate-200">
+  <div class="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+    <a href="dashboard.html" class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
+      <span class="font-bold">CodeMentor <span class="text-primary">AI</span></span>
+    </a>
+    <nav class="flex items-center gap-1">
+      <a href="dashboard.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Dashboard</a>
+      <a href="practice.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Practice</a>
+      <a href="analytics.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Analytics</a>
+      <a href="mentor.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">AI Mentor</a>
+      <a href="career.html" class="px-3 py-2 rounded-lg bg-primary-container text-white text-sm font-medium">Career Prep</a>
+    </nav>
+  </div>
+</header>
+
+<main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto space-y-6">
+    <section class="bg-white rounded-2xl shadow-sm p-6 sm:p-8">
+      <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Career intelligence</div>
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mt-2">
+        <div>
+          <h1 id="title" class="text-3xl font-bold">Career Preparation</h1>
+          <p class="text-sm text-on-surface-variant mt-2 max-w-3xl">Your profile, target role, companies, and preparation timeline will drive this workspace as the career intelligence layer is expanded.</p>
+        </div>
+        <a href="preferences.html" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold">Edit profile <span class="material-symbols-outlined text-[17px]">edit</span></a>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Target role</div><div id="role" class="font-semibold mt-2">Loading…</div></div>
+      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Language</div><div id="language" class="font-semibold mt-2">Loading…</div></div>
+      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Timeline</div><div id="timeline" class="font-semibold mt-2">Loading…</div></div>
+      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Experience</div><div id="experience" class="font-semibold mt-2">Loading…</div></div>
+    </section>
+
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="bg-white rounded-2xl shadow-sm p-6">
+        <h2 class="font-bold">What is connected today</h2>
+        <div class="mt-4 space-y-3 text-sm text-on-surface-variant">
+          <div class="flex gap-3"><span class="material-symbols-outlined text-primary text-[19px]">check_circle</span><span>Profile and preparation preferences</span></div>
+          <div class="flex gap-3"><span class="material-symbols-outlined text-primary text-[19px]">check_circle</span><span>Practice library and analytics</span></div>
+          <div class="flex gap-3"><span class="material-symbols-outlined text-primary text-[19px]">check_circle</span><span>AI Mentor workspace</span></div>
+        </div>
+      </div>
+      <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6">
+        <h2 class="font-bold">Career intelligence roadmap</h2>
+        <p class="text-sm text-on-surface-variant mt-2">This page is intentionally functional without pretending the later career engine already exists.</p>
+        <div class="grid sm:grid-cols-2 gap-3 mt-5">
+          <a href="analytics.html" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Review skill gaps</div><div class="text-xs text-on-surface-variant mt-1">Inspect your current practice and topic mastery.</div></a>
+          <a href="practice.html" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Practice for your role</div><div class="text-xs text-on-surface-variant mt-1">Continue solving problems while the adaptive career planner is built.</div></a>
+          <a href="mentor.html" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Talk to AI Mentor</div><div class="text-xs text-on-surface-variant mt-1">Discuss an interview strategy or preparation question.</div></a>
+          <a href="preferences.html" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Update target companies</div><div class="text-xs text-on-surface-variant mt-1">Keep your career profile current for later recommendations.</div></a>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const API='http://127.0.0.1:8000';
+const KEY='codementor_access_token';
+const token=()=>localStorage.getItem(KEY);
+if(!token()){location.replace('auth.html');}
+else{
+  fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}})
+    .then(async r=>{if(r.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return null;}const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Unable to load profile.');return d;})
+    .then(d=>{if(!d)return;document.getElementById('role').textContent=d.target_role||'Not set';document.getElementById('language').textContent=d.preferred_language||'Not set';document.getElementById('timeline').textContent=d.preparation_timeline||'Not set';document.getElementById('experience').textContent=d.experience_level||'Not set';})
+    .catch(e=>{['role','language','timeline','experience'].forEach(id=>document.getElementById(id).textContent='Unable to load');});
+}
+</script>
+</body>
+</html>
