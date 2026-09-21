@@ -145,7 +145,7 @@ def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retri
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=45) as response:
+            with urllib.request.urlopen(request, timeout=30) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:1200]
@@ -200,7 +200,36 @@ def mentor_response(*, problem: dict[str, Any], language: str, code: str, execut
     fallback_model = _normalize_model(os.getenv("AI_FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL))
 
     constraints = "\n".join("- " + str(x) for x in (problem.get("constraints") or []))
-    execution_text = json.dumps(execution or {"status": "not_run", "results": []}, indent=2)
+    description = str(problem.get("description") or "")
+    if len(description) > 7000:
+        description = description[:7000] + "\n[description truncated]"
+
+    examples = json.dumps(problem.get("examples") or [], ensure_ascii=False)
+    if len(examples) > 3500:
+        examples = examples[:3500] + "\n[examples truncated]"
+
+    if len(constraints) > 2500:
+        constraints = constraints[:2500] + "\n[constraints truncated]"
+
+    code_text = str(code or "")
+    if len(code_text) > 18000:
+        code_text = code_text[:18000] + "\n# [code truncated for mentor context]"
+
+    execution_text = json.dumps(
+        execution or {"status": "not_run", "results": []},
+        ensure_ascii=False,
+    )
+    if len(execution_text) > 5000:
+        execution_text = execution_text[:5000] + "\n[execution output truncated]"
+
+    compact_history = []
+    for item in (history or [])[-8:]:
+        compact_history.append({
+            "role": item.get("role", ""),
+            "content": str(item.get("content", ""))[:1200],
+        })
+    history_text = json.dumps(compact_history, ensure_ascii=False)
+
     context = """
 PROBLEM
 Title: {title}
@@ -238,13 +267,13 @@ USER QUESTION
         title=problem["title"],
         difficulty=problem["difficulty"],
         topics=", ".join(problem.get("topics") or []),
-        description=problem["description"],
+        description=description,
         constraints=constraints,
-        examples=json.dumps(problem.get("examples") or [], indent=2),
+        examples=examples,
         language=language,
-        code=code,
+        code=code_text,
         execution_text=execution_text,
-        history_text=json.dumps(history or [], ensure_ascii=False, indent=2),
+        history_text=history_text,
         action=action,
         hint_level=hint_level,
         question=question or "(none)",
@@ -283,7 +312,7 @@ Keep the answer concise, educational, and conversational.
             }
         ],
         "generationConfig": {
-            "maxOutputTokens": 900,
+            "maxOutputTokens": 600,
             "responseMimeType": "application/json",
             "responseSchema": {
                 "type": "OBJECT",
@@ -317,7 +346,7 @@ Keep the answer concise, educational, and conversational.
             model=model,
             api_key=api_key,
             body=body,
-            max_retries=2,
+            max_retries=0,
         )
     except AIProviderError as primary_error:
         # A 400 here is commonly caused by structured-output/schema compatibility.
@@ -347,7 +376,7 @@ Keep the answer concise, educational, and conversational.
                     model=fallback_model,
                     api_key=api_key,
                     body=body,
-                    max_retries=1,
+                    max_retries=0,
                 )
             except AIProviderError:
                 raise primary_error
