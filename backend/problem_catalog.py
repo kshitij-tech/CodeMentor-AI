@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from typing import Any, Iterable
 
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
