@@ -306,6 +306,12 @@ function toggleAccount(){
 }
 function navNotice(area){ toast(area + ' will be connected in the next implementation stage.'); }
 let currentRecommendation=null;
+let dashboardUserId=null;
+
+function recommendationStorageKey(){
+  return dashboardUserId ? 'codementor_current_recommendation_'+String(dashboardUserId) : null;
+}
+
 function startRecommendation(){
   const slug=currentRecommendation?.problem?.slug;
   if(slug) window.location.replace('problem.html?problem='+encodeURIComponent(slug));
@@ -381,9 +387,28 @@ function renderRecommendation(data){
 }
 async function loadRecommendation(){
   try{
-    const res=await fetch(API_BASE_URL+'/recommendations/next',{headers:{Authorization:'Bearer '+token()}});
+    const key=recommendationStorageKey();
+    const savedId=key ? Number(localStorage.getItem(key)) : NaN;
+    const query=Number.isInteger(savedId) && savedId>0
+      ? '?current_problem_id='+encodeURIComponent(String(savedId))
+      : '';
+    const res=await fetch(API_BASE_URL+'/recommendations/next'+query,{
+      headers:{Authorization:'Bearer '+token()}
+    });
     if(!res.ok)throw new Error('Recommendation request failed.');
-    renderRecommendation(await res.json());
+
+    const data=await res.json();
+    if(data?.problem?.id){
+      if(key) localStorage.setItem(key,String(data.problem.id));
+      renderRecommendation(data);
+    }else{
+      if(key) localStorage.removeItem(key);
+      currentRecommendation=null;
+      document.getElementById('recommendation-title').textContent='All available problems solved';
+      document.getElementById('recommendation-difficulty').textContent='Complete';
+      document.getElementById('recommendation-topics').innerHTML='';
+      document.getElementById('recommendation-reason').textContent=data.reason||'You have solved every currently available problem.';
+    }
   }catch(err){
     console.warn('Recommendation load failed:',err);
     document.getElementById('recommendation-title').textContent='Choose your next problem';
@@ -428,7 +453,6 @@ async function loadDashboard(){
   if(!requireAuth()) return;
   renderSkills();
   void loadDashboardMentor();
-  void loadRecommendation();
 
   const headers={headers:{Authorization:'Bearer '+token()}};
 
@@ -447,6 +471,9 @@ async function loadDashboard(){
 
     const profile=profileRes.ok?await profileRes.json():{};
     const me=meRes.ok?await meRes.json():{};
+
+    dashboardUserId=me.id || null;
+    void loadRecommendation();
 
     const name=profile.full_name || 'CodeMentor User';
     const role=profile.target_role || 'Complete your profile';
