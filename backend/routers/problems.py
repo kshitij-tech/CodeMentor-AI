@@ -19,6 +19,7 @@ from backend.problem_catalog import (
     is_english_problem,
     normalize_difficulty,
     normalize_topic,
+    strip_examples_from_description,
 )
 
 
@@ -126,7 +127,7 @@ def serialize(problem: Problem) -> dict:
         "title": problem.title,
         "difficulty": normalize_difficulty(problem.difficulty),
         "topics": canonicalize_topics(problem.topics),
-        "description": problem.description,
+        "description": strip_examples_from_description(problem.description, problem.examples),
         "constraints": problem.constraints,
         "examples": problem.examples,
         "starter_code": problem.starter_code,
