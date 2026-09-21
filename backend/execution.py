@@ -22,8 +22,21 @@ from typing import Any
 MAX_CODE_LENGTH = 40_000
 TIMEOUT_SECONDS = 2.0
 MAX_TIMEOUT_SECONDS = 10.0
+MAX_COMPILE_SECONDS = 10.0
 MAX_MEMORY_MB = 1024
 MAX_OUTPUT_LENGTH = 12_000
+
+LANGUAGE_EXTENSIONS = {
+    "Python": ".py",
+    "C++": ".cpp",
+    "Java": ".java",
+    "JavaScript": ".js",
+    "TypeScript": ".ts",
+    "Go": ".go",
+    "Rust": ".rs",
+}
+
+COMPILED_LANGUAGES = {"C++", "Java", "TypeScript", "Go", "Rust"}
 
 BLOCKED_IMPORTS = {
     "os",
@@ -139,6 +152,43 @@ def _sandbox_mode() -> str:
     return EXECUTION_SANDBOX
 
 
+def _docker_base_command(
+    workdir: str,
+    *,
+    memory_limit_mb: int | None,
+    docker_name: str,
+) -> list[str]:
+    mounted_workdir = os.path.abspath(workdir)
+    return [
+        "docker",
+        "run",
+        "--rm",
+        "--name",
+        docker_name,
+        "--network",
+        "none",
+        "--cpus",
+        "1",
+        "--memory",
+        f"{memory_limit_mb or 256}m",
+        "--pids-limit",
+        "64",
+        "--read-only",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=64m",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges",
+        "--user",
+        "65532:65532",
+        "-v",
+        f"{mounted_workdir}:/workspace:ro",
+        "-w",
+        "/workspace",
+    ]
+
+
 def _run_python_process(
     script_path: str,
     workdir: str,
@@ -213,34 +263,11 @@ def _run_python_process(
 
     docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
     script_name = os.path.basename(script_path)
-    mounted_workdir = os.path.abspath(workdir)
-    command = [
-        "docker",
-        "run",
-        "--rm",
-        "--name",
-        docker_name,
-        "--network",
-        "none",
-        "--cpus",
-        "1",
-        "--memory",
-        f"{memory_limit or 256}m",
-        "--pids-limit",
-        "64",
-        "--read-only",
-        "--tmpfs",
-        "/tmp:rw,noexec,nosuid,size=64m",
-        "--cap-drop",
-        "ALL",
-        "--security-opt",
-        "no-new-privileges",
-        "--user",
-        "65532:65532",
-        "-v",
-        f"{mounted_workdir}:/workspace:ro",
-        "-w",
-        "/workspace",
+    command = _docker_base_command(
+        workdir,
+        memory_limit_mb=memory_limit,
+        docker_name=docker_name,
+    ) + [
         EXECUTION_DOCKER_IMAGE,
         "python",
         "-I",
@@ -266,6 +293,230 @@ def _run_python_process(
             check=False,
         )
         raise
+
+
+def _language_commands(
+    language: str,
+    source_path: str,
+    workdir: str,
+) -> tuple[list[str] | None, list[str], list[str] | None]:
+    """Return compile command, run command, and Docker shell command pieces."""
+    source_name = os.path.basename(source_path)
+    if language == "Python":
+        return None, [sys.executable, "-I", "-B", source_path], None
+    if language == "C++":
+        return [
+            "g++", "-std=c++20", "-O2", "-pipe", "-s",
+            source_path, "-o", os.path.join(workdir, "codementor_program"),
+        ], [os.path.join(workdir, "codementor_program")], [
+            "g++ -std=c++20 -O2 -pipe -s /workspace/"+source_name+" -o /tmp/codementor_program && /tmp/codementor_program"
+        ]
+    if language == "Java":
+        return [
+            "javac", "-encoding", "UTF-8", "-d", workdir, source_path
+        ], ["java", "-cp", workdir, "Main"], [
+            "javac -encoding UTF-8 -d /tmp /workspace/"+source_name+" && java -cp /tmp Main"
+        ]
+    if language == "JavaScript":
+        return None, ["node", "--use-strict", source_path], None
+    if language == "TypeScript":
+        return [
+            "tsc", "--target", "ES2022", "--module", "commonjs",
+            "--strict", "false", "--outDir", os.path.join(workdir, "tsc"),
+            source_path,
+        ], ["node", os.path.join(workdir, "tsc", "solution.js")], [
+            "tsc --target ES2022 --module commonjs --strict false --outDir /tmp/tsc /workspace/"+source_name+" && node /tmp/tsc/"+os.path.splitext(source_name)[0]+".js"
+        ]
+    if language == "Go":
+        return [
+            "go", "build", "-o", os.path.join(workdir, "codementor_program"), source_path
+        ], [os.path.join(workdir, "codementor_program")], [
+            "GOCACHE=/tmp/go-cache go build -o /tmp/codementor_program /workspace/"+source_name+" && /tmp/codementor_program"
+        ]
+    if language == "Rust":
+        return [
+            "rustc", "-O", source_path, "-o", os.path.join(workdir, "codementor_program")
+        ], [os.path.join(workdir, "codementor_program")], [
+            "rustc -O /workspace/"+source_name+" -o /tmp/codementor_program && /tmp/codementor_program"
+        ]
+    raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+
+
+def run_language_stdio_tests(
+    source: str,
+    language: str,
+    test_cases: list[dict[str, Any]],
+    time_limit_seconds: float = 2.0,
+    *,
+    memory_limit_mb: int | None = None,
+) -> list[TestOutcome]:
+    if language not in LANGUAGE_EXTENSIONS:
+        raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+
+    if len(source) > MAX_CODE_LENGTH:
+        raise CodeRejectedError(f"Code exceeds the {MAX_CODE_LENGTH} character limit.")
+
+    outcomes: list[TestOutcome] = []
+    extension = LANGUAGE_EXTENSIONS[language]
+    file_name = "Main.java" if language == "Java" else "solution"+extension
+
+    with tempfile.TemporaryDirectory(prefix="codementor-lang-") as workdir:
+        source_path = os.path.join(workdir, file_name)
+        with open(source_path, "w", encoding="utf-8") as source_file:
+            source_file.write(source)
+
+        for index, case in enumerate(test_cases, start=1):
+            input_data = str(case.get("input", ""))
+            expected = str(case.get("expected_output", ""))
+            started = time.perf_counter()
+
+            try:
+                compile_command, run_command, docker_shell = _language_commands(
+                    language, source_path, workdir
+                )
+
+                if compile_command is not None and _sandbox_mode() == "local":
+                    compiled = subprocess.run(
+                        compile_command,
+                        cwd=workdir,
+                        input=None,
+                        capture_output=True,
+                        text=True,
+                        timeout=MAX_COMPILE_SECONDS,
+                        check=False,
+                    )
+                    if compiled.returncode != 0:
+                        message = _truncate(
+                            (compiled.stderr or compiled.stdout or "Compilation failed.").strip()
+                        )
+                        outcomes.append(TestOutcome(
+                            index=index, passed=False, status="Compile Error",
+                            expected=expected, actual=None, runtime_ms=0, message=message
+                        ))
+                        continue
+
+                    completed = _run_python_process(
+                        run_command[0] if language == "Python" else (
+                            run_command[0] if os.path.isabs(run_command[0]) else
+                            run_command[0]
+                        ),
+                        workdir,
+                        input_data=input_data,
+                        timeout_seconds=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
+                        memory_limit_mb=memory_limit_mb,
+                        env={
+                            "PYTHONIOENCODING": "utf-8",
+                            "PYTHONDONTWRITEBYTECODE": "1",
+                            "PATH": os.environ.get("PATH", ""),
+                        },
+                    ) if language == "Python" else subprocess.run(
+                        run_command,
+                        cwd=workdir,
+                        input=input_data,
+                        capture_output=True,
+                        text=True,
+                        timeout=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
+                        check=False,
+                    )
+                elif _sandbox_mode() == "local":
+                    completed = subprocess.run(
+                        run_command,
+                        cwd=workdir,
+                        input=input_data,
+                        capture_output=True,
+                        text=True,
+                        timeout=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
+                        check=False,
+                    )
+                else:
+                    docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
+                    docker_base = _docker_base_command(
+                        workdir,
+                        memory_limit_mb=memory_limit_mb,
+                        docker_name=docker_name,
+                    )
+                    if language == "Python":
+                        docker_cmd = docker_base + [
+                            EXECUTION_DOCKER_IMAGE, "python", "-I", "-B",
+                            f"/workspace/{file_name}"
+                        ]
+                    elif docker_shell:
+                        docker_cmd = docker_base + [
+                            EXECUTION_DOCKER_IMAGE, "/bin/sh", "-lc", docker_shell[0]
+                        ]
+                    else:
+                        docker_cmd = docker_base + [
+                            EXECUTION_DOCKER_IMAGE, *run_command
+                        ]
+                    try:
+                        completed = subprocess.run(
+                            docker_cmd,
+                            input=input_data,
+                            capture_output=True,
+                            text=True,
+                            timeout=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
+                            check=False,
+                        )
+                    except subprocess.TimeoutExpired:
+                        subprocess.run(
+                            ["docker", "rm", "-f", docker_name],
+                            capture_output=True,
+                            text=True,
+                            timeout=5,
+                            check=False,
+                        )
+                        raise
+
+            except subprocess.TimeoutExpired:
+                outcomes.append(TestOutcome(
+                    index=index, passed=False, status="Time Limit Exceeded",
+                    expected=expected, actual=None,
+                    runtime_ms=int(min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000),
+                    message=f"Test exceeded the {min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s execution limit."
+                ))
+                continue
+
+            runtime_ms = int((time.perf_counter() - started) * 1000)
+            stdout_raw = completed.stdout or ""
+            stdout = _truncate(stdout_raw)
+            stderr = _truncate((completed.stderr or "").strip())
+
+            if len(stdout_raw) > MAX_OUTPUT_LENGTH:
+                outcomes.append(TestOutcome(
+                    index=index, passed=False, status="Output Limit Exceeded",
+                    expected=expected, actual=stdout, runtime_ms=runtime_ms,
+                    message=f"Program output exceeded {MAX_OUTPUT_LENGTH} characters."
+                ))
+                continue
+
+            if completed.returncode != 0:
+                outcomes.append(TestOutcome(
+                    index=index, passed=False, status="Runtime Error",
+                    expected=expected, actual=stdout, runtime_ms=runtime_ms,
+                    message=stderr or stdout or "Program exited with a non-zero status."
+                ))
+                continue
+
+            try:
+                validation = validate_default_output(
+                    stdout,
+                    expected,
+                    case.get("validator_flags"),
+                )
+            except UnsupportedValidatorError as exc:
+                raise CodeRejectedError(str(exc)) from exc
+
+            outcomes.append(TestOutcome(
+                index=index,
+                passed=validation.passed,
+                status="Passed" if validation.passed else "Wrong Answer",
+                expected=expected,
+                actual=stdout,
+                runtime_ms=runtime_ms,
+                message=None if validation.passed else validation.message,
+            ))
+
+    return outcomes
 
 
 @dataclass
