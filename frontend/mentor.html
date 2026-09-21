@@ -254,7 +254,6 @@ async function sendMessage(){
 function newSession(){
   sessionId=null;
   messages=[];
-  sessions=[];
   document.getElementById('session-status').textContent='New dashboard mentor session';
   renderSessions();
   renderChat();
@@ -279,7 +278,7 @@ document.querySelectorAll('.suggestion').forEach(button=>button.addEventListener
     renderSessions();
     if(sessions.length)await loadSession(sessions[0].id);
     else renderChat();
-    setProviderStatus('Ready',true);
+    setProviderStatus('Backend ready',true);
   }catch(err){
     setProviderStatus('Check backend');
     showSystemMessage(err.message||'Unable to initialize the AI Mentor workspace.');
