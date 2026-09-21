@@ -21,6 +21,8 @@ from typing import Any
 
 MAX_CODE_LENGTH = 40_000
 TIMEOUT_SECONDS = 2.0
+MAX_TIMEOUT_SECONDS = 10.0
+MAX_MEMORY_MB = 1024
 MAX_OUTPUT_LENGTH = 12_000
 
 BLOCKED_IMPORTS = {
@@ -79,10 +81,16 @@ def _run_python_process(
     *,
     input_data: str | None,
     timeout_seconds: float,
+    memory_limit_mb: int | None = None,
     env: dict[str, str] | None,
 ):
     mode = _sandbox_mode()
-    timeout_seconds = max(0.1, float(timeout_seconds))
+    timeout_seconds = min(MAX_TIMEOUT_SECONDS, max(0.1, float(timeout_seconds)))
+    memory_limit = (
+        None
+        if memory_limit_mb is None
+        else min(MAX_MEMORY_MB, max(64, int(memory_limit_mb)))
+    )
     docker_name = None
 
     if mode == "local":
@@ -153,7 +161,7 @@ def _run_python_process(
         "--cpus",
         "1",
         "--memory",
-        "256m",
+        f"{memory_limit or 256}m",
         "--pids-limit",
         "64",
         "--read-only",
@@ -296,6 +304,7 @@ def run_python_stdio_tests(
     test_cases: list[dict[str, Any]],
     time_limit_seconds: float = 2.0,
     *,
+    memory_limit_mb: int | None = None,
     package_root: str | None = None,
     validation_time_seconds: float = 60.0,
     validation_output_bytes: int = 8 * 1024 * 1024,
@@ -324,7 +333,11 @@ def run_python_stdio_tests(
                     script_path,
                     workdir,
                     input_data=input_data,
-                    timeout_seconds=max(0.1, float(time_limit_seconds)),
+                    timeout_seconds=min(
+                        MAX_TIMEOUT_SECONDS,
+                        max(0.1, float(time_limit_seconds)),
+                    ),
+                    memory_limit_mb=memory_limit_mb,
                     env=env,
                 )
                 runtime_ms = int((time.perf_counter() - started) * 1000)
@@ -336,9 +349,12 @@ def run_python_stdio_tests(
                         status="Time Limit Exceeded",
                         expected=expected,
                         actual=None,
-                        runtime_ms=int(max(0.1, float(time_limit_seconds)) * 1000),
+                        runtime_ms=int(
+                            min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000
+                        ),
                         message=(
-                            f"Test exceeded the {max(0.1, float(time_limit_seconds)):.2f}s "
+                            f"Test exceeded the "
+                            f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s "
                             "execution limit."
                         ),
                     )
@@ -483,6 +499,7 @@ def run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[Test
                     workdir,
                     input_data=None,
                     timeout_seconds=TIMEOUT_SECONDS,
+                    memory_limit_mb=None,
                     env=env,
                 )
             except subprocess.TimeoutExpired:
