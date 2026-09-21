@@ -66,4 +66,4 @@ Build the runner image from the repository root:
 
     docker build -t codementor-python-runner:latest -f docker/python-runner/Dockerfile docker/python-runner
 
-Docker execution disables networking, drops Linux capabilities, uses a read-only workspace, applies CPU/memory/process limits, and removes the container after execution. The local runner remains available for development only; production configuration rejects unsandboxed execution.
+Docker execution disables networking, drops Linux capabilities, uses a read-only workspace, applies CPU/memory/process limits, and removes the container after execution. Problem-specific limits are clamped to a global 10-second timeout and 1 GiB memory ceiling so imported problem metadata cannot request unbounded resources. The local runner remains available for development only; production configuration rejects unsandboxed execution.
