@@ -136,6 +136,10 @@ def _catalog_rows(db: Session) -> list[dict]:
     return _catalog_cache["rows"]
 
 
+def prime_problem_catalog(db: Session) -> None:
+    _catalog_rows(db)
+
+
 def _topic_matches(problem_topics: list[str] | None, requested_topic: str) -> bool:
     requested = _normalize_topic(requested_topic)
     if not requested:
