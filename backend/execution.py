@@ -472,8 +472,18 @@ def run_python_stdio_tests(
     return outcomes
 
 
-def run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[TestOutcome]:
+def run_python_tests(
+    source: str,
+    test_cases: list[dict[str, Any]],
+    time_limit_seconds: float = TIMEOUT_SECONDS,
+    *,
+    memory_limit_mb: int | None = None,
+) -> list[TestOutcome]:
     validate_code(source)
+    time_limit_seconds = min(
+        MAX_TIMEOUT_SECONDS,
+        max(0.1, float(time_limit_seconds)),
+    )
 
     outcomes: list[TestOutcome] = []
 
@@ -498,8 +508,8 @@ def run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[Test
                     script_path,
                     workdir,
                     input_data=None,
-                    timeout_seconds=TIMEOUT_SECONDS,
-                    memory_limit_mb=None,
+                    timeout_seconds=time_limit_seconds,
+                    memory_limit_mb=memory_limit_mb,
                     env=env,
                 )
             except subprocess.TimeoutExpired:
@@ -510,8 +520,8 @@ def run_python_tests(source: str, test_cases: list[dict[str, Any]]) -> list[Test
                         status="Time Limit Exceeded",
                         expected=expected,
                         actual=None,
-                        runtime_ms=int(TIMEOUT_SECONDS * 1000),
-                        message=f"Test exceeded the {TIMEOUT_SECONDS:.1f}s execution limit.",
+                        runtime_ms=int(time_limit_seconds * 1000),
+                        message=f"Test exceeded the {time_limit_seconds:.1f}s execution limit.",
                     )
                 )
                 continue
