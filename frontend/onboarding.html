@@ -607,19 +607,25 @@ function updateView() {
     if (step) step.classList.toggle('hidden', i !== wizardState.currentStep);
   }
 
-  const pct = wizardState.currentStep <= 3 ? Math.round((wizardState.currentStep / 3) * 100) : 100;
+  const pct = wizardState.currentStep <= 3
+    ? Math.round((wizardState.currentStep / 3) * 100)
+    : 100;
   const progress = document.getElementById('progress-bar-fill');
   const stepText = document.getElementById('step-indicator-text');
   const pctText = document.getElementById('step-percentage-text');
   const footer = document.getElementById('card-footer-controls');
 
   if (progress) progress.style.width = pct + '%';
-  if (stepText) stepText.textContent = wizardState.currentStep <= 3
-    ? `Step ${wizardState.currentStep} of 3`
-    : 'Setup Finalized';
-  if (pctText) pctText.textContent = wizardState.currentStep <= 3
-    ? `${pct}% Complete`
-    : '100% Ready';
+  if (stepText) {
+    stepText.textContent = wizardState.currentStep <= 3
+      ? `Step ${wizardState.currentStep} of 3`
+      : 'Setup Finalized';
+  }
+  if (pctText) {
+    pctText.textContent = wizardState.currentStep <= 3
+      ? `${pct}% Complete`
+      : '100% Ready';
+  }
   if (footer) footer.classList.toggle('hidden', wizardState.currentStep === 4);
 
   updateStepperState();
@@ -644,14 +650,6 @@ function updateView() {
     placeholder?.classList.add('hidden');
     skip?.classList.add('hidden');
     if (nextLabel) nextLabel.textContent = 'Finish & Personalize AI Workspace';
-  }
-    back?.classList.remove('hidden');
-    placeholder?.classList.add('hidden');
-    skip?.classList.add('hidden');
-  }
-
-  if (wizardState.currentStep === 4) {
-    syncSummaryState();
   }
 }
 
@@ -870,6 +868,20 @@ function updateBioCounter(textarea) {
   if (counter) counter.textContent = textarea.value.length + ' / 180';
 }
 
+function syncSummaryState() {
+  const role = document.getElementById('summary-role');
+  const lang = document.getElementById('summary-lang');
+  const exp = document.getElementById('summary-exp');
+
+  if (role) role.textContent = wizardState.targetRole || 'Not set';
+  if (lang) {
+    lang.textContent = wizardState.language
+      ? wizardState.language + (wizardState.langVersion ? ' ' + wizardState.langVersion : '')
+      : 'Not set';
+  }
+  if (exp) exp.textContent = wizardState.experience || 'Not set';
+}
+
 async function saveProfile() {
   if (!requireAuth()) return;
 
@@ -910,7 +922,8 @@ async function saveProfile() {
 
     if (loadingText) loadingText.textContent = 'Profile saved successfully.';
     localStorage.removeItem('codementor_onboarding_draft');
-    wizardState.currentStep = 5;
+    wizardState.currentStep = 4;
+    syncSummaryState();
     updateView();
   } catch (error) {
     showError(error.message || 'Unable to save your profile.');
