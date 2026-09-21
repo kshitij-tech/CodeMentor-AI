@@ -48,6 +48,16 @@ def execute_code(
     if problem is None:
         raise HTTPException(status_code=404, detail="Problem not found.")
 
+    time_limit_seconds = min(
+        10.0,
+        max(0.1, float(problem.time_limit_ms or 2000) / 1000),
+    )
+    memory_limit_mb = (
+        min(1024, max(64, int(problem.memory_limit_mb)))
+        if problem.memory_limit_mb
+        else None
+    )
+
     if problem.execution_mode == "stdio":
         metadata = problem.package_metadata or {}
         cases = problem.test_cases or []
@@ -91,7 +101,8 @@ def execute_code(
             outcomes = run_python_stdio_tests(
                 request.code,
                 cases,
-                time_limit_seconds=max(0.1, problem.time_limit_ms / 1000),
+                time_limit_seconds=time_limit_seconds,
+                memory_limit_mb=memory_limit_mb,
                 package_root=package_metadata.get("package_root"),
                 validation_time_seconds=max(
                     0.1,
@@ -112,7 +123,12 @@ def execute_code(
     else:
         cases = problem.test_cases or []
         try:
-            outcomes = run_python_tests(request.code, cases)
+            outcomes = run_python_tests(
+                request.code,
+                cases,
+                time_limit_seconds=time_limit_seconds,
+                memory_limit_mb=memory_limit_mb,
+            )
         except CodeRejectedError as exc:
             return {
                 "status": "Rejected",
