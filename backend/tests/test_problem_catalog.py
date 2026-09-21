@@ -7,6 +7,7 @@ from backend.problem_catalog import (
     normalize_difficulty,
     normalize_topic,
     quality_flags,
+    strip_examples_from_description,
 )
 
 
@@ -70,6 +71,21 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertEqual(report["total"], 2)
         self.assertEqual(report["clean"], 2)
         self.assertEqual(len(report["duplicates"]["same_content"]), 1)
+
+
+    def test_strip_duplicated_examples(self):
+        description = (
+            "Given an array of integers, return the indices of two values that add up to target. "
+            "Examples: Example 1: Input: nums = [2,7], target = 9 Output: [0,1]"
+        )
+        cleaned = strip_examples_from_description(
+            description,
+            [{"input": "nums = [2,7], target = 9", "output": "[0,1]"}],
+        )
+        self.assertEqual(
+            cleaned,
+            "Given an array of integers, return the indices of two values that add up to target.",
+        )
 
     def test_canonical_topic_catalog_is_stable(self):
         self.assertIn("Binary Search", CANONICAL_TOPICS)
