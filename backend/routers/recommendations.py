@@ -31,6 +31,7 @@ def _naive_utc(value: datetime) -> datetime:
 
 @router.get("/next")
 def next_recommendation(
+    current_problem_id: int | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -84,16 +85,69 @@ def next_recommendation(
         "Advanced": "Medium",
     }.get(experience, "Medium")
 
+    # A dashboard recommendation stays active until the user solves it.
+    # This prevents the recommendation from changing on each dashboard refresh.
+    if current_problem_id is not None:
+        current_problem = next(
+            (problem for problem in problems if problem.id == current_problem_id),
+            None,
+        )
+        if current_problem is not None and current_problem.id not in solved_ids:
+            current_topics = current_problem.topics or []
+            current_weak_topic = min(
+                current_topics,
+                key=lambda topic: topic_health(topic),
+                default=current_topics[0] if current_topics else "General DSA",
+            )
+            return {
+                "problem": {
+                    "id": current_problem.id,
+                    "slug": current_problem.slug,
+                    "title": current_problem.title,
+                    "difficulty": current_problem.difficulty,
+                    "topics": current_topics,
+                },
+                "reason": (
+                    f"Keep working on this problem. A new recommendation will appear "
+                    f"after you solve it."
+                    if not current_topics
+                    else f"Keep working on this problem to strengthen {current_weak_topic}. "
+                         f"A new recommendation will appear after you solve it."
+                ),
+                "focus_topic": current_weak_topic,
+                "score": None,
+                "topic_health": round(topic_health(current_weak_topic), 3),
+                "is_reinforcement": False,
+                "locked_until_solved": True,
+                "profile_experience": experience,
+            }
+
+    # Only unsolved problems can become the next recommendation.
+    # Once the active problem is accepted, it is excluded and a fresh problem is chosen.
     scored = []
     for problem in problems:
+        if problem.id in solved_ids:
+            continue
+
         topics = problem.topics or []
         weakness = sum(topic_health(topic) for topic in topics) / max(len(topics), 1)
         difficulty_bonus = 1.0 if problem.difficulty == preferred_difficulty else 0.35
-        unsolved_bonus = 1.0 if problem.id not in solved_ids else 0.0
         recent_penalty = 0.45 if problem.id in recent_ids else 0.0
         exploration_bonus = 0.25 if not any(topic in topic_stats for topic in topics) else 0.0
-        score = weakness * 5.0 + difficulty_bonus * 2.0 + unsolved_bonus * 3.0 + exploration_bonus - recent_penalty
+        score = weakness * 5.0 + difficulty_bonus * 2.0 + 3.0 + exploration_bonus - recent_penalty
         scored.append((score, problem, weakness))
+
+    if not scored:
+        return {
+            "problem": None,
+            "reason": "You have solved every currently available problem.",
+            "focus_topic": None,
+            "score": None,
+            "topic_health": None,
+            "is_reinforcement": False,
+            "locked_until_solved": False,
+            "profile_experience": experience,
+        }
 
     scored.sort(key=lambda item: (-item[0], item[1].id))
     chosen_score, chosen, chosen_weakness = scored[0]
@@ -103,14 +157,6 @@ def next_recommendation(
         key=lambda topic: topic_health(topic),
         default=chosen_topics[0] if chosen_topics else "General DSA",
     )
-    was_solved = chosen.id in solved_ids
-    reason = (
-        f"Recommended because {weak_topic} is currently one of your less-practiced or less-stable areas."
-        if chosen_topics
-        else "Recommended as a fresh problem from the current problem set."
-    )
-    if was_solved:
-        reason = f"Recommended as a reinforcement problem because {weak_topic} needs more practice."
 
     return {
         "problem": {
@@ -124,7 +170,8 @@ def next_recommendation(
         "focus_topic": weak_topic,
         "score": round(chosen_score, 3),
         "topic_health": round(chosen_weakness, 3),
-        "is_reinforcement": was_solved,
+        "is_reinforcement": False,
+        "locked_until_solved": False,
         "profile_experience": experience,
     }
 
