@@ -10,6 +10,8 @@ from typing import Any
 
 import yaml
 
+from backend.problem_catalog import canonicalize_topics, normalize_difficulty
+
 
 class ProblemPackageError(ValueError):
     """Raised when a problem package cannot be imported safely."""
@@ -370,7 +372,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         keywords = oj_metadata.get("tags") or []
     if isinstance(keywords, str):
         keywords = [keywords]
-    topics = [str(item).strip() for item in keywords if str(item).strip()]
+    topics = canonicalize_topics(keywords)
 
     statement, statement_file = _statement_from_files(files)
     statement_title = _extract_statement_title(statement)
@@ -521,10 +523,20 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
     )
     package_metadata["judge_supported"] = judge_supported
 
+    difficulty_value = normalize_difficulty(
+        _source_text(oj_metadata.get("difficulty")) or metadata.get("difficulty")
+    )
+    if difficulty_value is None:
+        raise ProblemPackageError(
+            "Problem package does not provide a supported difficulty (Easy, Medium, or Hard)."
+        )
+    if not topics:
+        raise ProblemPackageError("Problem package does not provide any usable topics.")
+
     return {
         "slug": slug,
         "title": title[:180],
-        "difficulty": str(oj_metadata.get("difficulty") or metadata.get("difficulty") or "Unknown").title(),
+        "difficulty": difficulty_value,
         "topics": topics,
         "description": statement,
         "constraints": [],
