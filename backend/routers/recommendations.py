@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.problem_catalog import CANONICAL_TOPICS, canonicalize_topics, normalize_difficulty
 from backend.models import CodingAttempt, Problem, User, UserProfile
 from backend.routers.auth import get_current_user
 
@@ -13,18 +14,7 @@ _VALID_DIFFICULTIES = {"Easy", "Medium", "Hard"}
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
-TOPICS = [
-    "Arrays & Strings",
-    "Hashing & Hash Maps",
-    "Two Pointers",
-    "Binary Search",
-    "Linked Lists",
-    "Trees & BST",
-    "Graphs (BFS/DFS)",
-    "Dynamic Programming",
-    "Backtracking",
-    "Greedy Algorithms",
-]
+TOPICS = CANONICAL_TOPICS
 
 def _naive_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=None) if value.tzinfo else value
@@ -42,12 +32,10 @@ def next_recommendation(
         .filter(CodingAttempt.user_id == current_user.id)
         .all()
     )
-    problems = (
-        db.query(Problem)
-        .filter(Problem.difficulty.in_(_VALID_DIFFICULTIES))
-        .order_by(Problem.id.asc())
-        .all()
-    )
+    problems = [
+        problem for problem in db.query(Problem).order_by(Problem.id.asc()).all()
+        if normalize_difficulty(problem.difficulty) in _VALID_DIFFICULTIES
+    ]
 
     solved_ids = {
         attempt.problem_id
@@ -63,7 +51,7 @@ def next_recommendation(
 
     topic_stats = defaultdict(lambda: {"attempted": 0, "accepted": 0, "failures": 0})
     for attempt, problem in attempts:
-        for topic in problem.topics or []:
+        for topic in canonicalize_topics(problem.topics):
             topic_stats[topic]["attempted"] += 1
             if attempt.mode == "submit" and attempt.status == "Accepted":
                 topic_stats[topic]["accepted"] += 1
@@ -93,7 +81,7 @@ def next_recommendation(
             None,
         )
         if current_problem is not None and current_problem.id not in solved_ids:
-            current_topics = current_problem.topics or []
+            current_topics = canonicalize_topics(current_problem.topics)
             current_weak_topic = min(
                 current_topics,
                 key=lambda topic: topic_health(topic),
@@ -104,7 +92,7 @@ def next_recommendation(
                     "id": current_problem.id,
                     "slug": current_problem.slug,
                     "title": current_problem.title,
-                    "difficulty": current_problem.difficulty,
+                    "difficulty": normalize_difficulty(current_problem.difficulty),
                     "topics": current_topics,
                 },
                 "reason": (
@@ -129,7 +117,7 @@ def next_recommendation(
         if problem.id in solved_ids:
             continue
 
-        topics = problem.topics or []
+        topics = canonicalize_topics(problem.topics)
         weakness = sum(topic_health(topic) for topic in topics) / max(len(topics), 1)
         difficulty_bonus = 1.0 if problem.difficulty == preferred_difficulty else 0.35
         recent_penalty = 0.45 if problem.id in recent_ids else 0.0
@@ -151,7 +139,7 @@ def next_recommendation(
 
     scored.sort(key=lambda item: (-item[0], item[1].id))
     chosen_score, chosen, chosen_weakness = scored[0]
-    chosen_topics = chosen.topics or []
+    chosen_topics = canonicalize_topics(chosen.topics)
     weak_topic = min(
         chosen_topics,
         key=lambda topic: topic_health(topic),
@@ -168,7 +156,7 @@ def next_recommendation(
             "id": chosen.id,
             "slug": chosen.slug,
             "title": chosen.title,
-            "difficulty": chosen.difficulty,
+            "difficulty": normalize_difficulty(chosen.difficulty),
             "topics": chosen_topics,
         },
         "reason": reason,
