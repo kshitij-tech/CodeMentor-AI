@@ -11,6 +11,7 @@ from backend.routers.auth import get_current_user
 from backend.execution import (
     CodeRejectedError,
     extract_error_line,
+    run_language_stdio_tests,
     run_python_stdio_tests,
     run_python_tests,
     syntax_diagnostic,
@@ -54,14 +55,6 @@ def execute_code(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if request.language != "Python":
-        return {
-            "status": "Unsupported Language",
-            "summary": "Python execution is available in this stage. Other language runtimes will be added next.",
-            "error_line": None,
-            "results": [],
-        }
-
     problem = (
         db.query(Problem)
         .filter(Problem.slug == request.problem_slug)
@@ -69,6 +62,17 @@ def execute_code(
     )
     if problem is None:
         raise HTTPException(status_code=404, detail="Problem not found.")
+
+    if request.language != "Python" and problem.execution_mode != "stdio":
+        return {
+            "status": "Unsupported Language",
+            "summary": (
+                "Non-Python execution currently supports standard stdin/stdout "
+                "problems. Function-style execution remains Python-only."
+            ),
+            "error_line": None,
+            "results": [],
+        }
 
     time_limit_seconds = min(
         10.0,
@@ -120,21 +124,40 @@ def execute_code(
 
         try:
             package_metadata = problem.package_metadata or {}
-            outcomes = run_python_stdio_tests(
-                request.code,
-                cases,
-                time_limit_seconds=time_limit_seconds,
-                memory_limit_mb=memory_limit_mb,
-                package_root=package_metadata.get("package_root"),
-                validation_time_seconds=max(
-                    0.1,
-                    float(package_metadata.get("validation_time_ms", 60000)) / 1000,
+            if request.language == "Python":
+                outcomes = run_python_stdio_tests(
+                    request.code,
+                    cases,
+                    time_limit_seconds=time_limit_seconds,
+                    memory_limit_mb=memory_limit_mb,
+                    package_root=package_metadata.get("package_root"),
+                    validation_time_seconds=max(
+                        0.1,
+                        float(package_metadata.get("validation_time_ms", 60000)) / 1000,
+                    ),
+                    validation_output_bytes=max(
+                        1024,
+                        int(package_metadata.get("validation_output_bytes", 8 * 1024 * 1024)),
+                    ),
+                )
+            else:
+                outcomes = run_language_stdio_tests(
+                    request.code,
+                    request.language,
+                    cases,
+                    time_limit_seconds=time_limit_seconds,
+                    memory_limit_mb=memory_limit_mb,
+                )
+        except FileNotFoundError:
+            return {
+                "status": "Runtime Unavailable",
+                "summary": (
+                    f"The {request.language} runtime is not installed or configured "
+                    "on the execution host."
                 ),
-                validation_output_bytes=max(
-                    1024,
-                    int(package_metadata.get("validation_output_bytes", 8 * 1024 * 1024)),
-                ),
-            )
+                "error_line": None,
+                "results": [],
+            }
         except CodeRejectedError as exc:
             return {
                 "status": "Rejected",
