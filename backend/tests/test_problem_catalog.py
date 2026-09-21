@@ -87,6 +87,20 @@ class ProblemCatalogTests(unittest.TestCase):
             "Given an array of integers, return the indices of two values that add up to target.",
         )
 
+    def test_strip_embedded_examples_without_structured_examples(self):
+        description = (
+            "You are given an equation with question marks. Determine whether "
+            "the question marks can be replaced to reach the target. "
+            "Examples Input ? + ? - ? + ? + ? = 42 Output Possible "
+            "9 + 13 - 39 + 28 + 31 = 42 Input ? - ? = 1 Output Impossible "
+            "Input ? = 1000000 Output Possible 1000000 = 1000000"
+        )
+        cleaned = strip_examples_from_description(description, [])
+        self.assertEqual(
+            cleaned,
+            "You are given an equation with question marks. Determine whether "
+            "the question marks can be replaced to reach the target.",
+        )
     def test_canonical_topic_catalog_is_stable(self):
         self.assertIn("Binary Search", CANONICAL_TOPICS)
         self.assertIn("Dynamic Programming", CANONICAL_TOPICS)
