@@ -322,6 +322,9 @@ async function execute(mode){
   const code=editor.getValue();
   if(!code.trim()){toast('Write code first.');return}
   $('run-btn').disabled=true;$('submit-btn').disabled=true;
+  const activeButton=mode==='submit'?$ ('submit-btn'):$ ('run-btn');
+  activeButton?.classList.add('cm-loading');
+  activeButton?.querySelector('.material-symbols-outlined')?.classList.add('opacity-50');
   $('execution-status').textContent=mode==='submit'?'Submitting…':'Running…';
   try{
     const res=await fetch(API+'/execution/run',{
@@ -340,6 +343,9 @@ async function execute(mode){
     $('result-body').innerHTML='<div class="text-xs text-rose-400 p-3">'+esc(err.message||'Execution failed.')+'</div>';
   }finally{
     $('run-btn').disabled=false;$('submit-btn').disabled=false;
+    $('run-btn').classList.remove('cm-loading');$('submit-btn').classList.remove('cm-loading');
+    $('run-btn').querySelector('.material-symbols-outlined')?.classList.remove('opacity-50');
+    $('submit-btn').querySelector('.material-symbols-outlined')?.classList.remove('opacity-50');
   }
 }
 function initEditor(){
