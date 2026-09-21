@@ -13,6 +13,7 @@ from backend.execution import (
     extract_error_line,
     run_python_stdio_tests,
     run_python_tests,
+    syntax_diagnostic,
 )
 
 
@@ -24,6 +25,27 @@ class ExecuteRequest(BaseModel):
     language: Literal["Python", "C++", "Java", "JavaScript", "TypeScript", "Go", "Rust"]
     code: str = Field(min_length=1, max_length=40000)
     mode: Literal["run", "submit"] = "run"
+
+
+@router.post("/validate")
+def validate_syntax(
+    request: ExecuteRequest,
+    current_user: User = Depends(get_current_user),
+):
+    if request.language == "Python":
+        return syntax_diagnostic(request.code)
+
+    # Monaco provides native syntax diagnostics for JavaScript/TypeScript.
+    # Other languages will be validated by their sandboxed compiler/runtime
+    # once those runtimes are enabled.
+    return {
+        "valid": True,
+        "message": None,
+        "line": None,
+        "column": None,
+        "end_line": None,
+        "end_column": None,
+    }
 
 
 @router.post("/run")
