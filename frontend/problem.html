@@ -252,9 +252,48 @@ function requireAuth(){if(!token()){location.replace('auth.html');return false}r
 function storagePrefix(){return 'codementor:user:'+userId}
 function draftKey(){return problem?storagePrefix()+':draft:'+problem.slug+':'+$('language').value:null}
 
+function showExecutionErrorMarker(data){
+  if(!editor||!data||!data.error_line)return;
+  const model=editor.getModel();
+  const line=Math.max(1,Number(data.error_line)||1);
+  const column=Math.max(1,Number(data.error_column)||1);
+  const maxColumn=model.getLineMaxColumn(line);
+  const endColumn=Math.min(
+    maxColumn,
+    Math.max(column+1,column+8)
+  );
+  const message=(data.results||[])
+    .map(item=>item.message)
+    .find(Boolean) || data.summary || data.status || 'Execution error.';
+
+  monaco.editor.setModelMarkers(model,'codementor-execution',[{
+    severity:monaco.MarkerSeverity.Error,
+    message:String(message),
+    startLineNumber:line,
+    startColumn:Math.min(column,maxColumn),
+    endLineNumber:line,
+    endColumn:Math.max(column+1,endColumn),
+    source:'CodeMentor'
+  }]);
+
+  syntaxLineDecorations=editor.deltaDecorations(
+    syntaxLineDecorations,
+    [{
+      range:{startLineNumber:line,startColumn:1,endLineNumber:line,endColumn:1},
+      options:{isWholeLine:true,className:'monaco-syntax-error-line'}
+    }]
+  );
+}
+
+function clearExecutionMarkers(){
+  if(!editor)return;
+  monaco.editor.setModelMarkers(editor.getModel(),'codementor-execution',[]);
+}
+
 function clearSyntaxMarkers(){
   if(!editor)return;
   monaco.editor.setModelMarkers(editor.getModel(),'codementor-syntax',[]);
+  monaco.editor.setModelMarkers(editor.getModel(),'codementor-execution',[]);
   syntaxLineDecorations=editor.deltaDecorations(syntaxLineDecorations,[]);
   const status=$('syntax-status');
   status.classList.add('hidden');
@@ -498,6 +537,11 @@ async function execute(mode){
     if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
     if(!res.ok)throw new Error(data.detail||'Execution failed.');
     renderResults(data);
+    if(data.status==='Accepted'){
+      clearExecutionMarkers();
+    }else{
+      showExecutionErrorMarker(data);
+    }
     $('execution-status').textContent=(data.status||'Complete')+' · '+(data.summary||'');
   }catch(err){
     $('execution-status').textContent=err.message||'Execution failed.';
