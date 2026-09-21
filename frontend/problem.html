@@ -374,35 +374,65 @@ function initEditor(){
 }
 async function load(){
   if(!requireAuth())return;
-  const [profileRes,userRes]=await Promise.all([
-    fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
-    fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
-  ]);
-  if(profileRes.status===401||userRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
-  const profile=profileRes.ok?await profileRes.json():{};
-  const user=userRes.ok?await userRes.json():{};
-  userId=String(user.id||'unknown');
-  $('account-name').textContent=profile.full_name||'CodeMentor User';
-  $('account-email').textContent=user.email||'Signed in';
-  if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language))$('language').value=profile.preferred_language;
 
   const slug=new URLSearchParams(location.search).get('problem');
   if(!slug){location.replace('practice.html');return}
 
+  // Start the problem request immediately. Profile/account data is independent
+  // and should never delay the statement/editor workspace.
+  const problemPromise=fetch(
+    API+'/problems/'+encodeURIComponent(slug),
+    {headers:{Authorization:'Bearer '+token()}}
+  );
+  const profilePromise=Promise.all([
+    fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
+    fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
+  ]);
+
   try{
-    const res=await fetch(API+'/problems/'+encodeURIComponent(slug),{headers:{Authorization:'Bearer '+token()}});
+    const res=await problemPromise;
     if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
     if(!res.ok){
       const body=await res.json().catch(()=>({}));
       throw new Error(body.detail||'Problem not found.');
     }
+
     problem=await res.json();
     renderProblem();
     $('language').dispatchEvent(new Event('change'));
-    $('run-btn').disabled=false;$('submit-btn').disabled=false;
-    await loadMentorHistory();
+    $('run-btn').disabled=false;
+    $('submit-btn').disabled=false;
+
+    // Mentor history is supplementary; don't hold the problem workspace hostage
+    // while its session data is loading.
+    void loadMentorHistory();
   }catch(err){
     showError(err.message||'Unable to load the requested problem.');
+  }
+
+  try{
+    const [profileRes,userRes]=await profilePromise;
+    if(profileRes.status===401||userRes.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace('auth.html');
+      return;
+    }
+    const profile=profileRes.ok?await profileRes.json():{};
+    const user=userRes.ok?await userRes.json():{};
+    userId=String(user.id||'unknown');
+    $('account-name').textContent=profile.full_name||'CodeMentor User';
+    $('account-email').textContent=user.email||'Signed in';
+
+    if(profile.preferred_language&&[...$('language').options].some(o=>o.value===profile.preferred_language)){
+      $('language').value=profile.preferred_language;
+    }
+
+    if(problem){
+      loadDraft();
+    }
+    restoreResultsHeight();
+  }catch(err){
+    console.warn('Problem workspace identity load failed:',err);
   }
 }
 $('back-btn').addEventListener('click',()=>location.href='practice.html');
@@ -502,10 +532,8 @@ function restoreResultsHeight(){
 }
 
 initEditor();
-load().then(()=>{
-  initResultsResizer();
-  restoreResultsHeight();
-});
+initResultsResizer();
+load();
 </script>
 </body>
 </html>
