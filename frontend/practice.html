@@ -233,23 +233,39 @@ async function loadProblems({reset=true}={}){
 
 async function load(){
   if(!requireAuth())return;
+
+  const params=new URLSearchParams(location.search);
+  topic=params.get('topic')||'';
+  difficulty=params.get('difficulty')||'';
+  search=params.get('search')||'';
+  $('search').value=search;
+
+  // Problem data and filters do not depend on the profile request, so start
+  // them together instead of making the problem catalogue wait for identity.
+  const profilePromise=Promise.all([
+    fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
+    fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
+  ]);
+  const facetsPromise=loadFacets();
+  const problemsPromise=loadProblems();
+
   try{
-    const [profileRes,userRes]=await Promise.all([
-      fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
-      fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
-    ]);
-    if(profileRes.status===401||userRes.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
+    const [profileRes,userRes]=await profilePromise;
+    if(profileRes.status===401||userRes.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace('auth.html');
+      return;
+    }
     const profile=profileRes.ok?await profileRes.json():{};
     const user=userRes.ok?await userRes.json():{};
     $('account-name').textContent=profile.full_name||'CodeMentor User';
     $('account-email').textContent=user.email||'Signed in';
-    const params=new URLSearchParams(location.search);
-    topic=params.get('topic')||'';
-    difficulty=params.get('difficulty')||'';
-    search=params.get('search')||'';
-    $('search').value=search;
-    await loadFacets();
-    await loadProblems();
+  }catch(err){
+    console.warn('Practice identity load failed:',err);
+  }
+
+  try{
+    await Promise.all([facetsPromise,problemsPromise]);
   }catch(err){
     $('error').textContent=err.message||'Unable to load Practice.';
     $('error').classList.remove('hidden');
