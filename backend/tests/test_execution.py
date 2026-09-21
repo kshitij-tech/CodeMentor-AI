@@ -1,7 +1,12 @@
 import unittest
 from unittest.mock import patch
 
-from backend.execution import CodeRejectedError, _sandbox_mode
+from backend.execution import (
+    CodeRejectedError,
+    MAX_MEMORY_MB,
+    MAX_TIMEOUT_SECONDS,
+    _sandbox_mode,
+)
 
 
 class ExecutionSandboxTests(unittest.TestCase):
@@ -20,6 +25,10 @@ class ExecutionSandboxTests(unittest.TestCase):
         with patch("backend.execution.APP_ENV", "development"):
             with patch("backend.execution.EXECUTION_SANDBOX", "local"):
                 self.assertEqual(_sandbox_mode(), "local")
+
+    def test_resource_safety_caps_are_bounded(self):
+        self.assertEqual(MAX_TIMEOUT_SECONDS, 10.0)
+        self.assertEqual(MAX_MEMORY_MB, 1024)
 
 
 if __name__ == "__main__":
