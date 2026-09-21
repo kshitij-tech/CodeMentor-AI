@@ -70,10 +70,15 @@ def main() -> int:
                 print(f"{name:28} {count}")
 
         duplicates = report["duplicates"]
+        duplicate_groups = [
+            (kind, labels)
+            for kind, groups in duplicates.items()
+            for labels in groups.values()
+        ]
         print()
-        print(f"Duplicate groups : {len(duplicates)}")
-        for index, slugs in enumerate(duplicates.values(), start=1):
-            print(f"  {index}. {', '.join(slugs)}")
+        print(f"Duplicate groups : {len(duplicate_groups)}")
+        for index, (kind, labels) in enumerate(duplicate_groups, start=1):
+            print(f"  {index}. [{kind}] {', '.join(labels)}")
 
     return 1 if args.fail_on_issues and (
         report["issues"] or report["duplicates"]
