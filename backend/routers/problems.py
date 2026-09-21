@@ -12,40 +12,13 @@ from backend.routers.auth import get_current_user
 router = APIRouter(prefix="/problems", tags=["Problems"])
 
 
-_CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
-_VALID_DIFFICULTIES = {"easy", "medium", "hard"}
-
-
-def _is_english_problem(title: str | None, description: str | None) -> bool:
-    text = f"{title or ''}\n{description or ''}"
-    return not _CJK_RE.search(text)
-
-
-def _has_known_difficulty(difficulty: str | None) -> bool:
-    return str(difficulty or "").strip().lower() in _VALID_DIFFICULTIES
-
-
-_TOPIC_ALIASES = {
-    "arrays strings": {"array", "arrays", "string", "strings", "arrays strings"},
-    "hashing hash maps": {
-        "hashing", "hash table", "hash tables", "hash map", "hash maps",
-        "map", "maps", "unordered map", "data structures", "hashing hash maps",
-    },
-    "two pointers": {"two pointer", "two pointers"},
-    "binary search": {"binary search"},
-    "linked lists": {"linked list", "linked lists"},
-    "trees bst": {"tree", "trees", "binary search tree", "bst"},
-    "graphs bfs dfs": {
-        "graph", "graphs", "bfs", "dfs", "shortest path", "shortest paths", "graphs bfs dfs",
-    },
-    "dynamic programming": {"dp", "dynamic programming"},
-    "backtracking": {"backtracking"},
-    "greedy algorithms": {"greedy", "greedy algorithms"},
-}
-
-
-def _normalize_topic(value: str | None) -> str:
-    return re.sub(r"[^a-z0-9]+", " ", str(value or "").strip().lower()).strip()
+from backend.problem_catalog import (
+    VALID_DIFFICULTIES,
+    canonicalize_topics,
+    is_english_problem,
+    normalize_difficulty,
+    normalize_topic,
+)
 
 
 _CATALOG_CACHE_TTL_SECONDS = 120.0
@@ -78,7 +51,7 @@ def _build_catalog_cache(db: Session) -> None:
             Problem.external_url,
             Problem.description,
         )
-        .filter(Problem.difficulty.in_({"Easy", "Medium", "Hard", "easy", "medium", "hard"}))
+        .filter(Problem.difficulty.isnot(None))
         .order_by(Problem.id.asc())
         .all()
     )
@@ -88,28 +61,28 @@ def _build_catalog_cache(db: Session) -> None:
     difficulty_counts: Counter[str] = Counter()
 
     for row in rows:
-        if not _is_english_problem(row.title, row.description):
+        if not is_english_problem(row.title, row.description):
             continue
-        if not _has_known_difficulty(row.difficulty):
+        if normalize_difficulty(row.difficulty) is None:
             continue
 
+        normalized_difficulty = normalize_difficulty(row.difficulty)
+        normalized_topics = canonicalize_topics(row.topics)
         item = {
             "id": row.id,
             "slug": row.slug,
             "title": row.title,
-            "difficulty": row.difficulty,
-            "topics": row.topics or [],
+            "difficulty": normalized_difficulty,
+            "topics": normalized_topics,
             "source": row.source,
             "external_id": row.external_id,
             "external_url": row.external_url,
         }
         clean_rows.append(item)
-        difficulty_counts[str(row.difficulty).strip().title()] += 1
+        difficulty_counts[normalized_difficulty] += 1
 
-        for topic in row.topics or []:
-            topic_text = str(topic).strip()
-            if topic_text:
-                topic_counts[topic_text] += 1
+        for topic_text in normalized_topics:
+            topic_counts[topic_text] += 1
 
     _catalog_cache["rows"] = clean_rows
     _catalog_cache["topics"] = [
@@ -141,25 +114,8 @@ def prime_problem_catalog(db: Session) -> None:
 
 
 def _topic_matches(problem_topics: list[str] | None, requested_topic: str) -> bool:
-    requested = _normalize_topic(requested_topic)
-    if not requested:
-        return True
-
-    aliases = _TOPIC_ALIASES.get(requested, {requested})
-    normalized_topics = {_normalize_topic(topic) for topic in (problem_topics or [])}
-
-    if requested in normalized_topics or bool(normalized_topics & aliases):
-        return True
-
-    # Also allow the canonical topic to match a more specific imported label.
-    for topic in normalized_topics:
-        if topic in aliases:
-            return True
-        for alias in aliases:
-            if alias and (alias in topic or topic in alias):
-                return True
-    return False
-
+    requested = normalize_topic(requested_topic)
+    return requested in canonicalize_topics(problem_topics)
 
 
 def serialize(problem: Problem) -> dict:
@@ -167,8 +123,8 @@ def serialize(problem: Problem) -> dict:
         "id": problem.id,
         "slug": problem.slug,
         "title": problem.title,
-        "difficulty": problem.difficulty,
-        "topics": problem.topics,
+        "difficulty": normalize_difficulty(problem.difficulty),
+        "topics": canonicalize_topics(problem.topics),
         "description": problem.description,
         "constraints": problem.constraints,
         "examples": problem.examples,
