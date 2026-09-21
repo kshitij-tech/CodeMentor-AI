@@ -6,26 +6,38 @@ from pathlib import Path
 
 from backend.database import SessionLocal
 from backend.models import Problem
+from backend.problem_catalog import normalize_problem_record, quality_flags
 
 REQUIRED = {
     "slug", "title", "difficulty", "topics", "description",
     "constraints", "examples", "starter_code",
 }
 
-def validate(item: dict, index: int) -> None:
+def validate(item: dict, index: int) -> dict:
     missing = REQUIRED - set(item)
     if missing:
         raise ValueError(f"Problem {index} is missing: {', '.join(sorted(missing))}")
-    if not isinstance(item["topics"], list):
+
+    normalized = normalize_problem_record(item)
+
+    if not isinstance(normalized["topics"], list):
         raise ValueError(f"Problem {index}: topics must be a list")
-    if not isinstance(item["constraints"], list):
+    if not isinstance(normalized.get("constraints"), list):
         raise ValueError(f"Problem {index}: constraints must be a list")
-    if not isinstance(item["examples"], list):
+    if not isinstance(normalized.get("examples"), list):
         raise ValueError(f"Problem {index}: examples must be a list")
-    if not isinstance(item["starter_code"], dict):
+    if not isinstance(normalized.get("starter_code"), dict):
         raise ValueError(f"Problem {index}: starter_code must be an object")
-    if "test_cases" in item and not isinstance(item["test_cases"], list):
+    if not isinstance(normalized.get("test_cases", []), list):
         raise ValueError(f"Problem {index}: test_cases must be a list")
+
+    flags = quality_flags(normalized)
+    if flags:
+        raise ValueError(
+            f"Problem {index} failed catalogue quality checks: {', '.join(flags)}"
+        )
+
+    return normalized
 
 def import_catalog(path: Path) -> tuple[int, int]:
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -42,9 +54,9 @@ def import_catalog(path: Path) -> tuple[int, int]:
         for index, item in enumerate(items, start=1):
             if not isinstance(item, dict):
                 raise ValueError(f"Problem {index} must be an object.")
-            validate(item, index)
+            item = validate(item, index)
 
-            source = str(item.get("source") or "imported").strip() or "imported"
+            source = item["source"]
             external_id = item.get("external_id")
             slug = str(item["slug"]).strip()
             query = db.query(Problem).filter(Problem.slug == slug)
@@ -59,10 +71,10 @@ def import_catalog(path: Path) -> tuple[int, int]:
             problem = query.first()
             values = {
                 "slug": slug,
-                "title": str(item["title"]).strip(),
-                "difficulty": str(item["difficulty"]).strip(),
+                "title": item["title"],
+                "difficulty": item["difficulty"],
                 "topics": item["topics"],
-                "description": str(item["description"]),
+                "description": item["description"],
                 "constraints": item["constraints"],
                 "examples": item["examples"],
                 "test_cases": item.get("test_cases", []),
