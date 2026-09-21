@@ -660,9 +660,9 @@ document.addEventListener('click',e=>{const menu=document.getElementById('accoun
 document.querySelectorAll('[data-account-action]').forEach(b=>b.addEventListener('click',()=>{
   const action=b.dataset.accountAction; closeAccount();
   if(action==='logout'){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');}
-  else if(action==='preferences') window.location.replace('preferences.html');
+  else if(action==='preferences') window.location.replace('preferences.html?v=20260921');
   else if(action==='settings') window.location.replace('settings.html');
-  else if(action==='profile') window.location.replace('preferences.html');
+  else if(action==='profile') window.location.replace('preferences.html?v=20260921');
 }));
 document.getElementById('notification-btn')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.toggle('hidden'));
 document.getElementById('close-notifications')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.add('hidden'));
@@ -672,7 +672,7 @@ document.getElementById('search-btn')?.addEventListener('click',openSearch);
 document.getElementById('close-search')?.addEventListener('click',closeSearch);
 document.getElementById('search-panel')?.addEventListener('click',e=>{if(e.target.id==='search-panel')closeSearch();});
 document.getElementById('search-input')?.addEventListener('input',e=>{document.getElementById('search-result').textContent=e.target.value.trim()?'Problem search will connect to the authorized problem provider in the next stage.':'Search will connect to the problem index in the next stage.';});
-document.getElementById('preferences-btn')?.addEventListener('click',()=>window.location.replace('preferences.html'));
+document.getElementById('preferences-btn')?.addEventListener('click',()=>window.location.replace('preferences.html?v=20260921'));
 document.getElementById('settings-btn')?.addEventListener('click',()=>window.location.replace('settings.html'));
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();} if(e.key==='Escape'){closeSearch();document.getElementById('notification-panel')?.classList.add('hidden');closeAccount();closeSkillModal();}});
 loadDashboard();
