@@ -566,7 +566,7 @@ async function askDashboardMentor(question){
   const responseButton=document.getElementById('mentor-send');
   input.disabled=true; responseButton.disabled=true;
   const chat=document.getElementById('dashboard-mentor-chat');
-  chat.insertAdjacentHTML('beforeend','<div class="flex flex-col items-start"><div class="dashboard-mentor-label">AI Mentor</div><div class="dashboard-mentor-message dashboard-mentor-ai">Thinking...</div></div>');
+  chat.insertAdjacentHTML('beforeend','<div class="flex flex-col items-start"><div class="dashboard-mentor-label">AI Mentor</div><div class="dashboard-mentor-message dashboard-mentor-ai cm-busy-dots">Thinking</div></div>');
   chat.scrollTop=chat.scrollHeight;
   try{
     const res=await fetch(API_BASE_URL+'/mentor/chat',{
