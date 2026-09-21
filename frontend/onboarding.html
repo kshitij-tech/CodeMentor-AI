@@ -37,17 +37,17 @@
 <span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Adaptive Onboarding</span>
 </div>
 <div class="flex items-center gap-space-xs">
-<span class="font-label-md text-label-md text-primary font-semibold tracking-wider uppercase" id="step-indicator-text">Step 1 of 4</span>
+<span class="font-label-md text-label-md text-primary font-semibold tracking-wider uppercase" id="step-indicator-text">Step 1 of 3</span>
 <span class="text-outline-variant font-label-md text-label-md">•</span>
-<span class="font-label-md text-label-md text-on-surface-variant font-medium" id="step-percentage-text">25% Complete</span>
+<span class="font-label-md text-label-md text-on-surface-variant font-medium" id="step-percentage-text">33% Complete</span>
 </div>
 </div>
 <!-- Linear Progress Bar -->
 <div class="w-full h-2 rounded-full bg-surface-container-high overflow-hidden">
-<div class="h-full bg-primary-container rounded-full transition-all duration-500 ease-out" id="progress-bar-fill" style="width: 25%;"></div>
+<div class="h-full bg-primary-container rounded-full transition-all duration-500 ease-out" id="progress-bar-fill" style="width: 33%;"></div>
 </div>
 <!-- Pill Breadcrumbs -->
-<div class="grid grid-cols-4 gap-space-xs pt-space-xs">
+<div class="grid grid-cols-3 gap-space-xs pt-space-xs">
 <button class="group flex items-center gap-1.5 py-1 text-left transition-all" id="crumb-1" onclick="goToStep(1)" type="button">
 <span class="w-4 h-4 rounded-full bg-primary-container text-on-primary text-[10px] flex items-center justify-center font-bold">1</span>
 <span class="font-label-sm text-label-sm font-semibold text-primary truncate">Profile</span>
@@ -56,12 +56,8 @@
 <span class="w-4 h-4 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] flex items-center justify-center font-bold">2</span>
 <span class="font-label-sm text-label-sm font-medium text-on-surface-variant truncate">Language</span>
 </button>
-<button class="group flex items-center gap-1.5 py-1 text-left opacity-60 hover:opacity-100 transition-all" id="crumb-3" onclick="goToStep(3)" type="button">
+<button class="group flex items-center gap-1.5 py-1 text-left opacity-60 hover:opacity-100 transition-all" id="crumb-3" onclick="goToStep(4)" type="button">
 <span class="w-4 h-4 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] flex items-center justify-center font-bold">3</span>
-<span class="font-label-sm text-label-sm font-medium text-on-surface-variant truncate">LeetCode</span>
-</button>
-<button class="group flex items-center gap-1.5 py-1 text-left opacity-60 hover:opacity-100 transition-all" id="crumb-4" onclick="goToStep(4)" type="button">
-<span class="w-4 h-4 rounded-full bg-surface-container-highest text-on-surface-variant text-[10px] flex items-center justify-center font-bold">4</span>
 <span class="font-label-sm text-label-sm font-medium text-on-surface-variant truncate">Goals</span>
 </button>
 </div>
@@ -277,86 +273,12 @@
             </p>
 </div>
 </section>
-<!-- STEP 3: LEETCODE SYNC -->
+<!-- STEP 4: CAREER GOALS -->
 <section class="step-view hidden flex flex-col gap-space-lg" id="step-3">
 <div class="flex flex-col gap-space-xs">
 <div class="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider font-semibold">
-<span class="material-symbols-outlined text-[16px]">sync_alt</span>
-<span>Step 3 • Historical Calibration</span>
-</div>
-<h2 class="font-headline-md text-headline-md text-on-surface font-bold">Connect your LeetCode profile</h2>
-<p class="font-body-md text-body-md text-on-surface-variant">We sync solved questions to detect problem clusters where you hesitate or get time limit exceeded.</p>
-</div>
-<!-- Input + Sync Action -->
-<div class="flex flex-col gap-space-xs">
-<label class="font-body-sm text-body-sm font-semibold text-on-surface flex items-center justify-between" for="leetcode-input">
-<span>LeetCode Username</span>
-<span class="font-label-sm text-label-sm text-on-surface-variant">Public profile only</span>
-</label>
-<div class="flex gap-space-xs">
-<div class="relative flex-1">
-<span class="absolute left-3 top-1/2 -translate-y-1/2 font-label-md text-label-md text-outline font-bold">lc/</span>
-<input class="w-full pl-9 pr-3 py-2.5 rounded-lg bg-surface-container-lowest text-on-surface font-code-inline text-code-inline shadow-sm outline-none placeholder:text-outline" id="leetcode-input" placeholder="e.g. mayacodes" type="text" value=""/>
-</div>
-<button class="px-space-md py-2.5 rounded-lg bg-primary text-on-primary font-body-sm text-body-sm font-semibold shadow-sm hover:opacity-90 transition-all flex items-center gap-1.5" id="sync-profile-btn" onclick="simulateLeetcodeSync()" type="button">
-<span class="material-symbols-outlined text-[16px]">refresh</span>
-<span>Calibrate</span>
-</button>
-</div>
-</div>
-<!-- Live Profile Preview Card -->
-<div class="p-space-md rounded-xl bg-surface-container flex flex-col gap-space-sm shadow-sm transition-all duration-300" id="leetcode-preview">
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-space-sm">
-<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-outline font-bold">
-<span class="material-symbols-outlined text-[22px]">lock</span>
-</div>
-<div>
-<div class="flex items-center gap-space-xs">
-<span class="font-headline-sm text-[15px] font-bold text-on-surface" id="lc-preview-name">No profile synced</span>
-<span id="lc-preview-status" class="px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-sm text-label-sm font-semibold">Awaiting sync</span>
-</div>
-<p id="lc-preview-detail" class="font-label-sm text-label-sm text-on-surface-variant">Your LeetCode statistics will appear here after a successful sync.</p>
-</div>
-</div>
-<div class="text-right hidden sm:block">
-<span class="font-headline-md text-headline-md font-bold text-outline">—</span>
-<span class="font-label-sm text-label-sm block text-on-surface-variant uppercase">Not synced</span>
-</div>
-</div>
-<div class="grid grid-cols-3 gap-space-xs pt-space-xs">
-<div class="p-2 rounded-lg bg-surface-container-lowest text-center">
-<span class="font-label-sm text-label-sm text-tertiary block font-semibold">Easy</span>
-<span class="font-headline-sm text-[16px] font-bold text-outline">—</span>
-</div>
-<div class="p-2 rounded-lg bg-surface-container-lowest text-center">
-<span class="font-label-sm text-label-sm text-secondary block font-semibold">Medium</span>
-<span class="font-headline-sm text-[16px] font-bold text-outline">—</span>
-</div>
-<div class="p-2 rounded-lg bg-surface-container-lowest text-center">
-<span class="font-label-sm text-label-sm text-error block font-semibold">Hard</span>
-<span class="font-headline-sm text-[16px] font-bold text-outline">—</span>
-</div>
-</div>
-<div id="lc-weak-spots" class="flex items-center gap-2 pt-1 font-body-sm text-body-sm text-on-surface-variant flex-wrap">
-<span class="font-label-sm text-label-sm font-semibold uppercase text-outline">Diagnostic areas:</span>
-<span class="text-outline">Available after sync.</span>
-</div>
-</div>
-<!-- Explanation Callout -->
-<div class="p-space-md rounded-xl bg-surface-container-low flex items-start gap-space-sm">
-<span class="material-symbols-outlined text-[20px] text-tertiary shrink-0">history_edu</span>
-<p class="font-body-sm text-body-sm text-on-surface-variant">
-              After a successful LeetCode sync, CodeMentor AI will use your available history to avoid unnecessary repeats and personalize future recommendations.
-            </p>
-</div>
-</section>
-<!-- STEP 4: CAREER GOALS -->
-<section class="step-view hidden flex flex-col gap-space-lg" id="step-4">
-<div class="flex flex-col gap-space-xs">
-<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md uppercase tracking-wider font-semibold">
 <span class="material-symbols-outlined text-[16px]">flag</span>
-<span>Step 4 • Destination Benchmark</span>
+<span>Step 3 • Destination Benchmark</span>
 </div>
 <h2 class="font-headline-md text-headline-md text-on-surface font-bold">Target role &amp; companies</h2>
 <p class="font-body-md text-body-md text-on-surface-variant">We align daily challenge frequency with actual technical rubrics used by high-tier tech companies.</p>
@@ -462,7 +384,7 @@
               </span>
 </div>
 <!-- Profile Summary Chips -->
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs">
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-xs">
 <div class="p-2.5 rounded-lg bg-surface-container-lowest">
 <span class="font-label-sm text-label-sm text-on-surface-variant block">Target Role</span>
 <span class="font-body-sm text-body-sm font-bold text-on-surface truncate block" id="summary-role">Not set</span>
@@ -475,11 +397,7 @@
 <span class="font-label-sm text-label-sm text-on-surface-variant block">Experience</span>
 <span class="font-body-sm text-body-sm font-bold text-on-surface truncate block" id="summary-exp">Not set</span>
 </div>
-<div class="p-2.5 rounded-lg bg-surface-container-lowest">
-<span class="font-label-sm text-label-sm text-on-surface-variant block">LeetCode Sync</span>
-<span class="font-body-sm text-body-sm font-bold text-tertiary truncate block" id="summary-lc">Not synced yet</span>
-</div>
-</div>
+
 <!-- Generated Day 1 Plan -->
 <div class="p-space-sm rounded-lg bg-surface-container-lowest flex items-center gap-space-sm">
 <div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary flex items-center justify-center shrink-0">
@@ -508,7 +426,7 @@
 <span class="material-symbols-outlined text-primary text-[24px] absolute">psychology</span>
 </div>
 <h3 class="font-headline-md text-headline-md font-bold text-on-surface text-center">Calibrating Diagnostic Model</h3>
-<p class="font-body-md text-body-md text-on-surface-variant text-center max-w-sm mt-1" id="loading-subtext">Analyzing past LeetCode contest submissions and synthesizing company rubrics...</p>
+<p class="font-body-md text-body-md text-on-surface-variant text-center max-w-sm mt-1" id="loading-subtext">Saving your personalized coding and interview profile...</p>
 <div class="w-64 h-1.5 rounded-full bg-surface-container-high mt-space-md overflow-hidden">
 <div class="h-full bg-primary-container rounded-full animate-pulse" style="width: 75%;"></div>
 </div>
@@ -558,8 +476,6 @@ const wizardState = {
   experience: '',
   language: '',
   langVersion: '',
-  leetcodeUser: '',
-  leetcodeSynced: false,
   targetRole: '',
   companies: [],
   timeline: ''
@@ -582,7 +498,7 @@ function openInfoModal(type) {
     },
     privacy: {
       title: 'Privacy Policy',
-      html: '<div class="space-y-4"><p>CodeMentor AI uses the information you enter during onboarding to personalize your coding practice experience.</p><div><p class="font-semibold text-on-surface mb-1">Data we use</p><p>Your account email, profile preferences, programming language, experience level, target role, selected companies, preparation timeline, and any LeetCode username you provide.</p></div><div><p class="font-semibold text-on-surface mb-1">How it is used</p><p>This information is intended for authentication, profile personalization, analytics, recommendations, and AI coaching features.</p></div><p class="text-[12px] text-on-surface-variant">This page is an in-product overview for the current prototype and is not a substitute for a finalized legal privacy notice.</p></div>'
+      html: '<div class="space-y-4"><p>CodeMentor AI uses the information you enter during onboarding to personalize your coding practice experience.</p><div><p class="font-semibold text-on-surface mb-1">Data we use</p><p>Your account email, profile preferences, programming language, experience level, target role, selected companies, and preparation timeline.</p></div><div><p class="font-semibold text-on-surface mb-1">How it is used</p><p>This information is intended for authentication, profile personalization, analytics, recommendations, and AI coaching features.</p></div><p class="text-[12px] text-on-surface-variant">This page is an in-product overview for the current prototype and is not a substitute for a finalized legal privacy notice.</p></div>'
     },
     security: {
       title: 'Security Overview',
@@ -686,25 +602,25 @@ function setCardState(card, active) {
 function updateView() {
   hideError();
 
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 4; i++) {
     const step = document.getElementById('step-' + i);
     if (step) step.classList.toggle('hidden', i !== wizardState.currentStep);
   }
 
-  const pct = wizardState.currentStep <= 4 ? wizardState.currentStep * 25 : 100;
+  const pct = wizardState.currentStep <= 3 ? Math.round((wizardState.currentStep / 3) * 100) : 100;
   const progress = document.getElementById('progress-bar-fill');
   const stepText = document.getElementById('step-indicator-text');
   const pctText = document.getElementById('step-percentage-text');
   const footer = document.getElementById('card-footer-controls');
 
   if (progress) progress.style.width = pct + '%';
-  if (stepText) stepText.textContent = wizardState.currentStep <= 4
-    ? `Step ${wizardState.currentStep} of 4`
+  if (stepText) stepText.textContent = wizardState.currentStep <= 3
+    ? `Step ${wizardState.currentStep} of 3`
     : 'Setup Finalized';
-  if (pctText) pctText.textContent = wizardState.currentStep <= 4
+  if (pctText) pctText.textContent = wizardState.currentStep <= 3
     ? `${pct}% Complete`
     : '100% Ready';
-  if (footer) footer.classList.toggle('hidden', wizardState.currentStep === 5);
+  if (footer) footer.classList.toggle('hidden', wizardState.currentStep === 4);
 
   updateStepperState();
 
@@ -722,26 +638,25 @@ function updateView() {
     back?.classList.remove('hidden');
     placeholder?.classList.add('hidden');
     skip?.classList.add('hidden');
-    if (nextLabel) nextLabel.textContent = 'Continue to LeetCode Sync';
-  } else if (wizardState.currentStep === 3) {
-    back?.classList.remove('hidden');
-    placeholder?.classList.add('hidden');
-    skip?.classList.add('hidden');
     if (nextLabel) nextLabel.textContent = 'Continue to Career Goals';
-  } else if (wizardState.currentStep === 4) {
+  } else if (wizardState.currentStep === 3) {
     back?.classList.remove('hidden');
     placeholder?.classList.add('hidden');
     skip?.classList.add('hidden');
     if (nextLabel) nextLabel.textContent = 'Finish & Personalize AI Workspace';
   }
+    back?.classList.remove('hidden');
+    placeholder?.classList.add('hidden');
+    skip?.classList.add('hidden');
+  }
 
-  if (wizardState.currentStep === 5) {
+  if (wizardState.currentStep === 4) {
     syncSummaryState();
   }
 }
 
 function goToStep(step) {
-  if (step < 1 || step > 5) return;
+  if (step < 1 || step > 4) return;
 
   // Users may move backward to review completed sections, or stay on the
   // current step. Forward jumps are blocked until the current step is valid.
@@ -758,7 +673,7 @@ function goToStep(step) {
     }
   }
 
-  if (step === 5 && wizardState.currentStep < 4) {
+  if (step === 4 && wizardState.currentStep < 3) {
     showError('Please complete the onboarding steps in order.');
     return;
   }
@@ -822,13 +737,7 @@ function validateStep() {
     return 'Please choose your interview programming language.';
   }
 
-  if (wizardState.currentStep === 3) {
-    const username = document.getElementById('leetcode-input')?.value.trim() || wizardState.leetcodeUser;
-    if (!username) return 'Please enter your LeetCode username before continuing.';
-    wizardState.leetcodeUser = username;
-  }
-
-  if (wizardState.currentStep === 4 && !wizardState.targetRole) {
+    if (wizardState.currentStep === 3 && !wizardState.targetRole) {
     return 'Please choose your target role.';
   }
 
@@ -842,7 +751,7 @@ function stepForward() {
     return;
   }
 
-  if (wizardState.currentStep === 4) {
+  if (wizardState.currentStep === 3) {
     saveProfile();
     return;
   }
@@ -852,7 +761,7 @@ function stepForward() {
 }
 
 function stepBack() {
-  if (wizardState.currentStep > 1 && wizardState.currentStep <= 4) {
+  if (wizardState.currentStep > 1 && wizardState.currentStep <= 3) {
     wizardState.currentStep -= 1;
     updateView();
   }
@@ -961,40 +870,6 @@ function updateBioCounter(textarea) {
   if (counter) counter.textContent = textarea.value.length + ' / 180';
 }
 
-function simulateLeetcodeSync() {
-  const input = document.getElementById('leetcode-input');
-  const preview = document.getElementById('lc-preview-name');
-  const button = document.getElementById('sync-profile-btn');
-  const username = input?.value.trim() || '';
-
-  if (!username) {
-    showError('Please enter a LeetCode username.');
-    return;
-  }
-
-  wizardState.leetcodeUser = username;
-  wizardState.leetcodeSynced = false;
-
-  if (preview) preview.textContent = username;
-  if (button) {
-    button.innerHTML = '<span class="material-symbols-outlined text-[16px]">done</span><span>Username Saved</span>';
-  }
-}
-
-function syncSummaryState() {
-  const role = document.getElementById('summary-role');
-  const lang = document.getElementById('summary-lang');
-  const exp = document.getElementById('summary-exp');
-  const lc = document.getElementById('summary-lc');
-
-  if (role) role.textContent = wizardState.targetRole || 'Not set';
-  if (lang) lang.textContent = wizardState.language
-    ? wizardState.language + (wizardState.langVersion ? ' ' + wizardState.langVersion : '')
-    : 'Not set';
-  if (exp) exp.textContent = wizardState.experience || 'Not set';
-  if (lc) lc.textContent = wizardState.leetcodeUser || 'Skipped';
-}
-
 async function saveProfile() {
   if (!requireAuth()) return;
 
@@ -1013,7 +888,6 @@ async function saveProfile() {
       body: JSON.stringify({
         full_name: wizardState.name,
         bio: wizardState.bio || null,
-        leetcode_username: wizardState.leetcodeUser || null,
         preferred_language: wizardState.language,
         experience_level: wizardState.experience,
         target_role: wizardState.targetRole,
@@ -1054,21 +928,18 @@ function loadOnboardingDraft() {
     const draft = JSON.parse(raw);
     if (!draft || typeof draft !== 'object') return;
 
-    wizardState.currentStep = Math.min(Math.max(Number(draft.currentStep) || 1, 1), 4);
+    wizardState.currentStep = Math.min(Math.max(Number(draft.currentStep) || 1, 1), 3);
     wizardState.name = draft.name || wizardState.name;
     wizardState.bio = draft.bio || wizardState.bio;
     wizardState.experience = draft.experience || wizardState.experience;
     wizardState.language = draft.language || wizardState.language;
     wizardState.langVersion = draft.langVersion || wizardState.langVersion;
-    wizardState.leetcodeUser = draft.leetcodeUser || wizardState.leetcodeUser;
-    wizardState.leetcodeSynced = false;
     wizardState.targetRole = draft.targetRole || wizardState.targetRole;
     wizardState.companies = Array.isArray(draft.companies) ? draft.companies : wizardState.companies;
     wizardState.timeline = draft.timeline || wizardState.timeline;
 
     const nameInput = document.getElementById('user-name');
     const bioInput = document.getElementById('user-bio');
-    const lcInput = document.getElementById('leetcode-input');
 
     if (nameInput && wizardState.name) {
       nameInput.value = wizardState.name;
@@ -1080,11 +951,6 @@ function loadOnboardingDraft() {
       updateBioCounter(bioInput);
     }
 
-    if (lcInput && wizardState.leetcodeUser) {
-      lcInput.value = wizardState.leetcodeUser;
-      const preview = document.getElementById('lc-preview-name');
-      if (preview) preview.textContent = wizardState.leetcodeUser;
-    }
 
     if (wizardState.experience) selectExperience(wizardState.experience);
     if (wizardState.language) selectLanguage(wizardState.language, wizardState.langVersion);
@@ -1131,9 +997,7 @@ async function loadExistingProfile() {
     const accountName = document.getElementById('account-menu-name');
     const accountEmail = document.getElementById('account-menu-email');
     if (accountName) accountName.textContent = profile.full_name || 'CodeMentor user';
-    if (accountEmail) accountEmail.textContent = profile.leetcode_username
-      ? '@' + profile.leetcode_username
-      : 'Signed in';
+    if (accountEmail) accountEmail.textContent = 'Signed in';
 
     if (profile.full_name) {
       wizardState.name = profile.full_name;
@@ -1167,14 +1031,6 @@ async function loadExistingProfile() {
       selectLanguage(profile.preferred_language, versions[profile.preferred_language] || '');
     }
 
-    if (profile.leetcode_username) {
-      wizardState.leetcodeUser = profile.leetcode_username;
-      wizardState.leetcodeSynced = true;
-      const input = document.getElementById('leetcode-input');
-      const preview = document.getElementById('lc-preview-name');
-      if (input) input.value = profile.leetcode_username;
-      if (preview) preview.textContent = profile.leetcode_username;
-    }
 
     if (profile.target_role) selectRole(profile.target_role);
     if (profile.preparation_timeline) selectTimeline(profile.preparation_timeline);
