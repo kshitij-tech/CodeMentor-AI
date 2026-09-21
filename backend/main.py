@@ -7,7 +7,7 @@ from backend.database import SessionLocal
 from backend.database import Base, engine
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
-from backend.routers.problems import router as problems_router
+from backend.routers.problems import router as problems_router, prime_problem_catalog
 from backend.routers.execution import router as execution_router
 from backend.routers.mentor import router as mentor_router
 from backend.routers.analytics import router as analytics_router
@@ -86,6 +86,9 @@ initialize_database()
 
 with SessionLocal() as db:
     seed_problems(db)
+    # Warm the problem catalogue once at startup so the first Practice request
+    # does not have to scan and normalize the full problem dataset.
+    prime_problem_catalog(db)
 
 
 app = FastAPI(
