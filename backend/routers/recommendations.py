@@ -8,6 +8,9 @@ from backend.database import get_db
 from backend.models import CodingAttempt, Problem, User, UserProfile
 from backend.routers.auth import get_current_user
 
+
+_VALID_DIFFICULTIES = {"Easy", "Medium", "Hard"}
+
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
 TOPICS = [
@@ -38,7 +41,12 @@ def next_recommendation(
         .filter(CodingAttempt.user_id == current_user.id)
         .all()
     )
-    problems = db.query(Problem).order_by(Problem.id.asc()).all()
+    problems = (
+        db.query(Problem)
+        .filter(Problem.difficulty.in_(_VALID_DIFFICULTIES))
+        .order_by(Problem.id.asc())
+        .all()
+    )
 
     solved_ids = {
         attempt.problem_id
