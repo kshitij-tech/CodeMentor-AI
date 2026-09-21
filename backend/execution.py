@@ -47,6 +47,70 @@ class CodeRejectedError(ValueError):
     pass
 
 
+def syntax_diagnostic(source: str) -> dict[str, object]:
+    """Return a JSON-safe syntax diagnostic without executing user code."""
+    if len(source) > MAX_CODE_LENGTH:
+        return {
+            "valid": False,
+            "message": f"Code exceeds the {MAX_CODE_LENGTH} character limit.",
+            "line": 1,
+            "column": 1,
+            "end_line": 1,
+            "end_column": 2,
+        }
+
+    try:
+        ast.parse(source)
+    except SyntaxError as exc:
+        line = max(1, int(exc.lineno or 1))
+        column = max(1, int(exc.offset or 1))
+        end_line = max(line, int(getattr(exc, "end_lineno", None) or line))
+        end_offset = getattr(exc, "end_offset", None)
+        end_column = max(
+            column + 1,
+            int(end_offset) if end_offset is not None else column + 1,
+        )
+
+        # Python sometimes points at a single character for an invalid token
+        # and sometimes only gives a caret position. Expand to the nearest
+        # token so Monaco visibly marks the offending word/token.
+        source_lines = source.splitlines()
+        if 1 <= line <= len(source_lines):
+            line_text = source_lines[line - 1]
+            if end_line == line:
+                start_index = min(len(line_text), column - 1)
+                end_index = min(len(line_text), max(start_index + 1, end_column - 1))
+                if start_index < len(line_text):
+                    if line_text[start_index].isspace():
+                        left = start_index
+                        while left > 0 and not line_text[left - 1].isspace():
+                            left -= 1
+                        right = start_index
+                        while right < len(line_text) and not line_text[right].isspace():
+                            right += 1
+                        if left != right:
+                            column = left + 1
+                            end_column = right + 1
+
+        return {
+            "valid": False,
+            "message": exc.msg or "Syntax error.",
+            "line": line,
+            "column": column,
+            "end_line": end_line,
+            "end_column": end_column,
+        }
+
+    return {
+        "valid": True,
+        "message": None,
+        "line": None,
+        "column": None,
+        "end_line": None,
+        "end_column": None,
+    }
+
+
 EXECUTION_SANDBOX = os.getenv("EXECUTION_SANDBOX", "local").strip().lower()
 EXECUTION_DOCKER_IMAGE = os.getenv(
     "EXECUTION_DOCKER_IMAGE",
