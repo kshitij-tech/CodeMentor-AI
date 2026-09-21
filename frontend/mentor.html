@@ -233,7 +233,21 @@ async function sendMessage(){
     document.querySelectorAll('.runtime-system').forEach(el=>el.remove());
     sessionId=data.session_id||sessionId;
     messages.push({role:'ai',text:data.answer||'The mentor returned no explanation.'});
-    sessions=await loadSessions();
+
+    // The current session is already known; don't make another network round-trip
+    // just to redraw the session list after every mentor response.
+    const currentSession=sessions.find(s=>s.id===sessionId);
+    if(currentSession){
+      currentSession.updated_at=new Date().toISOString();
+    }else if(sessionId){
+      sessions.unshift({
+        id:sessionId,
+        title:'Dashboard AI Mentor',
+        scope:'dashboard',
+        problem_slug:null,
+        updated_at:new Date().toISOString()
+      });
+    }
     document.getElementById('session-status').textContent='Dashboard mentor';
     renderSessions();
     renderChat();
