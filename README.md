@@ -34,3 +34,18 @@ Create `backend/.env` and set your Gemini API key:
     AI_FALLBACK_MODEL=gemini-2.5-flash-lite
 
 The backend loads `backend/.env` from the repository path, so the API key is available even when Uvicorn is started from the project root. Restart the FastAPI server after changing the key.
+
+
+## Problem catalogue quality
+
+Phase 2 now has a shared catalogue normalization and audit layer:
+
+    python -m backend.audit_catalog
+
+Use --json for machine-readable output or --fail-on-issues to make the command return a failing exit code when quality issues or duplicate groups exist.
+
+The catalogue layer normalizes supported difficulties to Easy, Medium, or Hard, canonicalizes common topic aliases, checks English/problem completeness, validates examples/tests/starter code, and detects duplicate records by external identity and problem content.
+
+The canonical taxonomy is also exposed through:
+
+    GET /problems/taxonomy
