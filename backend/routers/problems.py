@@ -12,11 +12,16 @@ router = APIRouter(prefix="/problems", tags=["Problems"])
 
 
 _CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+_VALID_DIFFICULTIES = {"easy", "medium", "hard"}
 
 
 def _is_english_problem(title: str | None, description: str | None) -> bool:
     text = f"{title or ''}\n{description or ''}"
     return not _CJK_RE.search(text)
+
+
+def _has_known_difficulty(difficulty: str | None) -> bool:
+    return str(difficulty or "").strip().lower() in _VALID_DIFFICULTIES
 
 
 
@@ -100,6 +105,7 @@ def list_problems(
     candidates = [
         row for row in candidates
         if _is_english_problem(row.title, row.description)
+        and _has_known_difficulty(row.difficulty)
     ]
 
     if topic:
@@ -134,7 +140,7 @@ def list_problem_topics(
     ).yield_per(1000)
     total = 0
     for topics, difficulty, title, description in rows:
-        if not _is_english_problem(title, description):
+        if not _is_english_problem(title, description) or not _has_known_difficulty(difficulty):
             continue
         total += 1
         difficulty_counts[str(difficulty)] += 1
@@ -169,6 +175,10 @@ def get_problem(
     db: Session = Depends(get_db),
 ):
     problem = db.query(Problem).filter(Problem.slug == slug).first()
-    if problem is None or not _is_english_problem(problem.title, problem.description):
+    if (
+        problem is None
+        or not _is_english_problem(problem.title, problem.description)
+        or not _has_known_difficulty(problem.difficulty)
+    ):
         raise HTTPException(status_code=404, detail="Problem not found.")
     return serialize(problem)
