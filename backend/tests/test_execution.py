@@ -7,6 +7,7 @@ from backend.execution import (
     MAX_TIMEOUT_SECONDS,
     _sandbox_mode,
     syntax_diagnostic,
+    extract_error_location,
     _language_commands,
     LANGUAGE_EXTENSIONS,
 )
@@ -60,6 +61,22 @@ class ExecutionSandboxTests(unittest.TestCase):
             else:
                 self.assertIsNone(compile_command)
                 self.assertIsNone(docker_shell)
+
+    def test_compiler_error_location_extracts_line_and_column(self):
+        self.assertEqual(
+            extract_error_location("solution.cpp:12:7: error: expected ';'"),
+            (12, 7),
+        )
+        self.assertEqual(
+            extract_error_location("Main.java:4:13: error: ';' expected"),
+            (4, 13),
+        )
+
+    def test_python_traceback_location_extracts_line(self):
+        self.assertEqual(
+            extract_error_location('File "<user_code>", line 9'),
+            (9, None),
+        )
 
     def test_java_runtime_uses_main_class_filename(self):
         compile_command, run_command, docker_shell = _language_commands(
