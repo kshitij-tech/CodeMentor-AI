@@ -25,17 +25,17 @@ def _has_known_difficulty(difficulty: str | None) -> bool:
 
 
 _TOPIC_ALIASES = {
-    "arrays & strings": {"array", "arrays", "string", "strings"},
-    "hashing & hash maps": {
+    "arrays strings": {"array", "arrays", "string", "strings", "arrays strings"},
+    "hashing hash maps": {
         "hashing", "hash table", "hash tables", "hash map", "hash maps",
-        "map", "maps", "unordered map", "data structures",
+        "map", "maps", "unordered map", "data structures", "hashing hash maps",
     },
-    "two pointers": {"two pointer", "two pointers", "two-pointer", "two-pointers"},
-    "binary search": {"binary search", "binary_search"},
-    "linked lists": {"linked list", "linked lists", "linked-list", "linked-lists"},
-    "trees & bst": {"tree", "trees", "binary search tree", "bst"},
-    "graphs (bfs/dfs)": {
-        "graph", "graphs", "bfs", "dfs", "shortest path", "shortest paths",
+    "two pointers": {"two pointer", "two pointers"},
+    "binary search": {"binary search"},
+    "linked lists": {"linked list", "linked lists"},
+    "trees bst": {"tree", "trees", "binary search tree", "bst"},
+    "graphs bfs dfs": {
+        "graph", "graphs", "bfs", "dfs", "shortest path", "shortest paths", "graphs bfs dfs",
     },
     "dynamic programming": {"dp", "dynamic programming"},
     "backtracking": {"backtracking"},
