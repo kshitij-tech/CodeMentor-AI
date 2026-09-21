@@ -185,6 +185,33 @@ def is_english_problem(title: Any, description: Any) -> bool:
     return not CJK_RE.search(f"{title or ''}\n{description or ''}")
 
 
+
+_EXAMPLES_SECTION_PATTERNS = (
+    re.compile(
+        r"(?is)\\bexamples?\\s*:?\\s*(?=(?:(?:\\d+[.\\):-]\\s*)|(?:[-*]\\s*))?input\\s*:)",
+    ),
+    re.compile(r"(?is)\\bexample\\s+\\d+\\s*:?\\s*(?=input\\s*:)")
+)
+
+
+def strip_examples_from_description(description: Any, examples: Any) -> str:
+    """Remove duplicated inline example sections when structured examples exist."""
+    text = str(description or "").strip()
+    if not text or not isinstance(examples, list) or not examples:
+        return normalize_text(text)
+
+    cut_positions = []
+    for pattern in _EXAMPLES_SECTION_PATTERNS:
+        match = pattern.search(text)
+        if match and match.start() > 20:
+            cut_positions.append(match.start())
+
+    if cut_positions:
+        text = text[: min(cut_positions)].rstrip()
+
+    return normalize_text(text)
+
+
 def _valid_example(example: Any) -> bool:
     if not isinstance(example, dict):
         return False
@@ -344,7 +371,7 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(problem)
 
     normalized["title"] = normalize_text(problem.get("title"))
-    normalized["description"] = normalize_text(problem.get("description"))
+    normalized["description"] = strip_examples_from_description(\n        problem.get("description"),\n        problem.get("examples"),\n    )
     normalized["difficulty"] = normalize_difficulty(problem.get("difficulty"))
     normalized["topics"] = canonicalize_topics(problem.get("topics"))
     normalized["source"] = normalize_text(problem.get("source")) or "imported"
