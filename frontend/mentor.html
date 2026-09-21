@@ -220,7 +220,7 @@ async function sendMessage(){
   input.style.height='auto';
   input.disabled=true;
   button.disabled=true;
-  showSystemMessage('Thinking…');
+  showSystemMessage('Thinking');
   try{
     const res=await fetch(API_BASE_URL+'/mentor/chat',{
       method:'POST',
