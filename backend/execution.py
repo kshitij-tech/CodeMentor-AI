@@ -317,7 +317,7 @@ def _language_commands(
         return [
             "javac", "-encoding", "UTF-8", "-d", workdir, source_path
         ], ["java", "-cp", workdir, "Main"], [
-            "javac -encoding UTF-8 -d /runner/classes /workspace/"+source_name+" && java -cp /runner/classes Main"
+            "mkdir -p /runner/classes && javac -encoding UTF-8 -d /runner/classes /workspace/"+source_name+" && java -cp /runner/classes Main"
         ]
     if language == "JavaScript":
         return None, ["node", "--use-strict", source_path], None
@@ -333,7 +333,7 @@ def _language_commands(
         return [
             "go", "build", "-o", os.path.join(workdir, "codementor_program"), source_path
         ], [os.path.join(workdir, "codementor_program")], [
-            "GOCACHE=/tmp/go-cache go build -o /runner/codementor_program /workspace/"+source_name+" && /tmp/codementor_program"
+            "GOCACHE=/tmp/go-cache go build -o /runner/codementor_program /workspace/"+source_name+" && /runner/codementor_program"
         ]
     if language == "Rust":
         return [
