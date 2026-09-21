@@ -126,6 +126,7 @@ def execute_code(
                     "that is not supported by the current execution runner."
                 ),
                 "error_line": None,
+                "error_column": None,
                 "results": [],
             }
 
@@ -177,6 +178,11 @@ def execute_code(
                 "status": "Rejected",
                 "summary": str(exc),
                 "error_line": extract_error_line(str(exc)),
+                "error_column": (
+                    extract_error_location(str(exc))[1]
+                    if extract_error_location(str(exc))
+                    else None
+                ),
                 "results": [],
             }
     else:
@@ -193,6 +199,11 @@ def execute_code(
                 "status": "Rejected",
                 "summary": str(exc),
                 "error_line": extract_error_line(str(exc)),
+                "error_column": (
+                    extract_error_location(str(exc))[1]
+                    if extract_error_location(str(exc))
+                    else None
+                ),
                 "results": [],
             }
 
