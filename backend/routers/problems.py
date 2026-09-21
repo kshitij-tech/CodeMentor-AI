@@ -24,6 +24,50 @@ def _has_known_difficulty(difficulty: str | None) -> bool:
     return str(difficulty or "").strip().lower() in _VALID_DIFFICULTIES
 
 
+_TOPIC_ALIASES = {
+    "arrays & strings": {"array", "arrays", "string", "strings"},
+    "hashing & hash maps": {
+        "hashing", "hash table", "hash tables", "hash map", "hash maps",
+        "map", "maps", "unordered map", "data structures",
+    },
+    "two pointers": {"two pointer", "two pointers", "two-pointer", "two-pointers"},
+    "binary search": {"binary search", "binary_search"},
+    "linked lists": {"linked list", "linked lists", "linked-list", "linked-lists"},
+    "trees & bst": {"tree", "trees", "binary search tree", "bst"},
+    "graphs (bfs/dfs)": {
+        "graph", "graphs", "bfs", "dfs", "shortest path", "shortest paths",
+    },
+    "dynamic programming": {"dp", "dynamic programming"},
+    "backtracking": {"backtracking"},
+    "greedy algorithms": {"greedy", "greedy algorithms"},
+}
+
+
+def _normalize_topic(value: str | None) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").strip().lower()).strip()
+
+
+def _topic_matches(problem_topics: list[str] | None, requested_topic: str) -> bool:
+    requested = _normalize_topic(requested_topic)
+    if not requested:
+        return True
+
+    aliases = _TOPIC_ALIASES.get(requested, {requested})
+    normalized_topics = {_normalize_topic(topic) for topic in (problem_topics or [])}
+
+    if requested in normalized_topics or bool(normalized_topics & aliases):
+        return True
+
+    # Also allow the canonical topic to match a more specific imported label.
+    for topic in normalized_topics:
+        if topic in aliases:
+            return True
+        for alias in aliases:
+            if alias and (alias in topic or topic in alias):
+                return True
+    return False
+
+
 
 def serialize(problem: Problem) -> dict:
     return {
@@ -109,7 +153,10 @@ def list_problems(
     ]
 
     if topic:
-        candidates = [row for row in candidates if topic in (row.topics or [])]
+        candidates = [
+            row for row in candidates
+            if _topic_matches(row.topics, topic)
+        ]
 
     total = len(candidates)
     page = candidates[offset : offset + limit]
