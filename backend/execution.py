@@ -9,6 +9,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -93,28 +94,50 @@ def _run_python_process(
             start_new_session = True
 
         command = [sys.executable, "-I", "-B", script_path]
+        process = subprocess.Popen(
+            command,
+            cwd=workdir,
+            env=env,
+            stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            creationflags=creationflags,
+            start_new_session=start_new_session,
+        )
         try:
-            return subprocess.run(
-                command,
-                cwd=workdir,
-                env=env,
+            stdout, stderr = process.communicate(
                 input=input_data,
-                capture_output=True,
-                text=True,
                 timeout=timeout_seconds,
-                check=False,
-                creationflags=creationflags,
-                start_new_session=start_new_session,
             )
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
             if os.name == "nt":
                 subprocess.run(
-                    ["taskkill", "/T", "/F", "/PID", str(getattr(locals().get("completed", None), "pid", 0))],
+                    ["taskkill", "/T", "/F", "/PID", str(process.pid)],
                     capture_output=True,
                     text=True,
                     check=False,
                 )
-            raise
+            else:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+
+            stdout, stderr = process.communicate()
+            raise subprocess.TimeoutExpired(
+                command,
+                timeout_seconds,
+                output=stdout,
+                stderr=stderr,
+            ) from exc
+
+        return subprocess.CompletedProcess(
+            command,
+            process.returncode,
+            stdout,
+            stderr,
+        )
 
     docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
     script_name = os.path.basename(script_path)
