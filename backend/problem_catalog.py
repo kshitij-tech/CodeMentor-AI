@@ -188,17 +188,16 @@ def is_english_problem(title: Any, description: Any) -> bool:
 
 _EXAMPLES_SECTION_PATTERNS = (
     re.compile(
-        r"(?is)\bexamples?\s*:?\s*(?=(?:(?:example\s+\d+\s*:?|\d+[.\):-]\s*|[-*]\s*)?\s*input\s*:))",
+        r"(?is)\\bexamples?\\s*:?[ \\t]*(?=(?:(?:example\\s*\\d+\\s*[:.)-]?\\s*)|(?:\\d+[.\\):-]\\s*)|(?:[-*]\\s*))?input\\b)",
     ),
-    re.compile(r"(?is)\bexample\s+\d+\s*:?\s*(?=input\s*:)")
 )
 
 
-def strip_examples_from_description(description: Any, examples: Any) -> str:
-    """Remove duplicated inline example sections when structured examples exist."""
+def strip_examples_from_description(description: Any, examples: Any = None) -> str:
+    """Remove inline example sections from the problem statement."""
     text = str(description or "").strip()
-    if not text or not isinstance(examples, list) or not examples:
-        return normalize_text(text)
+    if not text:
+        return ""
 
     cut_positions = []
     for pattern in _EXAMPLES_SECTION_PATTERNS:
