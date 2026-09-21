@@ -11,6 +11,7 @@ from backend.routers.auth import get_current_user
 from backend.execution import (
     CodeRejectedError,
     extract_error_line,
+    extract_error_location,
     run_language_stdio_tests,
     run_python_stdio_tests,
     run_python_tests,
@@ -113,6 +114,7 @@ def execute_code(
                     "available only through the Python judge path."
                 ),
                 "error_line": None,
+                "error_column": None,
                 "results": [],
             }
 
@@ -167,6 +169,7 @@ def execute_code(
                     "on the execution host."
                 ),
                 "error_line": None,
+                "error_column": None,
                 "results": [],
             }
         except CodeRejectedError as exc:
@@ -225,6 +228,11 @@ def execute_code(
             "runtime_ms": outcome.runtime_ms,
             "message": outcome.message,
             "error_line": extract_error_line(outcome.message),
+            "error_column": (
+                extract_error_location(outcome.message)[1]
+                if extract_error_location(outcome.message)
+                else None
+            ),
         }
         stored_results.append(result)
         public_results.append(
@@ -236,6 +244,10 @@ def execute_code(
 
     error_line = next(
         (result["error_line"] for result in public_results if result["error_line"] is not None),
+        None,
+    )
+    error_column = next(
+        (result["error_column"] for result in public_results if result["error_column"] is not None),
         None,
     )
 
@@ -259,5 +271,6 @@ def execute_code(
         "summary": summary,
         "mode": request.mode,
         "error_line": error_line,
+        "error_column": error_column,
         "results": public_results,
     }
