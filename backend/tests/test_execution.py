@@ -6,6 +6,7 @@ from backend.execution import (
     MAX_MEMORY_MB,
     MAX_TIMEOUT_SECONDS,
     _sandbox_mode,
+    syntax_diagnostic,
 )
 
 
@@ -29,6 +30,19 @@ class ExecutionSandboxTests(unittest.TestCase):
     def test_resource_safety_caps_are_bounded(self):
         self.assertEqual(MAX_TIMEOUT_SECONDS, 10.0)
         self.assertEqual(MAX_MEMORY_MB, 1024)
+
+    def test_syntax_diagnostic_marks_offending_token(self):
+        diagnostic = syntax_diagnostic("def solve():\n    return )\n")
+        self.assertFalse(diagnostic["valid"])
+        self.assertEqual(diagnostic["line"], 2)
+        self.assertGreaterEqual(diagnostic["column"], 1)
+        self.assertGreater(diagnostic["end_column"], diagnostic["column"])
+
+    def test_syntax_diagnostic_accepts_valid_python(self):
+        diagnostic = syntax_diagnostic("def solve():\n    return 42\n")
+        self.assertTrue(diagnostic["valid"])
+        self.assertIsNone(diagnostic["line"])
+        self.assertIsNone(diagnostic["column"])
 
 
 if __name__ == "__main__":
