@@ -80,8 +80,12 @@ def main() -> int:
         for index, (kind, labels) in enumerate(duplicate_groups, start=1):
             print(f"  {index}. [{kind}] {', '.join(labels)}")
 
+    duplicate_count = sum(
+        len(groups)
+        for groups in report["duplicates"].values()
+    )
     return 1 if args.fail_on_issues and (
-        report["issues"] or report["duplicates"]
+        report["issues"] or duplicate_count
     ) else 0
 
 
