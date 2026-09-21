@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from backend.database import SessionLocal
 from backend.models import Problem
+from backend.problem_catalog import canonicalize_topics
 
 
 DATASET_NAME = "deepmind/code_contests"
@@ -205,7 +206,7 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         )
 
     tags = row.get("cf_tags") or []
-    topics = [str(tag).strip() for tag in tags if str(tag).strip()]
+    topics = canonicalize_topics(tags)
 
     source_name = source_label.lower().replace("_", "-")
     package_metadata = {
