@@ -4,23 +4,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.problem_catalog import CANONICAL_TOPICS, canonicalize_topics, normalize_difficulty
 from backend.models import CodingAttempt, MentorMessage, Problem, User
 from backend.routers.auth import get_current_user
 
 router = APIRouter(prefix="/analytics", tags=["Analytics"])
 
-TOPICS = [
-    "Arrays & Strings",
-    "Hashing & Hash Maps",
-    "Two Pointers",
-    "Binary Search",
-    "Linked Lists",
-    "Trees & BST",
-    "Graphs (BFS/DFS)",
-    "Dynamic Programming",
-    "Backtracking",
-    "Greedy Algorithms",
-]
+TOPICS = CANONICAL_TOPICS
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -28,25 +18,9 @@ def _utc_now() -> datetime:
 def _naive_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=None) if value.tzinfo else value
 
-TOPIC_ALIASES = {
-    "Arrays & Strings": {"array", "arrays", "strings", "string"},
-    "Hashing & Hash Maps": {"hashing", "hash table", "hash tables", "map", "maps", "unordered map", "data structures"},
-    "Two Pointers": {"two pointers", "two-pointer", "two pointer"},
-    "Binary Search": {"binary search", "binary_search"},
-    "Linked Lists": {"linked list", "linked lists"},
-    "Trees & BST": {"tree", "trees", "binary search tree", "bst"},
-    "Graphs (BFS/DFS)": {"graph", "graphs", "bfs", "dfs", "shortest paths"},
-    "Dynamic Programming": {"dp", "dynamic programming"},
-    "Backtracking": {"backtracking"},
-    "Greedy Algorithms": {"greedy"},
-}
-
 def _problem_matches_topic(problem: Problem, topic: str) -> bool:
-    if topic in (problem.topics or []):
-        return True
-    aliases = TOPIC_ALIASES.get(topic, set())
-    normalized = {str(value).strip().lower() for value in (problem.topics or [])}
-    return bool(normalized & aliases)
+    return topic in canonicalize_topics(problem.topics)
+
 
 @router.get("/summary")
 def analytics_summary(
