@@ -9,7 +9,6 @@ SCHEMA_TYPES = {
     "int",
     "float",
     "string",
-    "raw_string",
     "int_array",
     "float_array",
     "string_array",
@@ -129,7 +128,6 @@ def infer_editor_input_schema(
             seen.add(name)
 
     if not candidates:
-        # Common competitive-programming notation when the statement is terse.
         for name in re.findall(r"\b(?:n|m|k|q|x|y|target)\b", section):
             if name not in seen:
                 candidates.append((name, "int"))
@@ -156,12 +154,11 @@ def infer_editor_input_schema(
 
 def editor_schema_from_metadata(package_metadata: Any, description: Any, examples: Any) -> list[dict[str, Any]]:
     metadata = package_metadata if isinstance(package_metadata, dict) else {}
-    schema = infer_editor_input_schema(
+    return infer_editor_input_schema(
         description,
         examples,
         metadata.get("editor_input_schema") or metadata.get("input_schema"),
     )
-    return schema or [{"name": "input_data", "type": "raw_string"}]
 
 
 def _cpp_type(kind: str) -> str:
@@ -217,12 +214,16 @@ def generate_stdio_editor_starters(schema: Any) -> dict[str, str]:
     java = ", ".join(f"{_java_type(item['type'])} {item['name']}" for item in schema)
     go = ", ".join(f"{item['name']} {_go_type(item['type'])}" for item in schema)
     rust = ", ".join(f"{item['name']}: {_rust_type(item['type'])}" for item in schema)
+    ts_params = ", ".join(
+        item["name"] + ": " + ("number" if item["type"] in {"int", "float"} else "any")
+        for item in schema
+    )
     return {
         "Python": f"def solve({', '.join(names)}):\n    # Implement the required solution.\n    pass\n",
         "C++": f"#include <bits/stdc++.h>\nusing namespace std;\n\nauto solve({cpp}) {{\n    // Implement the required solution.\n    return 0;\n}}\n",
         "Java": f"class Solution {{\n    public Object solve({java}) {{\n        // Implement the required solution.\n        return 0;\n    }}\n}}\n",
         "JavaScript": f"function solve({', '.join(names)}) {{\n    // Implement the required solution.\n    return 0;\n}}\n",
-        "TypeScript": f"function solve({', '.join(item['name'] + ': ' + ('number' if item['type'] in {'int', 'float'} else 'any') for item in schema)}): any {{\n    // Implement the required solution.\n    return 0;\n}}\n",
+        "TypeScript": f"function solve({ts_params}): any {{\n    // Implement the required solution.\n    return 0;\n}}\n",
         "Go": f"package main\n\nfunc solve({go}) any {{\n    // Implement the required solution.\n    return int64(0)\n}}\n",
         "Rust": f"fn solve({rust}) -> String {{\n    // Implement the required solution and return the required output.\n    String::new()\n}}\n",
     }
@@ -236,8 +237,6 @@ def _python_reader(item: dict[str, Any]) -> str:
         return f"    {name} = float(__cm_take())"
     if kind == "string":
         return f"    {name} = __cm_take()"
-    if kind == "raw_string":
-        return f"    {name} = __cm_raw_input"
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         parse = {"int_array": "int", "float_array": "float", "string_array": "str"}[kind]
@@ -251,8 +250,7 @@ def _render_python_adapter(source: str, schema: list[dict[str, Any]]) -> str:
         "",
         source.rstrip(),
         "",
-        "__cm_raw_input = sys.stdin.read()",
-        "__cm_tokens = __cm_raw_input.split()",
+        "__cm_tokens = sys.stdin.read().split()",
         "__cm_index = 0",
         "def __cm_take():",
         "    global __cm_index",
@@ -289,8 +287,6 @@ def _cpp_reader(item: dict[str, Any]) -> str:
         return f"    double {name}; cin >> {name};"
     if kind == "string":
         return f"    string {name}; cin >> {name};"
-    if kind == "raw_string":
-        return f"    string {name}((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());"
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         typ = {"int_array": "long long", "float_array": "double", "string_array": "string"}[kind]
@@ -335,8 +331,6 @@ def _java_reader(item: dict[str, Any]) -> str:
         return f"        double {name} = __cm.nextDouble();"
     if kind == "string":
         return f"        String {name} = __cm.next();"
-    if kind == "raw_string":
-        return f"        String {name} = __cm.readAll();"
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         if kind == "int_array":
@@ -361,9 +355,8 @@ def _render_java_adapter(source: str, schema: list[dict[str, Any]]) -> str:
         + "        String next() throws java.io.IOException { StringBuilder b=new StringBuilder(); int c; do { c=read(); } while(c<=32 && c!=-1); while(c>32){ b.append((char)c); c=read(); } return b.toString(); }\n"
         + "        long nextLong() throws java.io.IOException { return Long.parseLong(next()); }\n"
         + "        double nextDouble() throws java.io.IOException { return Double.parseDouble(next()); }\n"
-        + "        String readAll() throws java.io.IOException { StringBuilder b=new StringBuilder(); byte[] buf=new byte[1<<16]; int n; while((n=in.read(buf))!=-1){ b.append(new String(buf,0,n,java.nio.charset.StandardCharsets.UTF_8)); } return b.toString(); }\n"
         + "    }\n"
-        + "    static String format(Object v) { if(v==null)return \"\"; if(!v.getClass().isArray())return String.valueOf(v); int n=java.lang.reflect.Array.getLength(v); StringBuilder b=new StringBuilder(); for(int i=0;i<n;i++){ if(i>0)b.append(' '); b.append(format(java.lang.reflect.Array.get(v,i))); } return b.toString(); }\n"
+        + "    static String format(Object v) { if(v==null)return \\\"\\\"; if(!v.getClass().isArray())return String.valueOf(v); int n=java.lang.reflect.Array.getLength(v); StringBuilder b=new StringBuilder(); for(int i=0;i<n;i++){ if(i>0)b.append(' '); b.append(format(java.lang.reflect.Array.get(v,i))); } return b.toString(); }\n"
         + "    public static void main(String[] args) throws Exception {\n"
         + "        Input __cm = new Input();\n"
         + parse_lines
@@ -380,8 +373,6 @@ def _js_reader(item: dict[str, Any]) -> str:
         return f"const {name}=Number(__cmTake());"
     if kind == "string":
         return f"const {name}=__cmTake();"
-    if kind == "raw_string":
-        return f"const {name}=__cmRawInput;"
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         mapper = {"int_array": "Number", "float_array": "Number", "string_array": "String"}[kind]
@@ -393,18 +384,17 @@ def _render_javascript_adapter(source: str, schema: list[dict[str, Any]]) -> str
     args = ", ".join(item["name"] for item in schema)
     parsed = "\n".join(_js_reader(item) for item in schema)
     helper = """const fs = require('fs');
-const __cmRawInput = fs.readFileSync(0, 'utf8');
-const __cmTokens = __cmRawInput.trim().split(/\s+/).filter(Boolean);
+const __cmTokens = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).filter(Boolean);
 let __cmIndex = 0;
 const __cmTake = () => __cmTokens[__cmIndex++];
 const __cmFormat = value => {
   if (value === null || value === undefined) return '';
-  if (Array.isArray(value)) return value.length && Array.isArray(value[0]) ? value.map(__cmFormat).join('\\n') : value.map(__cmFormat).join(' ');
+  if (Array.isArray(value)) return value.length && Array.isArray(value[0]) ? value.map(__cmFormat).join('\\\\n') : value.map(__cmFormat).join(' ');
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 };
 """
-    return source.rstrip() + "\n\n" + helper + parsed + f"\nprocess.stdout.write(__cmFormat(solve({args})) + '\\n');\n"
+    return source.rstrip() + "\n\n" + helper + parsed + f"\nprocess.stdout.write(__cmFormat(solve({args})) + '\\\\n');\n"
 
 
 def _go_reader(item: dict[str, Any]) -> str:
@@ -415,8 +405,6 @@ def _go_reader(item: dict[str, Any]) -> str:
         return f"    var {name} float64; if _, err := fmt.Fscan(reader, &{name}); err != nil {{ panic(err) }}"
     if kind == "string":
         return f"    var {name} string; if _, err := fmt.Fscan(reader, &{name}); err != nil {{ panic(err) }}"
-    if kind == "raw_string":
-        return f"    {name}Bytes, err := io.ReadAll(reader); if err != nil {{ panic(err) }}; {name} := string({name}Bytes)"
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         typ = {"int_array": "int64", "float_array": "float64", "string_array": "string"}[kind]
@@ -426,20 +414,21 @@ def _go_reader(item: dict[str, Any]) -> str:
 
 def _render_go_adapter(source: str, schema: list[dict[str, Any]]) -> str:
     body = source.rstrip()
+    imports: list[str] = []
+    for block in re.findall(r'(?ms)^\s*import\s*\((.*?)^\)', body):
+        imports.extend(re.findall(r'"([^"]+)"', block))
+    imports.extend(re.findall(r'(?m)^\s*import\s+"([^"]+)"\s*$', body))
     body = re.sub(r"(?m)^\s*package\s+main\s*\n", "", body, count=1)
     body = re.sub(r"(?ms)^\s*import\s*\(.*?^\)\s*\n?", "", body, count=1)
     body = re.sub(r'(?m)^\s*import\s+"[^"]+"\s*\n?', "", body)
+    required = ["bufio", "fmt", "os", "reflect", "strings"]
+    merged_imports = required + [item for item in imports if item not in required]
     args = ", ".join(item["name"] for item in schema)
     lines = [
         "package main",
         "",
         "import (",
-        '    "bufio"',
-        '    "fmt"',
-        '    "io"',
-        '    "os"',
-        '    "reflect"',
-        '    "strings"',
+        *[f'    "{item}"' for item in merged_imports],
         ")",
         "",
         body.strip(),
@@ -486,8 +475,6 @@ def _render_rust_adapter(source: str, schema: list[dict[str, Any]]) -> str:
             lines.append(f'    let {name}: f64 = __cm_it.next().unwrap().parse().unwrap();')
         elif kind == "string":
             lines.append(f'    let {name}: String = __cm_it.next().unwrap().to_string();')
-        elif kind == "raw_string":
-            lines.append(f'    let {name}: String = __cm_input.clone();')
         elif kind.endswith("_array") and item.get("length_from"):
             base = {"int_array": "i64", "float_array": "f64", "string_array": "String"}[kind]
             lines.append(f'    let {name}: Vec<{base}> = (0..({item["length_from"]} as usize)).map(|_| __cm_it.next().unwrap().parse().unwrap()).collect();')
@@ -495,7 +482,7 @@ def _render_rust_adapter(source: str, schema: list[dict[str, Any]]) -> str:
             raise ValueError(f"Unsupported schema type: {kind}")
     lines += [
         f"    let __cm_result = solve({args});",
-        '    print!("{}\\n", __cm_result);',
+        '    print!("{}\\\\n", __cm_result);',
         "}",
         "",
     ]
@@ -527,9 +514,7 @@ def adapt_stdio_source(user_source: str, language: str, schema: Any) -> str:
         return _render_cpp_adapter(user_source, normalized)
     if language == "Java":
         return _render_java_adapter(user_source, normalized)
-    if language == "JavaScript":
-        return _render_javascript_adapter(user_source, normalized)
-    if language == "TypeScript":
+    if language in {"JavaScript", "TypeScript"}:
         return _render_javascript_adapter(user_source, normalized)
     if language == "Go":
         return _render_go_adapter(user_source, normalized)
