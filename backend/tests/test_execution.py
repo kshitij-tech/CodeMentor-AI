@@ -10,6 +10,7 @@ from backend.execution import (
     extract_error_location,
     _language_commands,
     LANGUAGE_EXTENSIONS,
+    run_language_stdio_tests,
 )
 
 
@@ -46,6 +47,16 @@ class ExecutionSandboxTests(unittest.TestCase):
         self.assertTrue(diagnostic["valid"])
         self.assertIsNone(diagnostic["line"])
         self.assertIsNone(diagnostic["column"])
+
+    def test_non_python_requires_docker_sandbox(self):
+        with patch("backend.execution.EXECUTION_SANDBOX", "local"):
+            with self.assertRaises(CodeRejectedError) as context:
+                run_language_stdio_tests(
+                    "int main() { return 0; }",
+                    "C++",
+                    [{"input": "", "expected_output": ""}],
+                )
+        self.assertIn("Docker sandbox is required", str(context.exception))
 
     def test_all_supported_languages_have_runtime_definitions(self):
         for language in LANGUAGE_EXTENSIONS:
