@@ -76,14 +76,18 @@ print(n * 2)
 
     def test_nested_groups_and_custom_validator_metadata(self):
         files = {
-            "problem.yaml": b"name: Custom Test\\nvalidation: custom\\ntype: pass-fail\\n",
-            "problem_statement/problem.en.md": b"# Custom Test\\n",
-            "output_validator/validate.py": b"print('fixture')\\n",
-            "data/sample/01.in": b"1\\n",
-            "data/sample/01.ans": b"1\\n",
-            "data/secret/testdata.yaml": b"output_validator_flags: [strict]\\n",
-            "data/secret/basic/01.in": b"2\\n",
-            "data/secret/basic/01.ans": b"2\\n",
+            "problem.yaml": b"""name: Custom Test
+difficulty: Easy
+validation: custom
+type: pass-fail
+""",
+            "problem_statement/problem.en.md": b"# Custom Test\n",
+            "output_validator/validate.py": b"print('fixture')\n",
+            "data/sample/01.in": b"1\n",
+            "data/sample/01.ans": b"1\n",
+            "data/secret/testdata.yaml": b"output_validator_flags: [strict]\n",
+            "data/secret/basic/01.in": b"2\n",
+            "data/secret/basic/01.ans": b"2\n",
         }
         problem = package_to_problem(files, "fixture")
         self.assertTrue(problem["package_metadata"]["judge_supported"])
