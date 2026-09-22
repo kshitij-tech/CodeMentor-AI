@@ -463,12 +463,30 @@ function syncLanguageAvailability(){
     }
   }
 }
+function isGenericFunctionDraft(language,value){
+  if(problem?.execution_mode==='stdio'||typeof value!=='string')return false;
+  const normalized=value.trim().replace(/\\r/g,'');
+  const patterns={
+    Python:/^def solve\\(\\*args\\):[\\s\\S]*?(?:^|\\n)\\s*pass\\s*$/m,
+    'C++':/solve\\(\\)\\s*\\{[\\s\\S]*?return 0;?\\s*\\}/m,
+    Java:/solve\\(\\)\\s*\\{[\\s\\S]*?return 0;?\\s*\\}/m,
+    JavaScript:/function solve\\(\\.\\.\\.args\\)[\\s\\S]*?return null;[\\s\\S]*?\\}/m,
+    TypeScript:/function solve\\(\\.\\.\\.args\\s*:[^)]*\\)[\\s\\S]*?return null;[\\s\\S]*?\\}/m,
+    Go:/func solve\\(args \\\.\\.\\.interface\\\\\\{\\\\\\}\\)[\\s\\S]*?return nil/m,
+    Rust:/fn solve\\(args: \\&\\[String\\]\\)[\\s\\S]*?String::new\\(\\)/m
+  };
+  return !!patterns[language]&&patterns[language].test(normalized);
+}
 function loadDraft(){
   if(!problem||!editor)return;
+  const language=$('language').value;
   const saved=localStorage.getItem(draftKey());
   const hasSaved=typeof saved==='string'&&saved.trim().length>0;
-  editor.setValue(hasSaved?saved:starterCode($('language').value));
-  $('save-status').textContent=hasSaved?'Draft restored':'Starter';
+  const staleGeneric=isGenericFunctionDraft(language,saved);
+  const useSaved=hasSaved&&!staleGeneric;
+  editor.setValue(useSaved?saved:starterCode(language));
+  $('save-status').textContent=useSaved?'Draft restored':'Starter';
+  if(staleGeneric) localStorage.removeItem(draftKey());
   scheduleSyntaxValidation();
 }
 function renderProblem(){
