@@ -134,7 +134,7 @@ class ProblemCatalogTests(unittest.TestCase):
         )
         self.assertIn("solve(nums, budget)", starters["Python"])
         self.assertIn("solve(nums, budget)", starters["JavaScript"])
-        self.assertIn("solve(nums, budget)", starters["TypeScript"])
+        self.assertIn("solve(nums: any, budget: any)", starters["TypeScript"])
         self.assertIn("solve(nums", starters["C++"])
         self.assertIn("budget", starters["Java"])
         self.assertIn("budget", starters["Go"])
