@@ -413,9 +413,34 @@ function difficultyClass(d){
   if(d==='Hard')return 'bg-rose-100 text-rose-800';
   return 'bg-slate-100 text-slate-600';
 }
+function fallbackStarterCode(language){
+  const functionStyle=problem?.execution_mode!=='stdio';
+  const functionTemplates={
+    Python:"def solve(*args):\n    # Implement the required solution.\n    pass\n",
+    "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint solve() {\n    // Implement the required solution.\n    return 0;\n}\n",
+    Java:"class Solution {\n    public int solve() {\n        // Implement the required solution.\n        return 0;\n    }\n}\n",
+    JavaScript:"function solve(...args) {\n    // Implement the required solution.\n    return null;\n}\n",
+    TypeScript:"function solve(...args: any[]): any {\n    // Implement the required solution.\n    return null;\n}\n",
+    Go:"package main\n\nfunc solve(args ...interface{}) interface{} {\n    // Implement the required solution.\n    return nil\n}\n",
+    Rust:"fn solve(args: &[String]) -> String {\n    // Implement the required solution.\n    String::new()\n}\n"
+  };
+  const stdioTemplates={
+    Python:"import sys\n\ndef solve():\n    # Read from standard input and write the required answer.\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
+    "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // Read from standard input and write the required answer.\n    return 0;\n}\n",
+    Java:"import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        // Read from standard input and write the required answer.\n    }\n}\n",
+    JavaScript:"const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\n\nfunction solve(input) {\n    // Read input and return the required answer.\n    return '';\n}\n\nprocess.stdout.write(String(solve(input)));\n",
+    TypeScript:"import * as fs from 'fs';\nconst input = fs.readFileSync(0, 'utf8').trim();\n\nfunction solve(input: string): string {\n    // Read input and return the required answer.\n    return '';\n}\n\nprocess.stdout.write(String(solve(input)));\n",
+    Go:"package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc main() {\n    in := bufio.NewReader(os.Stdin)\n    _ = in\n    // Read from standard input and write the required answer.\n    fmt.Print()\n}\n",
+    Rust:"use std::io::{self, Read};\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    // Read input and write the required answer.\n    print!(\"{}\", input);\n}\n"
+  };
+  return (functionStyle?functionTemplates:stdioTemplates)[language]||'';
+}
 function starterCode(language){
   const starter=(problem&&problem.starter_code)||{};
-  return starter[language]||'';
+  const value=starter[language];
+  return typeof value==='string'&&value.trim()
+    ? value
+    : fallbackStarterCode(language);
 }
 
 function syncLanguageAvailability(){
@@ -441,8 +466,9 @@ function syncLanguageAvailability(){
 function loadDraft(){
   if(!problem||!editor)return;
   const saved=localStorage.getItem(draftKey());
-  editor.setValue(saved!==null?saved:starterCode($('language').value));
-  $('save-status').textContent=saved!==null?'Draft restored':'Starter';
+  const hasSaved=typeof saved==='string'&&saved.trim().length>0;
+  editor.setValue(hasSaved?saved:starterCode($('language').value));
+  $('save-status').textContent=hasSaved?'Draft restored':'Starter';
   scheduleSyntaxValidation();
 }
 function renderProblem(){
