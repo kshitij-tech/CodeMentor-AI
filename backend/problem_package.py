@@ -10,7 +10,11 @@ from typing import Any
 
 import yaml
 
-from backend.problem_catalog import canonicalize_topics, normalize_difficulty
+from backend.problem_catalog import (
+    canonicalize_topics,
+    ensure_starter_code,
+    normalize_difficulty,
+)
 
 
 class ProblemPackageError(ValueError):
@@ -553,7 +557,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
             }
             for case in test_cases
         ],
-        "starter_code": _starter_code(),
+        "starter_code": ensure_starter_code(_starter_code(), "stdio"),
         "source": "problem-package" if len(source_name) > 40 else source_name,
         "external_id": external_id[:120],
         "external_url": str(source_url)[:500] if source_url else None,
