@@ -463,11 +463,11 @@ def run_language_stdio_tests(
         token = uuid.uuid4().hex[:16]
         script_path = os.path.join(workdir, "run_tests.sh")
         script = _docker_language_script(
-            language,
-            file_name,
-            test_cases,
-            time_limit_seconds,
-            token,
+            language=language,
+            source_name=file_name,
+            test_cases=test_cases,
+            time_limit_seconds=time_limit_seconds,
+            token=token,
         )
         with open(script_path, "w", encoding="utf-8") as script_file:
             script_file.write(script)
