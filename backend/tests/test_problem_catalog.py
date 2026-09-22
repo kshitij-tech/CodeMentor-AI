@@ -152,6 +152,38 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertNotIn("*args", starters["Python"])
         self.assertNotIn("...args", starters["JavaScript"])
 
+    def test_stdio_boilerplate_is_replaced_when_problem_has_function_args(self):
+        starters = ensure_starter_code(
+            {
+                "Python": "import sys\n\ndef solve():\n    pass\n",
+                "C++": "#include <bits/stdc++.h>\nusing namespace std;\nint main() { return 0; }\n",
+            },
+            "stdio",
+            [{"args": [[1, 2]], "expected": 3}],
+            [{"input": "a = 1, b = 2", "output": "3"}],
+        )
+        self.assertEqual(starters["Python"].splitlines()[0], "def solve(a, b):")
+        self.assertIn("solve(a, b)", starters["C++"])
+        self.assertNotIn("int main()", starters["C++"])
+
+    def test_execution_mode_infers_function_contract(self):
+        from backend.problem_catalog import infer_execution_mode
+
+        self.assertEqual(
+            infer_execution_mode(
+                "stdio",
+                test_cases=[{"args": [[1, 2]], "expected": 3}],
+            ),
+            "function",
+        )
+        self.assertEqual(
+            infer_execution_mode(
+                "stdio",
+                test_cases=[{"input": "1 2\n", "expected_output": "3\n"}],
+            ),
+            "stdio",
+        )
+
     def test_canonical_topic_catalog_is_stable(self):
         self.assertIn("Binary Search", CANONICAL_TOPICS)
         self.assertIn("Dynamic Programming", CANONICAL_TOPICS)
