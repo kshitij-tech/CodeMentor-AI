@@ -311,13 +311,13 @@ def _language_commands(
             "g++", "-std=c++20", "-O2", "-pipe", "-s",
             source_path, "-o", os.path.join(workdir, "codementor_program"),
         ], [os.path.join(workdir, "codementor_program")], [
-            "g++ -std=c++20 -O2 -pipe -s /workspace/"+source_name+" -o /runner/codementor_program && /runner/codementor_program"
+            "g++ -std=c++20 -O2 -pipe -s /workspace/"+source_name+" -o /runner/codementor_program && echo __CODEMENTOR_COMPILE_OK__ && /runner/codementor_program"
         ]
     if language == "Java":
         return [
             "javac", "-encoding", "UTF-8", "-d", workdir, source_path
         ], ["java", "-cp", workdir, "Main"], [
-            "mkdir -p /runner/classes && javac -encoding UTF-8 -d /runner/classes /workspace/"+source_name+" && java -cp /runner/classes Main"
+            "mkdir -p /runner/classes && javac -encoding UTF-8 -d /runner/classes /workspace/"+source_name+" && echo __CODEMENTOR_COMPILE_OK__ && java -cp /runner/classes Main"
         ]
     if language == "JavaScript":
         return None, ["node", "--use-strict", source_path], None
@@ -327,19 +327,19 @@ def _language_commands(
             "--strict", "false", "--outDir", os.path.join(workdir, "tsc"),
             source_path,
         ], ["node", os.path.join(workdir, "tsc", "solution.js")], [
-            "tsc --target ES2022 --module commonjs --strict false --outDir /runner/tsc /workspace/"+source_name+" && node /runner/tsc/"+os.path.splitext(source_name)[0]+".js"
+            "mkdir -p /runner/tsc && tsc --target ES2022 --module commonjs --strict false --outDir /runner/tsc /workspace/"+source_name+" && echo __CODEMENTOR_COMPILE_OK__ && node /runner/tsc/"+os.path.splitext(source_name)[0]+".js"
         ]
     if language == "Go":
         return [
             "go", "build", "-o", os.path.join(workdir, "codementor_program"), source_path
         ], [os.path.join(workdir, "codementor_program")], [
-            "GOCACHE=/tmp/go-cache go build -o /runner/codementor_program /workspace/"+source_name+" && /runner/codementor_program"
+            "GOCACHE=/tmp/go-cache go build -o /runner/codementor_program /workspace/"+source_name+" && echo __CODEMENTOR_COMPILE_OK__ && /runner/codementor_program"
         ]
     if language == "Rust":
         return [
             "rustc", "-O", source_path, "-o", os.path.join(workdir, "codementor_program")
         ], [os.path.join(workdir, "codementor_program")], [
-            "rustc -O /workspace/"+source_name+" -o /runner/codementor_program && /runner/codementor_program"
+            "rustc -O /workspace/"+source_name+" -o /runner/codementor_program && echo __CODEMENTOR_COMPILE_OK__ && /runner/codementor_program"
         ]
     raise CodeRejectedError(f"Unsupported language runtime: {language}.")
 
@@ -443,8 +443,24 @@ def run_language_stdio_tests(
 
             runtime_ms = int((time.perf_counter() - started) * 1000)
             stdout_raw = completed.stdout or ""
-            stdout = _truncate(stdout_raw)
             stderr = _truncate((completed.stderr or "").strip())
+
+            if language in COMPILED_LANGUAGES:
+                compile_marker = "__CODEMENTOR_COMPILE_OK__"
+                if compile_marker not in stdout_raw:
+                    outcomes.append(TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Compile Error",
+                        expected=expected,
+                        actual=None,
+                        runtime_ms=runtime_ms,
+                        message=stderr or "Compilation failed.",
+                    ))
+                    continue
+                stdout_raw = stdout_raw.replace(compile_marker, "", 1).lstrip("\r\n")
+
+            stdout = _truncate(stdout_raw)
 
             if len(stdout_raw) > MAX_OUTPUT_LENGTH:
                 outcomes.append(TestOutcome(
