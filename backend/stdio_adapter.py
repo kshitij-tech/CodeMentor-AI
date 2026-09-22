@@ -119,13 +119,17 @@ def infer_editor_input_schema(
         ("string", r"(?i)\b(?:string|word)\s+([A-Za-z_][A-Za-z0-9_]*)"),
         ("int", r"(?i)\b(?:integer|int|number|value)\s+([A-Za-z_][A-Za-z0-9_]*)"),
     )
+    matches: list[tuple[int, str, str]] = []
     for kind, pattern in patterns:
         for match in re.finditer(pattern, section):
             name = match.group(1)
             if name.lower() in {"the", "a", "an", "input", "output"} or name in seen:
                 continue
-            candidates.append((name, kind))
+            matches.append((match.start(), name, kind))
             seen.add(name)
+
+    for _, name, kind in sorted(matches, key=lambda item: item[0]):
+        candidates.append((name, kind))
 
     if not candidates:
         for name in re.findall(r"\b(?:n|m|k|q|x|y|target)\b", section):
