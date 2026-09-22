@@ -649,7 +649,7 @@ def _go_import_specs(source: str) -> list[str]:
     specs: list[str] = []
 
     block = re.search(
-        r"(?ms)^\\s*import\\s*\\((.*?)^\\)\\s*",
+        r"(?ms)^\s*import\s*\((.*?)^\)\s*"
         source,
     )
     if block:
@@ -662,7 +662,7 @@ def _go_import_specs(source: str) -> list[str]:
     specs.extend(
         line.strip()
         for line in re.findall(
-            r'(?m)^\\s*import\\s+([^\\n]+)$',
+            r'(?m)^\s*import\s+([^\n]+)$',
             source,
         )
         if line.strip()
@@ -676,9 +676,9 @@ def _render_go_adapter(
 ) -> str:
     user_imports = _go_import_specs(source)
     body = source.rstrip()
-    body = re.sub(r"(?m)^\\s*package\\s+main\\s*\\n", "", body, count=1)
-    body = re.sub(r"(?ms)^\\s*import\\s*\\(.*?^\\)\\s*\\n?", "", body, count=1)
-    body = re.sub(r'(?m)^\\s*import\\s+"[^"]+"\\s*\\n?', "", body, count=1)
+    body = re.sub(r"(?m)^\s*package\s+main\s*\n", "", body, count=1)
+    body = re.sub(r"(?ms)^\s*import\s*\(.*?^\)\s*\n?", "", body, count=1)
+    body = re.sub(r'(?m)^\s*import\s+"[^"]+"\s*\n?', "", body, count=1)
 
     required = ['"bufio"', '"fmt"', '"os"', '"reflect"', '"strings"']
     if any(item["type"] == "raw_string" for item in schema):
@@ -834,23 +834,23 @@ def adapt_stdio_source(
         return user_source
 
     if language == "Python":
-        if re.search(r"(?m)^\\s*if\\s+__name__\\s*==", user_source):
+        if re.search(r"(?m)^\s*if\s+__name__\s*==", user_source):
             raise ValueError(
                 "Implement solve(...) only. CodeMentor supplies the Standard Input/Output wrapper."
             )
-        if re.search(r"\\binput\\s*\\(", user_source):
+        if re.search(r"\binput\s*\(", user_source):
             raise ValueError(
                 "Do not read stdin directly. CodeMentor passes the parsed test-case values to solve(...)."
             )
         return _render_python_adapter(user_source, normalized)
 
     entrypoints = {
-        "C++": r"\\b(?:int|signed)\\s+main\\s*\\(",
-        "Java": r"\\bstatic\\s+void\\s+main\\s*\\(",
-        "JavaScript": r"\\bprocess\\.stdout\\.write\\s*\\(",
-        "TypeScript": r"\\bprocess\\.stdout\\.write\\s*\\(",
-        "Go": r"(?m)^\\s*func\\s+main\\s*\\(",
-        "Rust": r"(?m)^\\s*fn\\s+main\\s*\\(",
+        "C++": r"\b(?:int|signed)\s+main\s*\(",
+        "Java": r"\bstatic\s+void\s+main\s*\(",
+        "JavaScript": r"\bprocess\.stdout\.write\s*\(",
+        "TypeScript": r"\bprocess\.stdout\.write\s*\(",
+        "Go": r"(?m)^\s*func\s+main\s*\(",
+        "Rust": r"(?m)^\s*fn\s+main\s*\(",
     }
     if re.search(entrypoints.get(language, r"$^"), user_source):
         raise ValueError(
