@@ -655,6 +655,35 @@ def audit_problems(problems: Iterable[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def infer_execution_mode(
+    execution_mode: Any,
+    test_cases: Any = None,
+    starter_code: Any = None,
+    examples: Any = None,
+) -> str:
+    """Determine whether a problem is function-style or stdin/stdout.
+
+    Function-style is authoritative when the judge contract contains callable
+    arguments or a real solve(...) signature. This also repairs legacy database
+    rows that were incorrectly persisted as stdio.
+    """
+    explicit = str(execution_mode or "").strip().lower()
+    cases_have_args = (
+        isinstance(test_cases, list)
+        and any(isinstance(case, dict) and "args" in case for case in test_cases)
+    )
+    python_names = _function_parameter_names(
+        (starter_code or {}).get("Python") if isinstance(starter_code, dict) else None
+    )
+    example_names = _example_parameter_names(examples)
+
+    if cases_have_args or python_names or example_names:
+        return "function"
+    if explicit == "stdio":
+        return "stdio"
+    return "function"
+
+
 def ensure_starter_code(
     starter_code: Any,
     execution_mode: str | None = None,
@@ -662,7 +691,12 @@ def ensure_starter_code(
     examples: Any = None,
 ) -> dict[str, str]:
     existing = starter_code if isinstance(starter_code, dict) else {}
-    mode = "stdio" if str(execution_mode or "").strip().lower() == "stdio" else "function"
+    mode = infer_execution_mode(
+        execution_mode,
+        test_cases=test_cases,
+        starter_code=existing,
+        examples=examples,
+    )
     defaults = STDIO_STARTERS if mode == "stdio" else FUNCTION_STARTERS
 
     if mode != "stdio":
@@ -699,10 +733,11 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
     normalized["difficulty"] = normalize_difficulty(problem.get("difficulty"))
     normalized["topics"] = canonicalize_topics(problem.get("topics"))
     normalized["source"] = normalize_text(problem.get("source")) or "imported"
-    normalized["execution_mode"] = (
-        "stdio"
-        if str(problem.get("execution_mode") or "").strip().lower() == "stdio"
-        else "function"
+    normalized["execution_mode"] = infer_execution_mode(
+        problem.get("execution_mode"),
+        test_cases=problem.get("test_cases"),
+        starter_code=problem.get("starter_code"),
+        examples=problem.get("examples"),
     )
     normalized["starter_code"] = ensure_starter_code(
         problem.get("starter_code"),
