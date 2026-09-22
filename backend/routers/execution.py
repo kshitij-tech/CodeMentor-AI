@@ -17,6 +17,10 @@ from backend.execution import (
     run_python_tests,
     syntax_diagnostic,
 )
+from backend.stdio_adapter import (
+    adapt_stdio_source,
+    editor_schema_from_metadata,
+)
 
 
 router = APIRouter(prefix="/execution", tags=["Execution"])
@@ -138,9 +142,19 @@ def execute_code(
 
         try:
             package_metadata = problem.package_metadata or {}
+            editor_schema = editor_schema_from_metadata(
+                package_metadata,
+                problem.description,
+                problem.examples,
+            )
+            execution_source = adapt_stdio_source(
+                request.code,
+                request.language,
+                editor_schema,
+            )
             if request.language == "Python":
                 outcomes = run_python_stdio_tests(
-                    request.code,
+                    execution_source,
                     cases,
                     time_limit_seconds=time_limit_seconds,
                     memory_limit_mb=memory_limit_mb,
@@ -156,12 +170,20 @@ def execute_code(
                 )
             else:
                 outcomes = run_language_stdio_tests(
-                    request.code,
+                    execution_source,
                     request.language,
                     cases,
                     time_limit_seconds=time_limit_seconds,
                     memory_limit_mb=memory_limit_mb,
                 )
+        except ValueError as exc:
+            return {
+                "status": "Rejected",
+                "summary": str(exc),
+                "error_line": None,
+                "error_column": None,
+                "results": [],
+            }
         except FileNotFoundError:
             return {
                 "status": "Runtime Unavailable",
