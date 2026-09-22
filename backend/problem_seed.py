@@ -125,6 +125,7 @@ def seed_problems(db):
         item["starter_code"] = ensure_starter_code(
             item.get("starter_code"),
             item.get("execution_mode", "function"),
+            item.get("test_cases"),
         )
         existing = db.query(Problem).filter(Problem.slug == item["slug"]).first()
         if existing is None:
