@@ -78,6 +78,7 @@ print(n * 2)
         files = {
             "problem.yaml": b"""name: Custom Test
 difficulty: Easy
+keywords: [strings]
 validation: custom
 type: pass-fail
 """,
