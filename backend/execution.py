@@ -414,8 +414,7 @@ def _docker_language_script(
             "RC=$?",
             'ERROR_B64="$(base64 -w0 "$STDERR_PATH" 2>/dev/null || true)"',
             (
-                f'printf "%s|%s|%s|%s\\n" '
-                f"'{stdout_marker}' "$RC" "$OUTPUT_B64" "$ERROR_B64""
+                f'printf "%s|%s|%s|%s\\n" "{stdout_marker}" "$RC" "$OUTPUT_B64" "$ERROR_B64"'
             ),
         ])
 
