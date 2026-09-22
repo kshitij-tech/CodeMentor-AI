@@ -344,6 +344,94 @@ def _language_commands(
     raise CodeRejectedError(f"Unsupported language runtime: {language}.")
 
 
+def _docker_language_script(
+    language: str,
+    source_name: str,
+    test_cases: list[dict[str, Any]],
+    time_limit_seconds: float,
+    token: str,
+) -> str:
+    run_commands = {
+        "C++": "/runner/codementor_program",
+        "Java": "java -cp /runner/classes Main",
+        "JavaScript": "node --use-strict /workspace/solution.js",
+        "TypeScript": "node /runner/tsc/solution.js",
+        "Go": "/runner/codementor_program",
+        "Rust": "/runner/codementor_program",
+    }
+    compile_commands = {
+        "C++": (
+            "g++ -std=c++20 -O2 -pipe -s "
+            f"/workspace/{source_name} -o /runner/codementor_program"
+        ),
+        "Java": (
+            "mkdir -p /runner/classes && "
+            f"javac -encoding UTF-8 -d /runner/classes /workspace/{source_name}"
+        ),
+        "TypeScript": (
+            "mkdir -p /runner/tsc && "
+            f"tsc --target ES2022 --module commonjs --strict false "
+            f"--outDir /runner/tsc /workspace/{source_name}"
+        ),
+        "Go": (
+            "GOCACHE=/tmp/go-cache "
+            f"go build -o /runner/codementor_program /workspace/{source_name}"
+        ),
+        "Rust": (
+            f"rustc -O /workspace/{source_name} -o /runner/codementor_program"
+        ),
+    }
+
+    lines = [
+        "set -o pipefail",
+        f"COMPILE_MARKER='__CODEMENTOR_{token}_COMPILE_OK__'",
+    ]
+
+    if language in compile_commands:
+        lines.append(compile_commands[language])
+        lines.append("compile_rc=$?")
+        lines.append('if [ "$compile_rc" -ne 0 ]; then exit "$compile_rc"; fi')
+        lines.append('printf "%s\\n" "$COMPILE_MARKER"')
+
+    run_command = run_commands[language]
+    limit = f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.3f}s"
+
+    for index, case in enumerate(test_cases, start=1):
+        input_b64 = base64.b64encode(
+            str(case.get("input", "")).encode("utf-8")
+        ).decode("ascii")
+        stdout_marker = f"__CODEMENTOR_{token}_TEST_{index}__"
+        stderr_path = f"/runner/stderr_{index}.txt"
+        lines.extend([
+            f"INPUT_B64='{input_b64}'",
+            f"STDERR_PATH='{stderr_path}'",
+            ': > "$STDERR_PATH"',
+            (
+                f'OUTPUT_B64="$(printf "%s" "$INPUT_B64" | base64 -d | '
+                f'timeout --signal=KILL {limit} {run_command} '
+                f'2>"$STDERR_PATH" | base64 -w0)"'
+            ),
+            "RC=$?",
+            'ERROR_B64="$(base64 -w0 "$STDERR_PATH" 2>/dev/null || true)"',
+            (
+                f'printf "%s|%s|%s|%s\\n" '
+                f"'{stdout_marker}' "$RC" "$OUTPUT_B64" "$ERROR_B64""
+            ),
+        ])
+
+    return "\n".join(lines) + "\n"
+
+
+def _decode_b64(value: str) -> str:
+    try:
+        return base64.b64decode(value.encode("ascii"), validate=True).decode(
+            "utf-8",
+            errors="replace",
+        )
+    except (ValueError, UnicodeError):
+        return ""
+
+
 def run_language_stdio_tests(
     source: str,
     language: str,
@@ -366,136 +454,190 @@ def run_language_stdio_tests(
 
     outcomes: list[TestOutcome] = []
     extension = LANGUAGE_EXTENSIONS[language]
-    file_name = "Main.java" if language == "Java" else "solution"+extension
+    file_name = "solution"+extension
 
     with tempfile.TemporaryDirectory(prefix="codementor-lang-") as workdir:
         source_path = os.path.join(workdir, file_name)
         with open(source_path, "w", encoding="utf-8") as source_file:
             source_file.write(source)
 
-        for index, case in enumerate(test_cases, start=1):
-            input_data = str(case.get("input", ""))
-            expected = str(case.get("expected_output", ""))
-            started = time.perf_counter()
+        token = uuid.uuid4().hex[:16]
+        script_path = os.path.join(workdir, "run_tests.sh")
+        script = _docker_language_script(
+            language,
+            file_name,
+            test_cases,
+            time_limit_seconds,
+            token,
+        )
+        with open(script_path, "w", encoding="utf-8") as script_file:
+            script_file.write(script)
 
-            try:
-                compile_command, run_command, docker_shell = _language_commands(
-                    language, source_path, workdir
+        docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
+        docker_cmd = _docker_base_command(
+            workdir,
+            memory_limit_mb=memory_limit_mb,
+            docker_name=docker_name,
+        ) + [
+            EXECUTION_DOCKER_IMAGE,
+            "/bin/bash",
+            "/workspace/run_tests.sh",
+        ]
+
+        started = time.perf_counter()
+        try:
+            completed = subprocess.run(
+                docker_cmd,
+                input=None,
+                capture_output=True,
+                text=True,
+                timeout=min(MAX_TIMEOUT_SECONDS * max(1, len(test_cases)), 120.0),
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            subprocess.run(
+                ["docker", "rm", "-f", docker_name],
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
+            )
+            return [
+                TestOutcome(
+                    index=index,
+                    passed=False,
+                    status="Time Limit Exceeded",
+                    expected=str(case.get("expected_output", "")),
+                    actual=None,
+                    runtime_ms=int(MAX_TIMEOUT_SECONDS * 1000),
+                    message="The execution container exceeded the overall safety limit.",
                 )
+                for index, case in enumerate(test_cases, start=1)
+            ]
 
-                if language == "Python" and _sandbox_mode() == "local":
-                    completed = subprocess.run(
-                        run_command,
-                        cwd=workdir,
-                        input=input_data,
-                        capture_output=True,
-                        text=True,
-                        timeout=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
-                        check=False,
-                    )
-                else:
-                    docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
-                    docker_base = _docker_base_command(
-                        workdir,
-                        memory_limit_mb=memory_limit_mb,
-                        docker_name=docker_name,
-                    )
-                    if language == "Python":
-                        docker_cmd = docker_base + [
-                            EXECUTION_DOCKER_IMAGE, "python", "-I", "-B",
-                            f"/workspace/{file_name}"
-                        ]
-                    elif docker_shell:
-                        docker_cmd = docker_base + [
-                            EXECUTION_DOCKER_IMAGE, "/bin/sh", "-lc", docker_shell[0]
-                        ]
-                    else:
-                        docker_cmd = docker_base + [
-                            EXECUTION_DOCKER_IMAGE, *run_command
-                        ]
-                    try:
-                        completed = subprocess.run(
-                            docker_cmd,
-                            input=input_data,
-                            capture_output=True,
-                            text=True,
-                            timeout=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
-                            check=False,
-                        )
-                    except subprocess.TimeoutExpired:
-                        subprocess.run(
-                            ["docker", "rm", "-f", docker_name],
-                            capture_output=True,
-                            text=True,
-                            timeout=5,
-                            check=False,
-                        )
-                        raise
+        total_runtime_ms = int((time.perf_counter() - started) * 1000)
+        stdout = completed.stdout or ""
+        stderr = _truncate((completed.stderr or "").strip())
+        lines = stdout.splitlines()
 
-            except subprocess.TimeoutExpired:
-                outcomes.append(TestOutcome(
-                    index=index, passed=False, status="Time Limit Exceeded",
-                    expected=expected, actual=None,
-                    runtime_ms=int(min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000),
-                    message=f"Test exceeded the {min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s execution limit."
-                ))
+        compile_marker = f"__CODEMENTOR_{token}_COMPILE_OK__"
+        if language in COMPILED_LANGUAGES and compile_marker not in lines:
+            message = stderr or stdout.strip() or "Compilation failed."
+            return [
+                TestOutcome(
+                    index=1,
+                    passed=False,
+                    status="Compile Error",
+                    expected=str(test_cases[0].get("expected_output", "")) if test_cases else "",
+                    actual=None,
+                    runtime_ms=total_runtime_ms,
+                    message=message,
+                )
+            ]
+
+        parsed: dict[int, tuple[int, str, str]] = {}
+        pattern = re.compile(
+            rf"^__CODEMENTOR_{re.escape(token)}_TEST_(\d+)__\|(-?\d+)\|([^|]*)\|([^|]*)$"
+        )
+        for line in lines:
+            match = pattern.match(line)
+            if not match:
                 continue
+            parsed[int(match.group(1))] = (
+                int(match.group(2)),
+                _decode_b64(match.group(3)),
+                _decode_b64(match.group(4)),
+            )
 
-            runtime_ms = int((time.perf_counter() - started) * 1000)
-            stdout_raw = completed.stdout or ""
-            stderr = _truncate((completed.stderr or "").strip())
-
-            if language in COMPILED_LANGUAGES:
-                compile_marker = "__CODEMENTOR_COMPILE_OK__"
-                if compile_marker not in stdout_raw:
-                    outcomes.append(TestOutcome(
+        per_test_cap_ms = int(
+            min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000
+        )
+        for index, case in enumerate(test_cases, start=1):
+            expected = str(case.get("expected_output", ""))
+            item = parsed.get(index)
+            if item is None:
+                outcomes.append(
+                    TestOutcome(
                         index=index,
                         passed=False,
-                        status="Compile Error",
+                        status="Runtime Error",
                         expected=expected,
                         actual=None,
-                        runtime_ms=runtime_ms,
-                        message=stderr or "Compilation failed.",
-                    ))
-                    continue
-                stdout_raw = stdout_raw.replace(compile_marker, "", 1).lstrip("\r\n")
-
-            stdout = _truncate(stdout_raw)
-
-            if len(stdout_raw) > MAX_OUTPUT_LENGTH:
-                outcomes.append(TestOutcome(
-                    index=index, passed=False, status="Output Limit Exceeded",
-                    expected=expected, actual=stdout, runtime_ms=runtime_ms,
-                    message=f"Program output exceeded {MAX_OUTPUT_LENGTH} characters."
-                ))
+                        runtime_ms=per_test_cap_ms,
+                        message=(
+                            "The sandbox did not return a result for this test case."
+                        ),
+                    )
+                )
                 continue
 
-            if completed.returncode != 0:
-                outcomes.append(TestOutcome(
-                    index=index, passed=False, status="Runtime Error",
-                    expected=expected, actual=stdout, runtime_ms=runtime_ms,
-                    message=stderr or stdout or "Program exited with a non-zero status."
-                ))
+            rc, actual, error_text = item
+            if rc == 124:
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Time Limit Exceeded",
+                        expected=expected,
+                        actual=None,
+                        runtime_ms=per_test_cap_ms,
+                        message=(
+                            f"Test exceeded the "
+                            f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s "
+                            "execution limit."
+                        ),
+                    )
+                )
+                continue
+
+            if rc != 0:
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Runtime Error",
+                        expected=expected,
+                        actual=actual,
+                        runtime_ms=per_test_cap_ms,
+                        message=error_text or f"Program exited with status {rc}.",
+                    )
+                )
+                continue
+
+            if len(actual) > MAX_OUTPUT_LENGTH:
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Output Limit Exceeded",
+                        expected=expected,
+                        actual=_truncate(actual),
+                        runtime_ms=per_test_cap_ms,
+                        message=f"Program output exceeded {MAX_OUTPUT_LENGTH} characters.",
+                    )
+                )
                 continue
 
             try:
                 validation = validate_default_output(
-                    stdout,
+                    actual,
                     expected,
                     case.get("validator_flags"),
                 )
             except UnsupportedValidatorError as exc:
                 raise CodeRejectedError(str(exc)) from exc
 
-            outcomes.append(TestOutcome(
-                index=index,
-                passed=validation.passed,
-                status="Passed" if validation.passed else "Wrong Answer",
-                expected=expected,
-                actual=stdout,
-                runtime_ms=runtime_ms,
-                message=None if validation.passed else validation.message,
-            ))
+            outcomes.append(
+                TestOutcome(
+                    index=index,
+                    passed=validation.passed,
+                    status="Passed" if validation.passed else "Wrong Answer",
+                    expected=expected,
+                    actual=actual,
+                    runtime_ms=per_test_cap_ms,
+                    message=None if validation.passed else validation.message,
+                )
+            )
 
     return outcomes
 
