@@ -128,7 +128,15 @@ def _argument_values(test_cases: Any, count: int) -> list[Any]:
         args = case.get("args")
         if not isinstance(args, list):
             continue
-        return list(args[:count]) + [None] * max(0, count - len(args))
+        normalized_args = list(args)
+        if (
+            count > 1
+            and len(normalized_args) == 1
+            and isinstance(normalized_args[0], list)
+            and len(normalized_args[0]) >= count
+        ):
+            normalized_args = list(normalized_args[0])
+        return normalized_args[:count] + [None] * max(0, count - len(normalized_args))
     return [None] * count
 
 
