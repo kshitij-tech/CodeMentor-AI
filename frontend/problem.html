@@ -477,16 +477,31 @@ function isGenericFunctionDraft(language,value){
   };
   return (signatures[language]||[]).some(signature=>compact.includes(signature));
 }
+function isStdioBoilerplateDraft(language,value){
+  if(problem?.execution_mode!=='function'||typeof value!=='string')return false;
+  const compact=value.trim().replace(/\s+/g,'');
+  const signatures={
+    Python:['importsys','defsolve():','if__name__==\'__main__\':solve()'],
+    'C++':['intmain(){','return0;}'],
+    Java:['publicclassMain{','publicstaticvoidmain(String[]args)'],
+    JavaScript:['constfs=require(\'fs\')','process.stdout.write'],
+    TypeScript:['constfs:any=require(\'fs\')','process.stdout.write'],
+    Go:['funcmain(){','bufio.NewReader(os.Stdin)'],
+    Rust:['fnmain(){','io::stdin().read_to_string']
+  };
+  return (signatures[language]||[]).filter(signature=>compact.includes(signature)).length>=2;
+}
 function loadDraft(){
   if(!problem||!editor)return;
   const language=$('language').value;
   const saved=localStorage.getItem(draftKey());
   const hasSaved=typeof saved==='string'&&saved.trim().length>0;
   const staleGeneric=isGenericFunctionDraft(language,saved);
-  const useSaved=hasSaved&&!staleGeneric;
+  const staleStdio=isStdioBoilerplateDraft(language,saved);
+  const useSaved=hasSaved&&!staleGeneric&&!staleStdio;
   editor.setValue(useSaved?saved:starterCode(language));
   $('save-status').textContent=useSaved?'Draft restored':'Starter';
-  if(staleGeneric) localStorage.removeItem(draftKey());
+  if(staleGeneric||staleStdio) localStorage.removeItem(draftKey());
   scheduleSyntaxValidation();
 }
 function renderProblem(){
