@@ -11,6 +11,7 @@ RUN apt-get update \
        nodejs \
        npm \
        python3 \
+       python-is-python3 \
        rustc \
        cargo \
     && npm install -g typescript \
