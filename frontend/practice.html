@@ -24,6 +24,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
 .topic-btn.active{background:#4338ca;color:white}
 .topic-btn.active .count{background:rgba(255,255,255,.15);color:white}
 .difficulty-btn.active{background:#4338ca;color:white}
+.execution-btn.active{background:#4338ca;color:white}
 .problem-card{transition:transform .15s,box-shadow .15s,border-color .15s}
 .problem-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,23,42,.08);border-color:#c7d2fe}
 </style>
@@ -88,21 +89,6 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
 
       <div class="border-t border-slate-100 my-5"></div>
 
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Execution Format</div>
-      <div id="execution-filters" class="space-y-1">
-        <button data-execution-mode="" type="button" class="execution-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100">
-          <span>All formats</span>
-        </button>
-        <button data-execution-mode="function" type="button" class="execution-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100">
-          <span>Function-style</span>
-        </button>
-        <button data-execution-mode="stdio" type="button" class="execution-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100">
-          <span>Standard Input / Output</span>
-        </button>
-      </div>
-
-      <div class="border-t border-slate-100 my-5"></div>
-
       <div class="flex items-center justify-between mb-3">
         <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Topics</div>
         <button id="clear-topic" type="button" class="text-[10px] font-semibold text-primary hover:underline">Clear</button>
@@ -112,6 +98,14 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
 
     <section class="min-w-0">
       <div class="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">Execution Format</div>
+          <div id="execution-filters" class="flex flex-wrap gap-1.5">
+            <button data-execution-mode="" type="button" class="execution-btn px-3 py-2 rounded-lg text-[11px] font-semibold hover:bg-slate-100">All formats</button>
+            <button data-execution-mode="function" type="button" class="execution-btn px-3 py-2 rounded-lg text-[11px] font-semibold hover:bg-slate-100">Function-style</button>
+            <button data-execution-mode="stdio" type="button" class="execution-btn px-3 py-2 rounded-lg text-[11px] font-semibold hover:bg-slate-100">Standard Input / Output</button>
+          </div>
+        </div>
         <div class="relative">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[19px] text-slate-400">search</span>
           <input id="search" type="search" placeholder="Search problems by title..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-300 outline-none text-sm">
@@ -175,7 +169,7 @@ function renderDifficultyFilters(){
 }
 function renderExecutionFilters(){
   document.querySelectorAll('[data-execution-mode]').forEach(btn=>{
-    const active=btn.dataset.executionMode===executionMode;
+    const active=(btn.dataset.executionMode||'')===executionMode;
     btn.classList.toggle('active',active);
   });
 }
