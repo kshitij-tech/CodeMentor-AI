@@ -700,23 +700,23 @@ def extract_error_location(message: str | None) -> tuple[int, int | None] | None
 
     patterns = [
         (
-            r'(?:Main\\.java|solution\\.[A-Za-z0-9]+)\\((\\d+),(\\d+)\\)',
+            r'(?:Main\.java|solution\.[A-Za-z0-9]+)\((\d+),(\d+)\)',
             True,
         ),
         (
-            r'(?:Main\\.java|solution\\.[A-Za-z0-9]+):(\\d+)(?::(\\d+))?',
+            r'(?:Main\.java|solution\.[A-Za-z0-9]+):(\d+)(?::(\d+))?',
             True,
         ),
         (
-            r"<user_code>[^,]*,\\s*line\\s+(\\d+)",
+            r"<user_code>[^,]*,\s*line\s+(\d+)",
             False,
         ),
         (
-            r'<user_code>.*?line\\s+(\\d+)',
+            r'<user_code>.*?line\s+(\d+)',
             False,
         ),
         (
-            r'line\\s+(\\d+)\\b',
+            r'line\s+(\d+)\b',
             False,
         ),
     ]
