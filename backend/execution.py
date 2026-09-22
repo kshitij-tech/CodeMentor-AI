@@ -358,6 +358,12 @@ def run_language_stdio_tests(
     if len(source) > MAX_CODE_LENGTH:
         raise CodeRejectedError(f"Code exceeds the {MAX_CODE_LENGTH} character limit.")
 
+    if language != "Python" and _sandbox_mode() != "docker":
+        raise CodeRejectedError(
+            "Docker sandbox is required for non-Python execution. "
+            "Set EXECUTION_SANDBOX=docker and restart FastAPI."
+        )
+
     outcomes: list[TestOutcome] = []
     extension = LANGUAGE_EXTENSIONS[language]
     file_name = "Main.java" if language == "Java" else "solution"+extension
@@ -377,50 +383,7 @@ def run_language_stdio_tests(
                     language, source_path, workdir
                 )
 
-                if compile_command is not None and _sandbox_mode() == "local":
-                    compiled = subprocess.run(
-                        compile_command,
-                        cwd=workdir,
-                        input=None,
-                        capture_output=True,
-                        text=True,
-                        timeout=MAX_COMPILE_SECONDS,
-                        check=False,
-                    )
-                    if compiled.returncode != 0:
-                        message = _truncate(
-                            (compiled.stderr or compiled.stdout or "Compilation failed.").strip()
-                        )
-                        outcomes.append(TestOutcome(
-                            index=index, passed=False, status="Compile Error",
-                            expected=expected, actual=None, runtime_ms=0, message=message
-                        ))
-                        continue
-
-                    completed = _run_python_process(
-                        run_command[0] if language == "Python" else (
-                            run_command[0] if os.path.isabs(run_command[0]) else
-                            run_command[0]
-                        ),
-                        workdir,
-                        input_data=input_data,
-                        timeout_seconds=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
-                        memory_limit_mb=memory_limit_mb,
-                        env={
-                            "PYTHONIOENCODING": "utf-8",
-                            "PYTHONDONTWRITEBYTECODE": "1",
-                            "PATH": os.environ.get("PATH", ""),
-                        },
-                    ) if language == "Python" else subprocess.run(
-                        run_command,
-                        cwd=workdir,
-                        input=input_data,
-                        capture_output=True,
-                        text=True,
-                        timeout=min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))),
-                        check=False,
-                    )
-                elif _sandbox_mode() == "local":
+                if language == "Python" and _sandbox_mode() == "local":
                     completed = subprocess.run(
                         run_command,
                         cwd=workdir,
