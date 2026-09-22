@@ -9,6 +9,134 @@ CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 
 VALID_DIFFICULTIES = {"Easy", "Medium", "Hard"}
 
+SUPPORTED_LANGUAGES = (
+    "Python",
+    "C++",
+    "Java",
+    "JavaScript",
+    "TypeScript",
+    "Go",
+    "Rust",
+)
+
+FUNCTION_STARTERS = {
+    "Python": (
+        "def solve(*args):\n"
+        "    # Implement the required solution.\n"
+        "    pass\n"
+    ),
+    "C++": (
+        "#include <bits/stdc++.h>\n"
+        "using namespace std;\n\n"
+        "int solve() {\n"
+        "    // Implement the required solution.\n"
+        "    return 0;\n"
+        "}\n"
+    ),
+    "Java": (
+        "class Solution {\n"
+        "    public int solve() {\n"
+        "        // Implement the required solution.\n"
+        "        return 0;\n"
+        "    }\n"
+        "}\n"
+    ),
+    "JavaScript": (
+        "function solve(...args) {\n"
+        "    // Implement the required solution.\n"
+        "    return null;\n"
+        "}\n"
+    ),
+    "TypeScript": (
+        "function solve(...args: any[]): any {\n"
+        "    // Implement the required solution.\n"
+        "    return null;\n"
+        "}\n"
+    ),
+    "Go": (
+        "package main\n\n"
+        "func solve(args ...interface{}) interface{} {\n"
+        "    // Implement the required solution.\n"
+        "    return nil\n"
+        "}\n"
+    ),
+    "Rust": (
+        "fn solve(args: &[String]) -> String {\n"
+        "    // Implement the required solution.\n"
+        '    String::new()\n'
+        "}\n"
+    ),
+}
+
+STDIO_STARTERS = {
+    "Python": (
+        "import sys\n\n"
+        "def solve():\n"
+        "    # Read from standard input and write the required answer.\n"
+        "    pass\n\n"
+        "if __name__ == '__main__':\n"
+        "    solve()\n"
+    ),
+    "C++": (
+        "#include <bits/stdc++.h>\n"
+        "using namespace std;\n\n"
+        "int main() {\n"
+        "    // Read from standard input and write the required answer.\n"
+        "    return 0;\n"
+        "}\n"
+    ),
+    "Java": (
+        "import java.io.*;\n"
+        "import java.util.*;\n\n"
+        "public class Main {\n"
+        "    public static void main(String[] args) throws Exception {\n"
+        "        // Read from standard input and write the required answer.\n"
+        "    }\n"
+        "}\n"
+    ),
+    "JavaScript": (
+        "const fs = require('fs');\n"
+        "const input = fs.readFileSync(0, 'utf8').trim();\n\n"
+        "function solve(input) {\n"
+        "    // Read input and return the required answer.\n"
+        "    return '';\n"
+        "}\n\n"
+        "process.stdout.write(String(solve(input)));\n"
+    ),
+    "TypeScript": (
+        "import * as fs from 'fs';\n"
+        "const input = fs.readFileSync(0, 'utf8').trim();\n\n"
+        "function solve(input: string): string {\n"
+        "    // Read input and return the required answer.\n"
+        "    return '';\n"
+        "}\n\n"
+        "process.stdout.write(String(solve(input)));\n"
+    ),
+    "Go": (
+        "package main\n\n"
+        "import (\n"
+        "    \"bufio\"\n"
+        "    \"fmt\"\n"
+        "    \"os\"\n"
+        ")\n\n"
+        "func main() {\n"
+        "    in := bufio.NewReader(os.Stdin)\n"
+        "    _ = in\n"
+        "    // Read from standard input and write the required answer.\n"
+        "    fmt.Print()\n"
+        "}\n"
+    ),
+    "Rust": (
+        "use std::io::{self, Read};\n\n"
+        "fn main() {\n"
+        "    let mut input = String::new();\n"
+        "    io::stdin().read_to_string(&mut input).unwrap();\n"
+        "    // Read input and write the required answer.\n"
+        "    print!(\"{}\", input);\n"
+        "}\n"
+    ),
+}
+
 CANONICAL_TOPICS = (
     "Arrays & Strings",
     "Hashing & Hash Maps",
@@ -366,6 +494,21 @@ def audit_problems(problems: Iterable[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def ensure_starter_code(
+    starter_code: Any,
+    execution_mode: str | None = None,
+) -> dict[str, str]:
+    existing = starter_code if isinstance(starter_code, dict) else {}
+    mode = "stdio" if str(execution_mode or "").strip().lower() == "stdio" else "function"
+    defaults = STDIO_STARTERS if mode == "stdio" else FUNCTION_STARTERS
+
+    result: dict[str, str] = {}
+    for language in SUPPORTED_LANGUAGES:
+        value = existing.get(language)
+        result[language] = value if isinstance(value, str) and value.strip() else defaults[language]
+    return result
+
+
 def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(problem)
 
@@ -377,6 +520,15 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
     normalized["difficulty"] = normalize_difficulty(problem.get("difficulty"))
     normalized["topics"] = canonicalize_topics(problem.get("topics"))
     normalized["source"] = normalize_text(problem.get("source")) or "imported"
+    normalized["execution_mode"] = (
+        "stdio"
+        if str(problem.get("execution_mode") or "").strip().lower() == "stdio"
+        else "function"
+    )
+    normalized["starter_code"] = ensure_starter_code(
+        problem.get("starter_code"),
+        normalized["execution_mode"],
+    )
 
     external_id = problem.get("external_id")
     normalized["external_id"] = normalize_text(external_id) or None
