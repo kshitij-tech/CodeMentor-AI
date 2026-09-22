@@ -21,52 +21,179 @@ SUPPORTED_LANGUAGES = (
 
 FUNCTION_STARTERS = {
     "Python": (
-        "def solve(*args):\n"
-        "    # Implement the required solution.\n"
-        "    pass\n"
+        "def solve(*args):\\n"
+        "    # Implement the required solution.\\n"
+        "    pass\\n"
     ),
     "C++": (
-        "#include <bits/stdc++.h>\n"
-        "using namespace std;\n\n"
-        "int solve() {\n"
-        "    // Implement the required solution.\n"
-        "    return 0;\n"
-        "}\n"
+        "#include <bits/stdc++.h>\\n"
+        "using namespace std;\\n\\n"
+        "int solve() {\\n"
+        "    // Implement the required solution.\\n"
+        "    return 0;\\n"
+        "}\\n"
     ),
     "Java": (
-        "class Solution {\n"
-        "    public int solve() {\n"
-        "        // Implement the required solution.\n"
-        "        return 0;\n"
-        "    }\n"
-        "}\n"
+        "class Solution {\\n"
+        "    public int solve() {\\n"
+        "        // Implement the required solution.\\n"
+        "        return 0;\\n"
+        "    }\\n"
+        "}\\n"
     ),
     "JavaScript": (
-        "function solve(...args) {\n"
-        "    // Implement the required solution.\n"
-        "    return null;\n"
-        "}\n"
+        "function solve(...args) {\\n"
+        "    // Implement the required solution.\\n"
+        "    return null;\\n"
+        "}\\n"
     ),
     "TypeScript": (
-        "function solve(...args: any[]): any {\n"
-        "    // Implement the required solution.\n"
-        "    return null;\n"
-        "}\n"
+        "function solve(...args: any[]): any {\\n"
+        "    // Implement the required solution.\\n"
+        "    return null;\\n"
+        "}\\n"
     ),
     "Go": (
-        "package main\n\n"
-        "func solve(args ...interface{}) interface{} {\n"
-        "    // Implement the required solution.\n"
-        "    return nil\n"
-        "}\n"
+        "package main\\n\\n"
+        "func solve(args ...interface{}) interface{} {\\n"
+        "    // Implement the required solution.\\n"
+        "    return nil\\n"
+        "}\\n"
     ),
     "Rust": (
-        "fn solve(args: &[String]) -> String {\n"
-        "    // Implement the required solution.\n"
-        '    String::new()\n'
-        "}\n"
+        "fn solve(args: &[String]) -> String {\\n"
+        "    // Implement the required solution.\\n"
+        "    String::new()\\n"
+        "}\\n"
     ),
 }
+
+
+def _function_parameter_names(starter: Any) -> list[str]:
+    """Extract named parameters from an existing Python solve() starter."""
+    if not isinstance(starter, str) or not starter.strip():
+        return []
+    try:
+        tree = __import__("ast").parse(starter)
+    except (SyntaxError, TypeError, ValueError):
+        return []
+    for node in __import__("ast").walk(tree):
+        if isinstance(node, __import__("ast").FunctionDef) and node.name == "solve":
+            names = [arg.arg for arg in node.args.posonlyargs]
+            names.extend(arg.arg for arg in node.args.args)
+            names.extend(arg.arg for arg in node.args.kwonlyargs)
+            return [name for name in names if name]
+    return []
+
+
+def _argument_values(test_cases: Any, count: int) -> list[Any]:
+    if not isinstance(test_cases, list):
+        return [None] * count
+    for case in test_cases:
+        if not isinstance(case, dict) or "args" not in case:
+            continue
+        args = case.get("args")
+        if not isinstance(args, list):
+            continue
+        return list(args[:count]) + [None] * max(0, count - len(args))
+    return [None] * count
+
+
+def _inferred_cpp_type(value: Any) -> str:
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "long long"
+    if isinstance(value, float):
+        return "double"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        inner = _inferred_cpp_type(value[0]) if value else "long long"
+        return f"vector<{inner}>"
+    return "auto"
+
+
+def _inferred_java_type(value: Any) -> str:
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, int):
+        return "long"
+    if isinstance(value, float):
+        return "double"
+    if isinstance(value, str):
+        return "String"
+    if isinstance(value, list):
+        inner = _inferred_java_type(value[0]) if value else "long"
+        return f"{inner}[]"
+    return "Object"
+
+
+def _inferred_go_type(value: Any) -> str:
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "int"
+    if isinstance(value, float):
+        return "float64"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        inner = _inferred_go_type(value[0]) if value else "int"
+        return f"[]{inner}"
+    return "any"
+
+
+def _inferred_rust_type(value: Any) -> str:
+    if isinstance(value, bool):
+        return "bool"
+    if isinstance(value, int):
+        return "i64"
+    if isinstance(value, float):
+        return "f64"
+    if isinstance(value, str):
+        return "&str"
+    if isinstance(value, list):
+        inner = _inferred_rust_type(value[0]) if value else "i64"
+        return f"&[{inner}]"
+    return "&dyn std::any::Any"
+
+
+def _generated_function_starters(
+    names: list[str],
+    values: list[Any],
+) -> dict[str, str]:
+    if not names:
+        return {language: FUNCTION_STARTERS[language] for language in SUPPORTED_LANGUAGES}
+
+    cpp_params = ", ".join(
+        f"{_inferred_cpp_type(value)}& {name}" if isinstance(value, list)
+        else f"{_inferred_cpp_type(value)} {name}"
+        for name, value in zip(names, values)
+    )
+    java_params = ", ".join(
+        f"{_inferred_java_type(value)} {name}"
+        for name, value in zip(names, values)
+    )
+    js_params = ", ".join(names)
+    go_params = ", ".join(
+        f"{name} {_inferred_go_type(value)}"
+        for name, value in zip(names, values)
+    )
+    rust_params = ", ".join(
+        f"{name}: {_inferred_rust_type(value)}"
+        for name, value in zip(names, values)
+    )
+
+    return {
+        "Python": f"def solve({', '.join(names)}):\\n    # Implement the required solution.\\n    pass\\n",
+        "C++": f"#include <bits/stdc++.h>\\nusing namespace std;\\n\\nlong long solve({cpp_params}) {{\\n    // Implement the required solution.\\n    return 0;\\n}}\\n",
+        "Java": f"class Solution {{\\n    public long solve({java_params}) {{\\n        // Implement the required solution.\\n        return 0;\\n    }}\\n}}\\n",
+        "JavaScript": f"function solve({js_params}) {{\\n    // Implement the required solution.\\n    return null;\\n}}\\n",
+        "TypeScript": f"function solve({', '.join(f'{name}: any' for name in names)}): any {{\\n    // Implement the required solution.\\n    return null;\\n}}\\n",
+        "Go": f"package main\\n\\nfunc solve({go_params}) int {{\\n    // Implement the required solution.\\n    return 0\\n}}\\n",
+        "Rust": f"fn solve({rust_params}) -> i64 {{\\n    // Implement the required solution.\\n    0\\n}}\\n",
+    }
 
 STDIO_STARTERS = {
     "Python": (
