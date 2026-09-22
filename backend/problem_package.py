@@ -15,6 +15,7 @@ from backend.problem_catalog import (
     ensure_starter_code,
     normalize_difficulty,
 )
+from backend.stdio_adapter import infer_editor_input_schema
 
 
 class ProblemPackageError(ValueError):
@@ -446,6 +447,12 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         if case.visibility == "sample"
     ][:8]
 
+    editor_input_schema = infer_editor_input_schema(
+        statement,
+        samples,
+        metadata.get("editor_input_schema") or metadata.get("input_schema"),
+    )
+
     source_name = _source_text(metadata.get("source"))
     if not source_name and "oj-lab-metadata" in metadata:
         source_name = "oj-lab"
@@ -500,6 +507,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "validation_output_bytes": validation_output_bytes,
         "has_custom_output_validator": has_custom_validator,
         "custom_validator_supported": custom_validator_supported,
+        "editor_input_schema": editor_input_schema,
     }
 
     if "domjudge-problem.ini" in files:
@@ -561,7 +569,19 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
             }
             for case in test_cases
         ],
-        "starter_code": ensure_starter_code(_starter_code(), "stdio"),
+        "starter_code": ensure_starter_code(
+            _starter_code(),
+            "stdio",
+            test_cases=[
+                {
+                    "input": case.input_data,
+                    "expected_output": case.expected_output,
+                }
+                for case in test_cases
+            ],
+            examples=samples,
+            editor_schema=editor_input_schema,
+        ),
         "source": "problem-package" if len(source_name) > 40 else source_name,
         "external_id": external_id[:120],
         "external_url": str(source_url)[:500] if source_url else None,
