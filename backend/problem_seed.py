@@ -1,4 +1,5 @@
 from backend.models import Problem
+from backend.problem_catalog import ensure_starter_code
 
 PROBLEMS = [
     {
@@ -120,6 +121,11 @@ PROBLEMS = [
 
 def seed_problems(db):
     for item in PROBLEMS:
+        item = dict(item)
+        item["starter_code"] = ensure_starter_code(
+            item.get("starter_code"),
+            item.get("execution_mode", "function"),
+        )
         existing = db.query(Problem).filter(Problem.slug == item["slug"]).first()
         if existing is None:
             db.add(Problem(**item))
