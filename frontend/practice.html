@@ -88,6 +88,21 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
 
       <div class="border-t border-slate-100 my-5"></div>
 
+      <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Execution Format</div>
+      <div id="execution-filters" class="space-y-1">
+        <button data-execution-mode="" type="button" class="execution-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100">
+          <span>All formats</span>
+        </button>
+        <button data-execution-mode="function" type="button" class="execution-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100">
+          <span>Function-style</span>
+        </button>
+        <button data-execution-mode="stdio" type="button" class="execution-btn w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100">
+          <span>Standard Input / Output</span>
+        </button>
+      </div>
+
+      <div class="border-t border-slate-100 my-5"></div>
+
       <div class="flex items-center justify-between mb-3">
         <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Topics</div>
         <button id="clear-topic" type="button" class="text-[10px] font-semibold text-primary hover:underline">Clear</button>
@@ -131,6 +146,7 @@ const TOKEN_KEY='codementor_access_token';
 const PAGE_SIZE=100;
 let topic='';
 let difficulty='';
+let executionMode='';
 let search='';
 let page=0;
 let total=0;
@@ -157,6 +173,13 @@ function renderDifficultyFilters(){
   $('difficulty-filters').innerHTML=values.map(([value,label,count])=>'<button data-difficulty="'+esc(value)+'" type="button" class="difficulty-btn '+(difficulty===value?'active ':'')+'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100"><span>'+label+'</span><span class="mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">'+count+'</span></button>').join('');
   document.querySelectorAll('[data-difficulty]').forEach(btn=>btn.addEventListener('click',()=>{difficulty=btn.dataset.difficulty;page=0;renderDifficultyFilters();loadProblems()}));
 }
+function renderExecutionFilters(){
+  document.querySelectorAll('[data-execution-mode]').forEach(btn=>{
+    const active=btn.dataset.executionMode===executionMode;
+    btn.classList.toggle('active',active);
+  });
+}
+
 function renderTopicFilters(){
   $('topic-filters').innerHTML=topicFacets.map(item=>'<button data-topic="'+esc(item.name)+'" type="button" class="topic-btn '+(topic===item.name?'active ':'')+'w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-100"><span class="truncate text-left">'+esc(item.name)+'</span><span class="count mono text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">'+item.count+'</span></button>').join('');
   document.querySelectorAll('[data-topic]').forEach(btn=>btn.addEventListener('click',()=>{topic=btn.dataset.topic;page=0;renderTopicFilters();loadProblems()}));
@@ -169,6 +192,7 @@ function renderProblems(items=loadedItems){
   const filters=[];
   if(difficulty)filters.push(difficulty);
   if(topic)filters.push(topic);
+  if(executionMode)filters.push(executionMode==='stdio'?'Standard Input / Output':'Function-style');
   if(search)filters.push('“'+search+'”');
   $('active-filter').textContent=filters.length?filters.join(' · '):'All problems';
 
@@ -211,6 +235,7 @@ async function loadProblems({reset=true}={}){
   const params=new URLSearchParams({limit:String(PAGE_SIZE),offset:String(offset)});
   if(topic)params.set('topic',topic);
   if(difficulty)params.set('difficulty',difficulty);
+  if(executionMode)params.set('execution_mode',executionMode);
   if(search)params.set('search',search);
 
   try{
@@ -237,8 +262,10 @@ async function load(){
   const params=new URLSearchParams(location.search);
   topic=params.get('topic')||'';
   difficulty=params.get('difficulty')||'';
+  executionMode=params.get('execution_mode')||'';
   search=params.get('search')||'';
   $('search').value=search;
+  renderExecutionFilters();
 
   // Problem data and filters do not depend on the profile request, so start
   // them together instead of making the problem catalogue wait for identity.
@@ -281,9 +308,14 @@ $('search').addEventListener('input',()=>{
   searchTimer=setTimeout(()=>loadProblems({reset:true}),250);
 });
 $('clear-topic').addEventListener('click',()=>{topic='';renderTopicFilters();loadProblems({reset:true})});
+document.querySelectorAll('[data-execution-mode]').forEach(btn=>btn.addEventListener('click',()=>{
+  executionMode=btn.dataset.executionMode||'';
+  renderExecutionFilters();
+  loadProblems({reset:true});
+}));
 $('reset-filters').addEventListener('click',()=>{
-  topic='';difficulty='';search='';$('search').value='';
-  renderDifficultyFilters();renderTopicFilters();loadProblems({reset:true});
+  topic='';difficulty='';executionMode='';search='';$('search').value='';
+  renderDifficultyFilters();renderExecutionFilters();renderTopicFilters();loadProblems({reset:true});
 });
 $('load-more-btn').addEventListener('click',async()=>{
   const button=$('load-more-btn');
