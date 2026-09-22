@@ -8,6 +8,8 @@ from backend.problem_catalog import (
     normalize_topic,
     quality_flags,
     strip_examples_from_description,
+    ensure_starter_code,
+    SUPPORTED_LANGUAGES,
 )
 
 
@@ -101,6 +103,27 @@ class ProblemCatalogTests(unittest.TestCase):
             "You are given an equation with question marks. Determine whether "
             "the question marks can be replaced to reach the target.",
         )
+    def test_all_supported_languages_receive_starters_for_stdio(self):
+        starters = ensure_starter_code({"Python": "def solve():\n    pass\n"}, "stdio")
+        self.assertEqual(set(starters), set(SUPPORTED_LANGUAGES))
+        self.assertIn("int main()", starters["C++"])
+        self.assertIn("public class Main", starters["Java"])
+        self.assertIn("process.stdout.write", starters["JavaScript"])
+        self.assertIn("func main()", starters["Go"])
+        self.assertIn("fn main()", starters["Rust"])
+
+    def test_existing_starters_are_not_overwritten(self):
+        original = "class Solution {\n    public int solve(int[] nums) { return 1; }\n}"
+        starters = ensure_starter_code({"Java": original}, "function")
+        self.assertEqual(starters["Java"], original)
+
+    def test_function_starters_exist_for_all_languages(self):
+        starters = ensure_starter_code({}, "function")
+        self.assertIn("class Solution", starters["Java"])
+        self.assertIn("function solve", starters["JavaScript"])
+        self.assertIn("func solve", starters["Go"])
+        self.assertIn("fn solve", starters["Rust"])
+
     def test_canonical_topic_catalog_is_stable(self):
         self.assertIn("Binary Search", CANONICAL_TOPICS)
         self.assertIn("Dynamic Programming", CANONICAL_TOPICS)
