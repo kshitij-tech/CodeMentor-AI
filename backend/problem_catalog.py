@@ -104,7 +104,8 @@ STDIO_STARTERS = {
         "process.stdout.write(String(solve(input)));\n"
     ),
     "TypeScript": (
-        "import * as fs from 'fs';\n"
+        "declare const require: (name: string) => any;\n"
+        "const fs: any = require('fs');\n"
         "const input = fs.readFileSync(0, 'utf8').trim();\n\n"
         "function solve(input: string): string {\n"
         "    // Read input and return the required answer.\n"
