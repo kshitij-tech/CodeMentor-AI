@@ -192,6 +192,30 @@ def _inferred_rust_type(value: Any) -> str:
     return "&dyn std::any::Any"
 
 
+def _starter_matches_function_contract(
+    language: str,
+    source: Any,
+    names: list[str],
+) -> bool:
+    if not isinstance(source, str) or not source.strip() or not names:
+        return False
+
+    compact = source.replace(" ", "").replace("\t", "").replace("\r", "")
+    if language == "Python":
+        actual = _function_parameter_names(source)
+        return actual == names
+
+    match = re.search(r"solve\\s*\\(([^)]*)\\)", source)
+    if not match:
+        return False
+
+    signature = match.group(1)
+    return all(
+        re.search(rf"(?<![A-Za-z0-9_]){re.escape(name)}(?![A-Za-z0-9_])", signature)
+        for name in names
+    )
+
+
 def _generated_function_starters(
     names: list[str],
     values: list[Any],
@@ -714,7 +738,11 @@ def ensure_starter_code(
         if (
             isinstance(value, str)
             and value.strip()
-            and not (mode != "stdio" and names and _is_generic_function_starter(language, value))
+            and (
+                mode == "stdio"
+                or not names
+                or _starter_matches_function_contract(language, value, names)
+            )
         ):
             result[language] = value
         else:
