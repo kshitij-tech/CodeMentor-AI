@@ -8,7 +8,7 @@ from sqlalchemy import select
 
 from backend.database import SessionLocal
 from backend.models import Problem
-from backend.problem_catalog import canonicalize_topics
+from backend.problem_catalog import canonicalize_topics, ensure_starter_code
 
 
 DATASET_NAME = "deepmind/code_contests"
@@ -233,7 +233,7 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         "constraints": [],
         "examples": samples,
         "test_cases": test_cases,
-        "starter_code": {
+        "starter_code": ensure_starter_code({
             "Python": (
                 "import sys\n\n"
                 "def solve():\n"
@@ -242,7 +242,7 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
                 "if __name__ == '__main__':\n"
                 "    solve()\n"
             )
-        },
+        }, "stdio"),
         "source": f"code-contests-{source_name}"[:40],
         "external_id": external_id,
         "external_url": cf_url,
