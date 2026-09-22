@@ -143,5 +143,13 @@ def seed_problems(db):
                     args = args[0]
                 copied["args"] = args
                 normalized_tests.append(copied)
+            existing.title = item["title"]
+            existing.difficulty = item["difficulty"]
+            existing.topics = item["topics"]
+            existing.description = item["description"]
+            existing.constraints = item["constraints"]
+            existing.examples = item["examples"]
             existing.test_cases = normalized_tests
+            existing.starter_code = item["starter_code"]
+            existing.execution_mode = item.get("execution_mode", "function")
     db.commit()
