@@ -615,7 +615,7 @@ def _render_javascript_adapter(
 ) -> str:
     args = ", ".join(item["name"] for item in schema)
     parsed = "\n".join(_js_reader(item) for item in schema)
-    helper = """const __cmFs = require('fs');
+    helper = r"""const __cmFs = require('fs');
 const __cmRawInput = __cmFs.readFileSync(0, 'utf8');
 const __cmTokens = __cmRawInput.trim().split(/\s+/).filter(Boolean);
 let __cmIndex = 0;
@@ -649,7 +649,7 @@ def _go_import_specs(source: str) -> list[str]:
     specs: list[str] = []
 
     block = re.search(
-        r"(?ms)^\s*import\s*\((.*?)^\)\s*"
+        r"(?ms)^\s*import\s*\((.*?)^\)\s*",
         source,
     )
     if block:
