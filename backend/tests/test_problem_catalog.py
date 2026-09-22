@@ -124,6 +124,34 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("func solve", starters["Go"])
         self.assertIn("fn solve", starters["Rust"])
 
+    def test_function_starters_use_named_problem_parameters(self):
+        starters = ensure_starter_code(
+            {
+                "Python": "def solve(nums, budget):\n    pass\n",
+            },
+            "function",
+            [{"args": [[[2, 1, 3], 6]], "expected": 2}],
+        )
+        self.assertIn("solve(nums, budget)", starters["Python"])
+        self.assertIn("solve(nums, budget)", starters["JavaScript"])
+        self.assertIn("solve(nums, budget)", starters["TypeScript"])
+        self.assertIn("solve(nums", starters["C++"])
+        self.assertIn("budget", starters["Java"])
+        self.assertIn("budget", starters["Go"])
+        self.assertIn("budget", starters["Rust"])
+
+    def test_generic_function_boilerplate_is_replaced_from_examples(self):
+        starters = ensure_starter_code(
+            {"Python": "def solve(*args):\n    pass\n"},
+            "function",
+            [{"args": [[4, 7, 2, 7, 9]], "expected": 7}],
+            [{"input": "nums = [4, 7, 2, 7, 9]", "output": "7"}],
+        )
+        self.assertIn("def solve(nums):", starters["Python"])
+        self.assertIn("function solve(nums)", starters["JavaScript"])
+        self.assertNotIn("*args", starters["Python"])
+        self.assertNotIn("...args", starters["JavaScript"])
+
     def test_canonical_topic_catalog_is_stable(self):
         self.assertIn("Binary Search", CANONICAL_TOPICS)
         self.assertIn("Dynamic Programming", CANONICAL_TOPICS)
