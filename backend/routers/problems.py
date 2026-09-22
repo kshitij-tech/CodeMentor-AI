@@ -137,6 +137,7 @@ def serialize(problem: Problem) -> dict:
             problem.starter_code,
             problem.execution_mode,
             problem.test_cases,
+            problem.examples,
         ),
         "source": problem.source,
         "external_id": problem.external_id,
