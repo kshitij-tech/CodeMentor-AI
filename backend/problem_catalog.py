@@ -6,6 +6,12 @@ import re
 from collections import Counter, defaultdict
 from typing import Any, Iterable
 
+from backend.stdio_adapter import (
+    editor_schema_from_metadata,
+    generate_stdio_editor_starters,
+    normalize_editor_input_schema,
+)
+
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
 
 VALID_DIFFICULTIES = {"Easy", "Medium", "Hard"}
@@ -721,6 +727,7 @@ def ensure_starter_code(
     execution_mode: str | None = None,
     test_cases: Any = None,
     examples: Any = None,
+    editor_schema: Any = None,
 ) -> dict[str, str]:
     existing = starter_code if isinstance(starter_code, dict) else {}
     mode = infer_execution_mode(
@@ -729,22 +736,28 @@ def ensure_starter_code(
         starter_code=existing,
         examples=examples,
     )
-    defaults = STDIO_STARTERS if mode == "stdio" else FUNCTION_STARTERS
 
-    if mode != "stdio":
+    schema = normalize_editor_input_schema(editor_schema)
+    if mode == "stdio" and not schema:
+        generated = STDIO_STARTERS
+        preserve_existing = True
+    elif mode == "stdio":
+        generated = generate_stdio_editor_starters(schema)
+        preserve_existing = False
+    else:
         names = _function_parameter_names(existing.get("Python"))
         if not names or _is_generic_function_starter("Python", existing.get("Python")):
             names = _example_parameter_names(examples)
         values = _argument_values(test_cases, len(names))
         generated = _generated_function_starters(names, values)
-    else:
-        generated = defaults
+        preserve_existing = True
 
     result: dict[str, str] = {}
     for language in SUPPORTED_LANGUAGES:
         value = existing.get(language)
         if (
-            isinstance(value, str)
+            preserve_existing
+            and isinstance(value, str)
             and value.strip()
             and (
                 mode == "stdio"
@@ -754,7 +767,7 @@ def ensure_starter_code(
         ):
             result[language] = value
         else:
-            result[language] = generated[language]
+            result[language] = generated.get(language, "")
     return result
 
 
