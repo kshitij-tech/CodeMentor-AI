@@ -485,13 +485,21 @@ def run_language_stdio_tests(
         ]
 
         started = time.perf_counter()
+        per_test_timeout = min(
+            MAX_TIMEOUT_SECONDS,
+            max(0.1, float(time_limit_seconds)),
+        )
+        overall_timeout = min(
+            120.0,
+            MAX_COMPILE_SECONDS + per_test_timeout * max(1, len(test_cases)) + 5.0,
+        )
         try:
             completed = subprocess.run(
                 docker_cmd,
                 input=None,
                 capture_output=True,
                 text=True,
-                timeout=min(MAX_TIMEOUT_SECONDS * max(1, len(test_cases)), 120.0),
+                timeout=overall_timeout,
                 check=False,
             )
         except subprocess.TimeoutExpired:
