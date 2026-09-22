@@ -414,7 +414,7 @@ function difficultyClass(d){
   return 'bg-slate-100 text-slate-600';
 }
 function fallbackStarterCode(language){
-  const functionStyle=problem?.execution_mode!=='stdio';
+  const functionStyle=problem?.editor_execution_mode==='function';
   const functionTemplates={
     Python:"def solve(*args):\n    # Implement the required solution.\n    pass\n",
     "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint solve() {\n    // Implement the required solution.\n    return 0;\n}\n",
@@ -464,7 +464,7 @@ function syncLanguageAvailability(){
   }
 }
 function isGenericFunctionDraft(language,value){
-  if(problem?.execution_mode==='stdio'||typeof value!=='string')return false;
+  if(problem?.editor_execution_mode!=='function'||typeof value!=='string')return false;
   const compact=value.trim().replace(/\s+/g,'');
   const signatures={
     Python:['defsolve(*args):','defsolve(**kwargs):'],
@@ -478,7 +478,7 @@ function isGenericFunctionDraft(language,value){
   return (signatures[language]||[]).some(signature=>compact.includes(signature));
 }
 function isStdioBoilerplateDraft(language,value){
-  if(problem?.execution_mode!=='function'||typeof value!=='string')return false;
+  if(problem?.editor_execution_mode!=='function'||typeof value!=='string')return false;
   const compact=value.trim().replace(/\s+/g,'');
   const signatures={
     Python:['importsys','defsolve():','if__name__==\'__main__\':solve()'],
