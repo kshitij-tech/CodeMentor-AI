@@ -412,6 +412,131 @@ def _go_reader(item: dict[str, Any]) -> str:
     raise ValueError(f"Unsupported schema type: {kind}")
 
 
+def _go_imports(source: str) -> list[str]:
+    imports: list[str] = []
+    block = re.search(r"(?ms)^\s*import\s*\((.*?)^\)\s*", source)
+    if block:
+        imports.extend(
+            line.strip()
+            for line in block.group(1).splitlines()
+            if line.strip() and not line.strip().startswith("//")
+        )
+    imports.extend(
+        line.strip()
+        for line in re.findall(r'(?m)^\s*import\s+([^\n]+)    body = source.rstrip()
+    imports: list[str] = []
+    for block in re.findall(r'(?ms)^\s*import\s*\((.*?)^\)', body):
+        imports.extend(re.findall(r'"([^"]+)"', block))
+    imports.extend(re.findall(r'(?m)^\s*import\s+"([^"]+)"\s*$', body))
+    body = re.sub(r"(?m)^\s*package\s+main\s*\n", "", body, count=1)
+    body = re.sub(r"(?ms)^\s*import\s*\(.*?^\)\s*\n?", "", body, count=1)
+    body = re.sub(r'(?m)^\s*import\s+"[^"]+"\s*\n?', "", body)
+    required = ["bufio", "fmt", "os", "reflect", "strings"]
+    merged_imports = required + [item for item in imports if item not in required]
+    args = ", ".join(item["name"] for item in schema)
+    lines = [
+        "package main",
+        "",
+        "import (",
+        *[f'    "{item}"' for item in merged_imports],
+        ")",
+        "",
+        body.strip(),
+        "",
+        "func __cmFormat(value any) string {",
+        "    if value == nil { return \"\" }",
+        "    rv := reflect.ValueOf(value)",
+        "    if rv.Kind() == reflect.Slice || rv.Kind() == reflect.Array {",
+        "        parts := make([]string, rv.Len())",
+        "        for i := 0; i < rv.Len(); i++ { parts[i] = __cmFormat(rv.Index(i).Interface()) }",
+        "        return strings.Join(parts, \" \")",
+        "    }",
+        "    return fmt.Sprint(value)",
+        "}",
+        "",
+        "func main() {",
+        "    reader := bufio.NewReader(os.Stdin)",
+    ]
+    lines.extend(_go_reader(item) for item in schema)
+    lines += [
+        f"    __cmResult := solve({args})",
+        "    fmt.Println(__cmFormat(__cmResult))",
+        "}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def _render_rust_adapter(source: str, schema: list[dict[str, Any]]) -> str:
+    args = ", ".join(item["name"] for item in schema)
+    lines = [
+        source.rstrip(),
+        "",
+        "fn main() {",
+        '    let mut __cm_input = String::new();',
+        '    std::io::Read::read_to_string(&mut std::io::stdin(), &mut __cm_input).unwrap();',
+        '    let mut __cm_it = __cm_input.split_whitespace();',
+    ]
+    for item in schema:
+        name, kind = item["name"], item["type"]
+        if kind == "int":
+            lines.append(f'    let {name}: i64 = __cm_it.next().unwrap().parse().unwrap();')
+        elif kind == "float":
+            lines.append(f'    let {name}: f64 = __cm_it.next().unwrap().parse().unwrap();')
+        elif kind == "string":
+            lines.append(f'    let {name}: String = __cm_it.next().unwrap().to_string();')
+        elif kind.endswith("_array") and item.get("length_from"):
+            base = {"int_array": "i64", "float_array": "f64", "string_array": "String"}[kind]
+            lines.append(f'    let {name}: Vec<{base}> = (0..({item["length_from"]} as usize)).map(|_| __cm_it.next().unwrap().parse().unwrap()).collect();')
+        else:
+            raise ValueError(f"Unsupported schema type: {kind}")
+    lines += [
+        f"    let __cm_result = solve({args});",
+        '    print!("{}\\\\n", __cm_result);',
+        "}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def adapt_stdio_source(user_source: str, language: str, schema: Any) -> str:
+    normalized = normalize_editor_input_schema(schema)
+    if not normalized:
+        return user_source
+
+    if language == "Python":
+        if re.search(r"(?m)^\s*if\s+__name__\s*==", user_source) or re.search(r"\binput\s*\(", user_source):
+            raise ValueError("Implement solve(...) only. CodeMentor supplies the Standard Input/Output wrapper.")
+        return _render_python_adapter(user_source, normalized)
+
+    entrypoints = {
+        "C++": r"\b(?:int|signed)\s+main\s*\(",
+        "Java": r"\bstatic\s+void\s+main\s*\(",
+        "JavaScript": r"\bprocess\.stdout\.write\s*\(",
+        "TypeScript": r"\bprocess\.stdout\.write\s*\(",
+        "Go": r"(?m)^\s*func\s+main\s*\(",
+        "Rust": r"(?m)^\s*fn\s+main\s*\(",
+    }
+    if re.search(entrypoints.get(language, r"$^"), user_source):
+        raise ValueError("Implement solve(...) only. CodeMentor supplies the program entry point.")
+
+    if language == "C++":
+        return _render_cpp_adapter(user_source, normalized)
+    if language == "Java":
+        return _render_java_adapter(user_source, normalized)
+    if language in {"JavaScript", "TypeScript"}:
+        return _render_javascript_adapter(user_source, normalized)
+    if language == "Go":
+        return _render_go_adapter(user_source, normalized)
+    if language == "Rust":
+        return _render_rust_adapter(user_source, normalized)
+    raise ValueError(f"Unsupported language: {language}.")
+, source)
+        if line.strip()
+    )
+    return imports
+
+
 def _render_go_adapter(source: str, schema: list[dict[str, Any]]) -> str:
     body = source.rstrip()
     imports: list[str] = []
