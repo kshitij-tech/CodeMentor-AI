@@ -23,6 +23,7 @@ from backend.problem_catalog import (
     normalize_topic,
     strip_examples_from_description,
 )
+from backend.stdio_adapter import editor_schema_from_metadata
 
 
 _CATALOG_CACHE_TTL_SECONDS = 120.0
@@ -125,6 +126,28 @@ def _topic_matches(problem_topics: list[str] | None, requested_topic: str) -> bo
 
 
 def serialize(problem: Problem) -> dict:
+    actual_mode = infer_execution_mode(
+        problem.execution_mode,
+        test_cases=problem.test_cases,
+        starter_code=problem.starter_code,
+        examples=problem.examples,
+    )
+    package_metadata = {
+        key: value
+        for key, value in (problem.package_metadata or {}).items()
+        if key != "package_root"
+    }
+    editor_schema = (
+        editor_schema_from_metadata(
+            package_metadata,
+            problem.description,
+            problem.examples,
+        )
+        if actual_mode == "stdio"
+        else []
+    )
+    editor_mode = "function" if actual_mode == "function" or editor_schema else "stdio"
+
     return {
         "id": problem.id,
         "slug": problem.slug,
@@ -136,32 +159,21 @@ def serialize(problem: Problem) -> dict:
         "examples": problem.examples,
         "starter_code": ensure_starter_code(
             problem.starter_code,
-            infer_execution_mode(
-                problem.execution_mode,
-                test_cases=problem.test_cases,
-                starter_code=problem.starter_code,
-                examples=problem.examples,
-            ),
+            actual_mode,
             problem.test_cases,
             problem.examples,
+            editor_schema=editor_schema,
         ),
         "source": problem.source,
         "external_id": problem.external_id,
         "external_url": problem.external_url,
-        "execution_mode": infer_execution_mode(
-            problem.execution_mode,
-            test_cases=problem.test_cases,
-            starter_code=problem.starter_code,
-            examples=problem.examples,
-        ),
+        "execution_mode": actual_mode,
+        "editor_execution_mode": editor_mode,
+        "editor_input_schema": editor_schema,
         "time_limit_ms": problem.time_limit_ms,
         "memory_limit_mb": problem.memory_limit_mb,
         "validation": problem.validation,
-        "package_metadata": {
-            key: value
-            for key, value in (problem.package_metadata or {}).items()
-            if key != "package_root"
-        },
+        "package_metadata": package_metadata,
     }
 
 
