@@ -9,6 +9,7 @@ from sqlalchemy import select
 from backend.database import SessionLocal
 from backend.models import Problem
 from backend.problem_catalog import canonicalize_topics, ensure_starter_code
+from backend.stdio_adapter import infer_editor_input_schema
 
 
 DATASET_NAME = "deepmind/code_contests"
@@ -207,6 +208,7 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
 
     tags = row.get("cf_tags") or []
     topics = canonicalize_topics(tags)
+    editor_input_schema = infer_editor_input_schema(description, samples)
 
     source_name = source_label.lower().replace("_", "-")
     package_metadata = {
@@ -222,6 +224,7 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         "test_case_count": len(test_cases),
         "sample_test_count": len(samples),
         "secret_test_count": len(test_cases) - len(samples),
+        "editor_input_schema": editor_input_schema,
     }
 
     return {
@@ -233,16 +236,22 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         "constraints": [],
         "examples": samples,
         "test_cases": test_cases,
-        "starter_code": ensure_starter_code({
-            "Python": (
-                "import sys\n\n"
-                "def solve():\n"
-                "    # Read from standard input and write the required answer.\n"
-                "    pass\n\n"
-                "if __name__ == '__main__':\n"
-                "    solve()\n"
-            )
-        }, "stdio"),
+        "starter_code": ensure_starter_code(
+            {
+                "Python": (
+                    "import sys\n\n"
+                    "def solve():\n"
+                    "    # Read from standard input and write the required answer.\n"
+                    "    pass\n\n"
+                    "if __name__ == '__main__':\n"
+                    "    solve()\n"
+                )
+            },
+            "stdio",
+            test_cases=test_cases,
+            examples=samples,
+            editor_schema=editor_input_schema,
+        ),
         "source": f"code-contests-{source_name}"[:40],
         "external_id": external_id,
         "external_url": cf_url,
