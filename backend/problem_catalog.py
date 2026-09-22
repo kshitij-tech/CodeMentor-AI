@@ -86,6 +86,38 @@ def _function_parameter_names(starter: Any) -> list[str]:
             return [name for name in names if name]
     return []
 
+def _example_parameter_names(examples: Any) -> list[str]:
+    """Extract parameter names from assignment-style example inputs."""
+    if not isinstance(examples, list):
+        return []
+    for example in examples:
+        if not isinstance(example, dict):
+            continue
+        value = example.get("input")
+        if not isinstance(value, str):
+            continue
+        names = re.findall(r"(?<![A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)\\s*=", value)
+        if names:
+            return list(dict.fromkeys(names))
+    return []
+
+
+def _is_generic_function_starter(language: str, source: Any) -> bool:
+    if not isinstance(source, str) or not source.strip():
+        return True
+    normalized = source.replace(" ", "").replace("\t", "")
+    signatures = {
+        "Python": ("defsolve(*args):", "defsolve(**kwargs):"),
+        "C++": ("intsolve(){", "longlongsolve(){"),
+        "Java": ("intsolve(){", "publicintsolve(){", "longsolve(){", "publiclongsolve(){"),
+        "JavaScript": ("functionsolve(...args){",),
+        "TypeScript": ("functionsolve(...args:any[]):any{",),
+        "Go": ("funcsolve(args...interface{})interface{}{",),
+        "Rust": ("fnsolve(args:&[String])->String{",),
+    }
+    return any(signature in normalized for signature in signatures.get(language, ()))
+
+
 
 def _argument_values(test_cases: Any, count: int) -> list[Any]:
     if not isinstance(test_cases, list):
@@ -627,6 +659,7 @@ def ensure_starter_code(
     starter_code: Any,
     execution_mode: str | None = None,
     test_cases: Any = None,
+    examples: Any = None,
 ) -> dict[str, str]:
     existing = starter_code if isinstance(starter_code, dict) else {}
     mode = "stdio" if str(execution_mode or "").strip().lower() == "stdio" else "function"
@@ -634,6 +667,8 @@ def ensure_starter_code(
 
     if mode != "stdio":
         names = _function_parameter_names(existing.get("Python"))
+        if not names or _is_generic_function_starter("Python", existing.get("Python")):
+            names = _example_parameter_names(examples)
         values = _argument_values(test_cases, len(names))
         generated = _generated_function_starters(names, values)
     else:
@@ -642,7 +677,11 @@ def ensure_starter_code(
     result: dict[str, str] = {}
     for language in SUPPORTED_LANGUAGES:
         value = existing.get(language)
-        if isinstance(value, str) and value.strip():
+        if (
+            isinstance(value, str)
+            and value.strip()
+            and not (mode != "stdio" and names and _is_generic_function_starter(language, value))
+        ):
             result[language] = value
         else:
             result[language] = generated[language]
@@ -669,6 +708,7 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
         problem.get("starter_code"),
         normalized["execution_mode"],
         problem.get("test_cases"),
+        problem.get("examples"),
     )
 
     external_id = problem.get("external_id")
