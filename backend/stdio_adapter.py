@@ -448,7 +448,7 @@ def _render_python_adapter(
         "__cm_result = solve(*__cm_parse_input())",
         "if isinstance(__cm_result, (list, tuple)):",
         "    if __cm_result and isinstance(__cm_result[0], (list, tuple)):",
-        "        print('\\\\n'.join(' '.join(map(str, row)) for row in __cm_result))",
+        "        print('\\n'.join(' '.join(map(str, row)) for row in __cm_result))",
         "    else:",
         "        print(' '.join(map(str, __cm_result)))",
         "else:",
