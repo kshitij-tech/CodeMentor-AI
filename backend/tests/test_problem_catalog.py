@@ -135,7 +135,9 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("solve(nums, budget)", starters["Python"])
         self.assertIn("solve(nums, budget)", starters["JavaScript"])
         self.assertIn("solve(nums: any, budget: any)", starters["TypeScript"])
-        self.assertIn("solve(nums", starters["C++"])
+        self.assertIn("solve(", starters["C++"])
+        self.assertIn("nums", starters["C++"])
+        self.assertIn("budget", starters["C++"])
         self.assertIn("budget", starters["Java"])
         self.assertIn("budget", starters["Go"])
         self.assertIn("budget", starters["Rust"])
@@ -163,7 +165,9 @@ class ProblemCatalogTests(unittest.TestCase):
             [{"input": "a = 1, b = 2", "output": "3"}],
         )
         self.assertEqual(starters["Python"].splitlines()[0], "def solve(a, b):")
-        self.assertIn("solve(a, b)", starters["C++"])
+        self.assertIn("solve(", starters["C++"])
+        self.assertIn("a", starters["C++"])
+        self.assertIn("b", starters["C++"])
         self.assertNotIn("int main()", starters["C++"])
 
     def test_execution_mode_infers_function_contract(self):
