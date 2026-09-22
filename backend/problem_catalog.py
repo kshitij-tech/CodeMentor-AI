@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import hashlib
 import re
 from collections import Counter, defaultdict
@@ -74,11 +75,11 @@ def _function_parameter_names(starter: Any) -> list[str]:
     if not isinstance(starter, str) or not starter.strip():
         return []
     try:
-        tree = __import__("ast").parse(starter)
+        tree = ast.parse(starter)
     except (SyntaxError, TypeError, ValueError):
         return []
-    for node in __import__("ast").walk(tree):
-        if isinstance(node, __import__("ast").FunctionDef) and node.name == "solve":
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "solve":
             names = [arg.arg for arg in node.args.posonlyargs]
             names.extend(arg.arg for arg in node.args.args)
             names.extend(arg.arg for arg in node.args.kwonlyargs)
@@ -625,15 +626,26 @@ def audit_problems(problems: Iterable[dict[str, Any]]) -> dict[str, Any]:
 def ensure_starter_code(
     starter_code: Any,
     execution_mode: str | None = None,
+    test_cases: Any = None,
 ) -> dict[str, str]:
     existing = starter_code if isinstance(starter_code, dict) else {}
     mode = "stdio" if str(execution_mode or "").strip().lower() == "stdio" else "function"
     defaults = STDIO_STARTERS if mode == "stdio" else FUNCTION_STARTERS
 
+    if mode != "stdio":
+        names = _function_parameter_names(existing.get("Python"))
+        values = _argument_values(test_cases, len(names))
+        generated = _generated_function_starters(names, values)
+    else:
+        generated = defaults
+
     result: dict[str, str] = {}
     for language in SUPPORTED_LANGUAGES:
         value = existing.get(language)
-        result[language] = value if isinstance(value, str) and value.strip() else defaults[language]
+        if isinstance(value, str) and value.strip():
+            result[language] = value
+        else:
+            result[language] = generated[language]
     return result
 
 
@@ -656,6 +668,7 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
     normalized["starter_code"] = ensure_starter_code(
         problem.get("starter_code"),
         normalized["execution_mode"],
+        problem.get("test_cases"),
     )
 
     external_id = problem.get("external_id")
