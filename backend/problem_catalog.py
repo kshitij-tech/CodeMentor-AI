@@ -22,50 +22,50 @@ SUPPORTED_LANGUAGES = (
 
 FUNCTION_STARTERS = {
     "Python": (
-        "def solve(*args):\\n"
-        "    # Implement the required solution.\\n"
-        "    pass\\n"
+        "def solve(*args):\n"
+        "    # Implement the required solution.\n"
+        "    pass\n"
     ),
     "C++": (
-        "#include <bits/stdc++.h>\\n"
-        "using namespace std;\\n\\n"
-        "int solve() {\\n"
-        "    // Implement the required solution.\\n"
-        "    return 0;\\n"
-        "}\\n"
+        "#include <bits/stdc++.h>\n"
+        "using namespace std;\n\n"
+        "int solve() {\n"
+        "    // Implement the required solution.\n"
+        "    return 0;\n"
+        "}\n"
     ),
     "Java": (
-        "class Solution {\\n"
-        "    public int solve() {\\n"
-        "        // Implement the required solution.\\n"
-        "        return 0;\\n"
-        "    }\\n"
-        "}\\n"
+        "class Solution {\n"
+        "    public int solve() {\n"
+        "        // Implement the required solution.\n"
+        "        return 0;\n"
+        "    }\n"
+        "}\n"
     ),
     "JavaScript": (
-        "function solve(...args) {\\n"
-        "    // Implement the required solution.\\n"
-        "    return null;\\n"
-        "}\\n"
+        "function solve(...args) {\n"
+        "    // Implement the required solution.\n"
+        "    return null;\n"
+        "}\n"
     ),
     "TypeScript": (
-        "function solve(...args: any[]): any {\\n"
-        "    // Implement the required solution.\\n"
-        "    return null;\\n"
-        "}\\n"
+        "function solve(...args: any[]): any {\n"
+        "    // Implement the required solution.\n"
+        "    return null;\n"
+        "}\n"
     ),
     "Go": (
-        "package main\\n\\n"
-        "func solve(args ...interface{}) interface{} {\\n"
-        "    // Implement the required solution.\\n"
-        "    return nil\\n"
-        "}\\n"
+        "package main\n\n"
+        "func solve(args ...interface{}) interface{} {\n"
+        "    // Implement the required solution.\n"
+        "    return nil\n"
+        "}\n"
     ),
     "Rust": (
-        "fn solve(args: &[String]) -> String {\\n"
-        "    // Implement the required solution.\\n"
-        "    String::new()\\n"
-        "}\\n"
+        "fn solve(args: &[String]) -> String {\n"
+        "    // Implement the required solution.\n"
+        "    String::new()\n"
+        "}\n"
     ),
 }
 
@@ -96,7 +96,7 @@ def _example_parameter_names(examples: Any) -> list[str]:
         value = example.get("input")
         if not isinstance(value, str):
             continue
-        names = re.findall(r"(?<![A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)\\s*=", value)
+        names = re.findall(r"(?<![A-Za-z0-9_])([A-Za-z_][A-Za-z0-9_]*)\s*=", value)
         if names:
             return list(dict.fromkeys(names))
     return []
@@ -219,13 +219,13 @@ def _generated_function_starters(
     )
 
     return {
-        "Python": f"def solve({', '.join(names)}):\\n    # Implement the required solution.\\n    pass\\n",
-        "C++": f"#include <bits/stdc++.h>\\nusing namespace std;\\n\\nlong long solve({cpp_params}) {{\\n    // Implement the required solution.\\n    return 0;\\n}}\\n",
-        "Java": f"class Solution {{\\n    public long solve({java_params}) {{\\n        // Implement the required solution.\\n        return 0;\\n    }}\\n}}\\n",
-        "JavaScript": f"function solve({js_params}) {{\\n    // Implement the required solution.\\n    return null;\\n}}\\n",
-        "TypeScript": f"function solve({', '.join(f'{name}: any' for name in names)}): any {{\\n    // Implement the required solution.\\n    return null;\\n}}\\n",
-        "Go": f"package main\\n\\nfunc solve({go_params}) int {{\\n    // Implement the required solution.\\n    return 0\\n}}\\n",
-        "Rust": f"fn solve({rust_params}) -> i64 {{\\n    // Implement the required solution.\\n    0\\n}}\\n",
+        "Python": f"def solve({', '.join(names)}):\n    # Implement the required solution.\n    pass\n",
+        "C++": f"#include <bits/stdc++.h>\nusing namespace std;\n\nlong long solve({cpp_params}) {{\n    // Implement the required solution.\n    return 0;\n}}\n",
+        "Java": f"class Solution {{\n    public long solve({java_params}) {{\n        // Implement the required solution.\n        return 0;\n    }}\n}}\n",
+        "JavaScript": f"function solve({js_params}) {{\n    // Implement the required solution.\n    return null;\n}}\n",
+        "TypeScript": f"function solve({', '.join(f'{name}: any' for name in names)}): any {{\n    // Implement the required solution.\n    return null;\n}}\n",
+        "Go": f"package main\n\nfunc solve({go_params}) int {{\n    // Implement the required solution.\n    return 0\n}}\n",
+        "Rust": f"fn solve({rust_params}) -> i64 {{\n    // Implement the required solution.\n    0\n}}\n",
     }
 
 STDIO_STARTERS = {
