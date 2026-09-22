@@ -465,17 +465,17 @@ function syncLanguageAvailability(){
 }
 function isGenericFunctionDraft(language,value){
   if(problem?.execution_mode==='stdio'||typeof value!=='string')return false;
-  const normalized=value.trim().replace(/\\r/g,'');
-  const patterns={
-    Python:/^def solve\\(\\*args\\):[\\s\\S]*?(?:^|\\n)\\s*pass\\s*$/m,
-    'C++':/solve\\(\\)\\s*\\{[\\s\\S]*?return 0;?\\s*\\}/m,
-    Java:/solve\\(\\)\\s*\\{[\\s\\S]*?return 0;?\\s*\\}/m,
-    JavaScript:/function solve\\(\\.\\.\\.args\\)[\\s\\S]*?return null;[\\s\\S]*?\\}/m,
-    TypeScript:/function solve\\(\\.\\.\\.args\\s*:[^)]*\\)[\\s\\S]*?return null;[\\s\\S]*?\\}/m,
-    Go:/func solve\\(args \\\.\\.\\.interface\\\\\\{\\\\\\}\\)[\\s\\S]*?return nil/m,
-    Rust:/fn solve\\(args: \\&\\[String\\]\\)[\\s\\S]*?String::new\\(\\)/m
+  const compact=value.trim().replace(/\s+/g,'');
+  const signatures={
+    Python:['defsolve(*args):','defsolve(**kwargs):'],
+    'C++':['intsolve(){','longlongsolve(){'],
+    Java:['intsolve(){','publicintsolve(){','longsolve(){','publiclongsolve(){'],
+    JavaScript:['functionsolve(...args){'],
+    TypeScript:['functionsolve(...args:any[]):any{'],
+    Go:['funcsolve(args...interface{})interface{}{'],
+    Rust:['fnsolve(args:&[String])->String{']
   };
-  return !!patterns[language]&&patterns[language].test(normalized);
+  return (signatures[language]||[]).some(signature=>compact.includes(signature));
 }
 function loadDraft(){
   if(!problem||!editor)return;
