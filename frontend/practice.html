@@ -98,17 +98,18 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
 
     <section class="min-w-0">
       <div class="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 mb-4">
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
-          <div class="text-xs font-bold uppercase tracking-wider text-slate-400 shrink-0">Execution Format</div>
-          <div id="execution-filters" class="flex flex-wrap gap-1.5">
-            <button data-execution-mode="" type="button" class="execution-btn px-3 py-2 rounded-lg text-[11px] font-semibold hover:bg-slate-100">All formats</button>
-            <button data-execution-mode="function" type="button" class="execution-btn px-3 py-2 rounded-lg text-[11px] font-semibold hover:bg-slate-100">Function-style</button>
-            <button data-execution-mode="stdio" type="button" class="execution-btn px-3 py-2 rounded-lg text-[11px] font-semibold hover:bg-slate-100">Standard Input / Output</button>
-          </div>
-        </div>
-        <div class="relative">
+        <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div class="relative flex-1 min-w-0">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[19px] text-slate-400">search</span>
           <input id="search" type="search" placeholder="Search problems by title..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-300 outline-none text-sm">
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <label for="execution-format" class="text-xs font-bold text-slate-500 whitespace-nowrap">Execution Format</label>
+          <select id="execution-format" class="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-300">
+            <option value="">All formats</option>
+            <option value="function">Function-style</option>
+            <option value="stdio">Standard Input / Output</option>
+          </select>
         </div>
       </div>
 
@@ -168,10 +169,8 @@ function renderDifficultyFilters(){
   document.querySelectorAll('[data-difficulty]').forEach(btn=>btn.addEventListener('click',()=>{difficulty=btn.dataset.difficulty;page=0;renderDifficultyFilters();loadProblems()}));
 }
 function renderExecutionFilters(){
-  document.querySelectorAll('[data-execution-mode]').forEach(btn=>{
-    const active=(btn.dataset.executionMode||'')===executionMode;
-    btn.classList.toggle('active',active);
-  });
+  const select=$('execution-format');
+  if(select)select.value=executionMode;
 }
 
 function renderTopicFilters(){
@@ -302,11 +301,10 @@ $('search').addEventListener('input',()=>{
   searchTimer=setTimeout(()=>loadProblems({reset:true}),250);
 });
 $('clear-topic').addEventListener('click',()=>{topic='';renderTopicFilters();loadProblems({reset:true})});
-document.querySelectorAll('[data-execution-mode]').forEach(btn=>btn.addEventListener('click',()=>{
-  executionMode=btn.dataset.executionMode||'';
-  renderExecutionFilters();
+$('execution-format').addEventListener('change',()=>{
+  executionMode=$('execution-format').value||'';
   loadProblems({reset:true});
-}));
+});
 $('reset-filters').addEventListener('click',()=>{
   topic='';difficulty='';executionMode='';search='';$('search').value='';
   renderDifficultyFilters();renderExecutionFilters();renderTopicFilters();loadProblems({reset:true});
