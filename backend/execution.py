@@ -691,21 +691,38 @@ def extract_error_location(message: str | None) -> tuple[int, int | None] | None
         return None
 
     patterns = [
-        r'<user_code>["\']?,\s*line\s+(\d+)',
-        r'<user_code>.*?line\s+(\d+)',
-        r'(?:Main\.java|solution\.[A-Za-z0-9]+):(?:(\d+):)?(\d+)',
-        r'line\s+(\d+)\b',
+        (
+            r'(?:Main\\.java|solution\\.[A-Za-z0-9]+)\\((\\d+),(\\d+)\\)',
+            True,
+        ),
+        (
+            r'(?:Main\\.java|solution\\.[A-Za-z0-9]+):(\\d+)(?::(\\d+))?',
+            True,
+        ),
+        (
+            r'<user_code>["\\']?,\\s*line\\s+(\\d+)',
+            False,
+        ),
+        (
+            r'<user_code>.*?line\\s+(\\d+)',
+            False,
+        ),
+        (
+            r'line\\s+(\\d+)\\b',
+            False,
+        ),
     ]
-    for pattern in patterns:
+
+    for pattern, has_column in patterns:
         match = re.search(pattern, message)
         if not match:
             continue
-        groups = match.groups()
-        if pattern.startswith(r'(?:Main'):
-            line = int(groups[0] or 1)
-            column = int(groups[1]) if groups[1] else None
+        if has_column:
+            line = int(match.group(1))
+            column = int(match.group(2)) if match.group(2) else None
             return line, column
-        return int(groups[-1]), None
+        return int(match.group(1)), None
+
     return None
 
 
