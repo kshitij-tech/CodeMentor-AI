@@ -134,9 +134,15 @@ def infer_editor_input_schema(
                 seen.add(name)
 
     schema: list[dict[str, Any]] = []
-    scalar = next((name for name, kind in candidates if kind == "int" and name in {"n", "m", "k", "q"}), None)
-    if scalar is None:
-        scalar = next((name for name, kind in candidates if kind == "int"), None)
+    scalar = next(
+        (
+            name
+            for name, kind in candidates
+            if kind == "int"
+            and name.lower() in {"n", "m", "k", "q", "size", "count", "length", "len"}
+        ),
+        None,
+    )
 
     for name, kind in candidates:
         if kind == "array":
@@ -152,13 +158,73 @@ def infer_editor_input_schema(
     return normalize_editor_input_schema(schema)
 
 
+def _schema_consumes_example(schema: list[dict[str, Any]], raw_input: str) -> bool:
+    tokens = str(raw_input or "").split()
+    if not tokens:
+        return False
+    values: dict[str, int | float | str] = {}
+    index = 0
+
+    for position, item in enumerate(schema):
+        kind = item["type"]
+        name = item["name"]
+
+        if kind == "raw_string":
+            return True
+        if kind in {"int", "float", "string"}:
+            if index >= len(tokens):
+                return False
+            token = tokens[index]
+            index += 1
+            try:
+                values[name] = (
+                    int(token)
+                    if kind == "int"
+                    else float(token)
+                    if kind == "float"
+                    else token
+                )
+            except ValueError:
+                return False
+            continue
+
+        length_from = item.get("length_from")
+        if not length_from:
+            if position == len(schema) - 1:
+                return index < len(tokens)
+            return False
+
+        raw_length = values.get(length_from)
+        if not isinstance(raw_length, int) or raw_length < 0:
+            return False
+        index += raw_length
+        if index > len(tokens):
+            return False
+
+    return index == len(tokens)
+
+
 def editor_schema_from_metadata(package_metadata: Any, description: Any, examples: Any) -> list[dict[str, Any]]:
     metadata = package_metadata if isinstance(package_metadata, dict) else {}
-    return infer_editor_input_schema(
-        description,
-        examples,
+    explicit = normalize_editor_input_schema(
         metadata.get("editor_input_schema") or metadata.get("input_schema"),
     )
+    if explicit:
+        return explicit
+
+    schema = infer_editor_input_schema(description, examples, None)
+    raw_examples = [
+        str(item.get("input") or "")
+        for item in (examples or [])
+        if isinstance(item, dict)
+        and item.get("input") is not None
+        and "=" not in str(item.get("input") or "")
+    ]
+    if schema and raw_examples:
+        if not all(_schema_consumes_example(schema, raw) for raw in raw_examples[:3]):
+            return [{"name": "input_data", "type": "raw_string"}]
+
+    return schema or [{"name": "input_data", "type": "raw_string"}]
 
 
 def _cpp_type(kind: str) -> str:
