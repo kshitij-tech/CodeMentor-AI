@@ -234,17 +234,21 @@ def _group_config(files: dict[str, bytes], input_path: str) -> dict[str, Any]:
 
     merged: dict[str, Any] = {}
     for group in ancestors:
-        config_path = f"{group}/testdata.yaml"
-        raw = files.get(config_path)
-        if raw is None:
-            continue
-        try:
-            config = yaml.safe_load(raw.decode("utf-8", errors="replace")) or {}
-        except yaml.YAMLError as exc:
-            raise ProblemPackageError(f"Invalid YAML in {config_path}: {exc}") from exc
-        if not isinstance(config, dict):
-            raise ProblemPackageError(f"{config_path} must contain a YAML mapping.")
-        merged.update(config)
+        # Both names occur in supported problem-package layouts:
+        # testdata.yaml is the generic group config, while test_group.yaml is
+        # used by packages carrying output-validator arguments.
+        for filename in ("testdata.yaml", "test_group.yaml"):
+            config_path = f"{group}/{filename}"
+            raw = files.get(config_path)
+            if raw is None:
+                continue
+            try:
+                config = yaml.safe_load(raw.decode("utf-8", errors="replace")) or {}
+            except yaml.YAMLError as exc:
+                raise ProblemPackageError(f"Invalid YAML in {config_path}: {exc}") from exc
+            if not isinstance(config, dict):
+                raise ProblemPackageError(f"{config_path} must contain a YAML mapping.")
+            merged.update(config)
 
     return merged
 
