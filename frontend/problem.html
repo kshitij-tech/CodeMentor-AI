@@ -417,6 +417,27 @@ function starterCode(language){
   const starter=(problem&&problem.starter_code)||{};
   return starter[language]||'';
 }
+
+function syncLanguageAvailability(){
+  const select=$('language');
+  if(!select||!problem)return;
+
+  const functionStyle=problem.execution_mode!=='stdio';
+  [...select.options].forEach(option=>{
+    option.disabled=functionStyle && option.value!=='Python';
+  });
+
+  if(functionStyle){
+    select.value='Python';
+    $('save-status').textContent='Python only for this problem';
+    select.title='This problem uses function-style execution. Non-Python runtimes currently support standard stdin/stdout problems.';
+  }else{
+    select.title='';
+    if(problem.starter_code?.[$('language').value]){
+      $('save-status').textContent='Starter';
+    }
+  }
+}
 function loadDraft(){
   if(!problem||!editor)return;
   const saved=localStorage.getItem(draftKey());
@@ -435,6 +456,7 @@ function renderProblem(){
   $('examples').innerHTML=(problem.examples||[]).map((e,i)=>'<div class="rounded-xl bg-slate-50 border border-slate-200 p-3"><div class="mono text-[9px] text-indigo-600 uppercase">Example '+(i+1)+'</div><div class="mt-2 text-[11px]"><div><b>Input:</b> <code>'+esc(e.input)+'</code></div><div class="mt-1"><b>Output:</b> <code>'+esc(e.output)+'</code></div></div></div>').join('');
   const constraints=problem.constraints||[];
   $('constraints').innerHTML=constraints.length?constraints.map(c=>'<li>'+esc(c)+'</li>').join(''):'<li>No constraints provided.</li>';
+  syncLanguageAvailability();
   $('loading-state').classList.add('hidden');
   $('problem-body').classList.remove('hidden');
 }
@@ -635,6 +657,7 @@ async function load(){
     }
 
     if(problem){
+      syncLanguageAvailability();
       loadDraft();
     }
     restoreResultsHeight();
@@ -648,9 +671,13 @@ document.addEventListener('click',e=>{if(!$('account-menu').contains(e.target)&&
 $('logout-btn').addEventListener('click',()=>{localStorage.removeItem(TOKEN_KEY);location.replace('auth.html')});
 $('language').addEventListener('change',()=>{
   if(!editor||!problem)return;
+  if(problem.execution_mode!=='stdio' && $('language').value!=='Python'){
+    $('language').value='Python';
+  }
   monaco.editor.setModelLanguage(editor.getModel(),LANG_IDS[$('language').value]);
   clearSyntaxMarkers();
   loadDraft();
+  syncLanguageAvailability();
   scheduleSyntaxValidation();
 });
 $('reset-btn').addEventListener('click',()=>{if(!problem||!editor)return;localStorage.removeItem(draftKey());editor.setValue(starterCode($('language').value));$('save-status').textContent='Starter'});
