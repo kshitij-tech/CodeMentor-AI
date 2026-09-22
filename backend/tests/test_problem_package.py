@@ -50,7 +50,7 @@ print(n * 2)
 
     def test_extracts_dot_ans_files(self):
         files = {
-            "problem.yaml": b"name: Answer Mapping Test\ndifficulty: Easy\n",
+            "problem.yaml": b"name: Answer Mapping Test\ndifficulty: Easy\nkeywords: [strings]\n",
             "problem.md": b"# Answer Mapping Test\n",
             "data/sample/0.in": b"hello\n",
             "data/sample/0.ans": b"world\n",
@@ -61,7 +61,7 @@ print(n * 2)
 
     def test_test_group_validator_flags_are_imported(self):
         files = {
-            "problem.yaml": b"name: Validator Flags Test\ndifficulty: Easy\n",
+            "problem.yaml": b"name: Validator Flags Test\ndifficulty: Easy\nkeywords: [strings]\n",
             "problem.md": b"# Validator Flags Test\n",
             "data/sample/test_group.yaml": b"output_validator_args: [case_sensitive]\n",
             "data/sample/0.in": b"hello\n",
