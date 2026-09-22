@@ -708,7 +708,7 @@ def extract_error_location(message: str | None) -> tuple[int, int | None] | None
             True,
         ),
         (
-            r'<user_code>["\\']?,\\s*line\\s+(\\d+)',
+            r"<user_code>[^,]*,\\s*line\\s+(\\d+)",
             False,
         ),
         (
