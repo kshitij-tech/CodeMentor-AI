@@ -10,6 +10,7 @@ class ProblemPackageTests(unittest.TestCase):
             "problem.yaml": b"""problem_format_version: 2025-09
 name: Hello Package
 uuid: test-uuid
+difficulty: Easy
 source: CodeMentor Fixture
 keywords: [strings, implementation]
 limits:
