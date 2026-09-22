@@ -109,7 +109,10 @@ class StdioAdapterTests(unittest.TestCase):
         for language, source in sources.items():
             with self.subTest(language=language):
                 adapted = adapt_stdio_source(source, language, schema)
-                self.assertRegex(adapted, r"\bmain\s*\(")
+                if language in {"JavaScript", "TypeScript"}:
+                    self.assertIn("process.stdout.write", adapted)
+                else:
+                    self.assertRegex(adapted, r"\bmain\s*\(")
                 self.assertIn("solve(", adapted)
 
     def test_go_user_imports_are_preserved(self):
