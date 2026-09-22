@@ -82,6 +82,14 @@ class ExecutionSandboxTests(unittest.TestCase):
             extract_error_location("Main.java:4:13: error: ';' expected"),
             (4, 13),
         )
+        self.assertEqual(
+            extract_error_location("Main.java:4: error: ';' expected"),
+            (4, None),
+        )
+        self.assertEqual(
+            extract_error_location("solution.ts(8,15): error TS1005: ';' expected."),
+            (8, 15),
+        )
 
     def test_python_traceback_location_extracts_line(self):
         self.assertEqual(
