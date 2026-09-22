@@ -52,6 +52,7 @@ def _build_catalog_cache(db: Session) -> None:
             Problem.external_id,
             Problem.external_url,
             Problem.description,
+            Problem.execution_mode,
         )
         .filter(Problem.difficulty.isnot(None))
         .order_by(Problem.id.asc())
@@ -79,6 +80,7 @@ def _build_catalog_cache(db: Session) -> None:
             "source": row.source,
             "external_id": row.external_id,
             "external_url": row.external_url,
+            "execution_mode": row.execution_mode,
         }
         clean_rows.append(item)
         difficulty_counts[normalized_difficulty] += 1
@@ -164,6 +166,7 @@ def list_problems(
     topic: str | None = Query(default=None),
     difficulty: str | None = Query(default=None),
     source: str | None = Query(default=None),
+    execution_mode: str | None = Query(default=None),
     search: str | None = Query(default=None, min_length=1, max_length=120),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
@@ -184,6 +187,13 @@ def list_problems(
         candidates = [
             row for row in candidates
             if str(row["source"] or "").strip().lower() == requested_source
+        ]
+
+    if execution_mode:
+        requested_mode = execution_mode.strip().lower()
+        candidates = [
+            row for row in candidates
+            if str(row.get("execution_mode") or "function").strip().lower() == requested_mode
         ]
 
     if search:
