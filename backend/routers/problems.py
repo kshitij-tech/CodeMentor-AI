@@ -136,6 +136,7 @@ def serialize(problem: Problem) -> dict:
         "starter_code": ensure_starter_code(
             problem.starter_code,
             problem.execution_mode,
+            problem.test_cases,
         ),
         "source": problem.source,
         "external_id": problem.external_id,
