@@ -454,7 +454,7 @@ def run_language_stdio_tests(
 
     outcomes: list[TestOutcome] = []
     extension = LANGUAGE_EXTENSIONS[language]
-    file_name = "solution"+extension
+    file_name = "Main.java" if language == "Java" else "solution"+extension
 
     with tempfile.TemporaryDirectory(prefix="codementor-lang-") as workdir:
         source_path = os.path.join(workdir, file_name)
