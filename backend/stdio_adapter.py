@@ -297,10 +297,15 @@ def editor_schema_from_metadata(
         and "=" not in str(item.get("input") or "")
     ]
 
-    # If the statement yielded a concrete schema, keep it for the editor.
-    # Some imported examples contain formatting/header text that cannot be
-    # validated by the simple token parser; that must not collapse the UX back
-    # to solve(string input_data).
+    # Reject inferred schemas that cannot actually consume the sample input.
+    # This prevents vague statements such as "the array nums ..." from turning
+    # into a broken callable signature. Explicit schemas remain authoritative.
+    if schema and raw_examples and not any(
+        _schema_consumes_example(schema, raw)
+        for raw in raw_examples
+    ):
+        return [{"name": "input_data", "type": "raw_string"}]
+
     return schema or [{"name": "input_data", "type": "raw_string"}]
 
 
