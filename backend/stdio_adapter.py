@@ -455,7 +455,7 @@ def _python_reader(item: dict[str, Any]) -> str:
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         parse = {
-            "int_array": "int64",
+            "int_array": "int",
             "float_array": "float",
             "string_array": "str",
         }[kind]
