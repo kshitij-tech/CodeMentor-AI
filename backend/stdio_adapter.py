@@ -311,7 +311,11 @@ def editor_schema_from_metadata(
     # Reject inferred schemas that cannot actually consume the sample input.
     # This prevents vague statements such as "the array nums ..." from turning
     # into a broken callable signature. Explicit schemas remain authoritative.
-    if schema and raw_examples and not any(
+    has_counted_array = any(
+        item.get("type", "").endswith("_array") and item.get("length_from")
+        for item in schema
+    )
+    if schema and raw_examples and not has_counted_array and not any(
         _schema_consumes_example(schema, raw)
         for raw in raw_examples
     ):
