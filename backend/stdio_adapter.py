@@ -277,10 +277,18 @@ def editor_schema_from_metadata(
     explicit = normalize_editor_input_schema(
         metadata.get("editor_input_schema") or metadata.get("input_schema"),
     )
-    if explicit:
+    if explicit and not (
+        len(explicit) == 1
+        and explicit[0].get("name") == "input_data"
+        and explicit[0].get("type") == "raw_string"
+    ):
         return explicit
 
-    schema = infer_editor_input_schema(description, examples)
+    schema = infer_editor_input_schema(
+        description,
+        examples,
+        explicit_schema=explicit,
+    )
     raw_examples = [
         str(item.get("input") or "")
         for item in (examples or [])
@@ -756,7 +764,7 @@ def _go_reader(item: dict[str, Any]) -> str:
     name, kind = item["name"], item["type"]
     if kind == "int":
         return (
-            f"    var {name} int64; "
+            f"    var {name} int; 
             f"if _, err := fmt.Fscan(reader, &{name}); err != nil {{ panic(err) }}"
         )
     if kind == "float":
@@ -779,7 +787,7 @@ def _go_reader(item: dict[str, Any]) -> str:
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         typ = {
-            "int_array": "int64",
+            "int_array": "int",
             "float_array": "float64",
             "string_array": "string",
         }[kind]
@@ -810,7 +818,7 @@ def _render_rust_adapter(
         name, kind = item["name"], item["type"]
         if kind == "int":
             lines.append(
-                f"    let {name}: i64 = __cm_it.next().unwrap().parse().unwrap();"
+                f"    let {name}: i32 = __cm_it.next().unwrap().parse().unwrap();"
             )
         elif kind == "float":
             lines.append(
@@ -826,7 +834,7 @@ def _render_rust_adapter(
             )
         elif kind.endswith("_array") and item.get("length_from"):
             base = {
-                "int_array": "i64",
+                "int_array": "i32",
                 "float_array": "f64",
                 "string_array": "String",
             }[kind]
