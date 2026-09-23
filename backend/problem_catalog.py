@@ -870,7 +870,7 @@ def ensure_starter_code(
             names = _example_parameter_names(examples)
         if not names:
             schema_for_names = normalize_editor_input_schema(editor_schema)
-            names = [item["name"] for item in schema_for_names if item["name"] != "input_data"]
+            names = [item["name"] for item in schema_for_names if item["name"]]
         names = _safe_function_parameter_names(names)
         values = _argument_values(test_cases, len(names))
         generated = _generated_function_starters(names, values)
