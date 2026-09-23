@@ -1061,31 +1061,12 @@ func main() {{
 """
         )
     if language == "Rust":
-        return source.rstrip() + "\n\n" + f"""
-fn main() {{
-    let __cm_result = solve({call_args});
-    println!("{}", __cm_result);
-}
-"""
-ace("\\n", "\\\\n").replace("\\r", "\\\\r").replace("\\t", "\\\\t"))
-}
-fn __cm_json_vec<T: std::fmt::Display>(value: &Vec<T>) -> String {
-    let mut out = String::from("[");
-    for (i, item) in value.iter().enumerate() {
-        if i > 0 { out.push(','); }
-        out.push_str(&item.to_string());
-    }
-    out.push(']');
-    out
-}
-"""
-    if language == "Rust":
         return source.rstrip() + f"""
 
 fn main() {{
     let __cm_result = solve({call_args});
-    println!("{{:?}}", __cm_result);
-}}
+    println!("{:?}", __cm_result);
+}
 """
     raise CodeRejectedError(f"Unsupported language runtime: {language}.")
 
@@ -1161,7 +1142,7 @@ def run_language_function_tests(
             )
             continue
 
-        if raw.status != "Passed":
+        if raw.status in {"Compile Error", "Runtime Error", "Time Limit Exceeded", "Output Limit Exceeded", "Judge Error", "Rejected"}:
             outcomes.append(
                 TestOutcome(
                     index=index,
