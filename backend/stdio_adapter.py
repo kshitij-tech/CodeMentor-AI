@@ -147,7 +147,7 @@ def infer_editor_input_schema(
         ),
         (
             "counted_array",
-            r"(?i)\b(n|m|k|q|size|count|length|len)\s+integers?\s*[:\-]?\s*"
+            r"(?i)\b(n|m|k|q|size|count|length|len)\s+integers?\b\s*[:\-]?\s*"
             r"(?:named\s+)?([A-Za-z_][A-Za-z0-9_]*)(?:_\d+)?",
         ),
         (
