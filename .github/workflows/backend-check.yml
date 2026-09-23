@@ -19,3 +19,11 @@ jobs:
         run: python -m compileall -q backend
       - name: Run backend tests
         run: python -m unittest discover -s backend/tests -p "test_*.py"
+
+      - name: Build execution image
+        run: docker build -t codementor-multi-runtime:ci -f docker/multi-runtime/Dockerfile docker/multi-runtime
+
+      - name: Smoke test execution runtimes
+        run: |
+          docker run --rm --network none codementor-multi-runtime:ci             bash -lc 'python --version && g++ --version && javac -version && node --version && tsc --version && go version && rustc --version'
+          printf '21\n' | docker run --rm --network none codementor-multi-runtime:ci             python -c 'import sys; print(int(sys.stdin.read()) * 2)'
