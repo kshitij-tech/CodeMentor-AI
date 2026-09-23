@@ -43,6 +43,31 @@ class StdioAdapterTests(unittest.TestCase):
         self.assertEqual(schema[1]["type"], "int_array")
         self.assertEqual(schema[1]["length_from"], "n")
 
+    def test_counted_array_statement_is_inferred_as_typed_parameter(self):
+        description = (
+            "Input:\n"
+            "The first line contains an integer n.\n"
+            "The second line contains n integers nums.\n"
+            "Output:\nPrint the answer."
+        )
+        examples = [{"input": "5\n10 20 30 40 50\n", "output": "150\n"}]
+        schema = editor_schema_from_metadata(
+            {"editor_input_schema": [{"name": "input_data", "type": "raw_string"}]},
+            description,
+            examples,
+        )
+        self.assertEqual(
+            schema,
+            [
+                {"name": "n", "type": "int"},
+                {"name": "nums", "type": "int_array", "length_from": "n"},
+            ],
+        )
+
+        starters = generate_stdio_editor_starters(schema)
+        self.assertIn("solve(int n, vector<int> nums)", starters["C++"])
+        self.assertNotIn("solve(string input_data)", starters["C++"])
+
     def test_unsafe_inferred_schema_falls_back_to_raw_input(self):
         description = (
             "Input:\n"
