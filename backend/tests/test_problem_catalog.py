@@ -9,6 +9,7 @@ from backend.problem_catalog import (
     quality_flags,
     strip_examples_from_description,
     ensure_starter_code,
+    ensure_user_io_starter_code,
     SUPPORTED_LANGUAGES,
 )
 
@@ -103,6 +104,16 @@ class ProblemCatalogTests(unittest.TestCase):
             "You are given an equation with question marks. Determine whether "
             "the question marks can be replaced to reach the target.",
         )
+    def test_user_io_starters_are_complete_programs(self):
+        starters = ensure_user_io_starter_code()
+        self.assertIn("input_data = sys.stdin.read()", starters["Python"])
+        self.assertIn("int main()", starters["C++"])
+        self.assertIn("public static void main", starters["Java"])
+        self.assertIn("readFileSync(0", starters["JavaScript"])
+        self.assertIn("readFileSync(0", starters["TypeScript"])
+        self.assertIn("io.ReadAll(os.Stdin)", starters["Go"])
+        self.assertIn("read_to_string", starters["Rust"])
+
     def test_all_supported_languages_receive_starters_for_stdio(self):
         starters = ensure_starter_code({"Python": "def solve():\n    pass\n"}, "stdio")
         self.assertEqual(set(starters), set(SUPPORTED_LANGUAGES))
