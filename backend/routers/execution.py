@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Literal
 
@@ -18,10 +19,7 @@ from backend.execution import (
     run_python_tests,
     syntax_diagnostic,
 )
-from backend.stdio_adapter import (
-    adapt_stdio_source,
-    editor_schema_from_metadata,
-)
+from backend.stdio_adapter import editor_schema_from_metadata
 
 
 router = APIRouter(prefix="/execution", tags=["Execution"])
@@ -69,38 +67,40 @@ def execute_code(
     if problem is None:
         raise HTTPException(status_code=404, detail="Problem not found.")
 
-    from backend.problem_catalog import infer_execution_mode, function_editor_schema_from_problem
+    # Every problem is now judged as a normal stdin/stdout program.
+    # Legacy callable test cases are converted to a single JSON input document,
+    # so the user's code is always responsible for parsing stdin itself.
+    cases = []
+    for original_case in (problem.test_cases or []):
+        case = dict(original_case)
+        if "args" in case and "input" not in case:
+            case["input"] = json.dumps(
+                case.get("args", []),
+                ensure_ascii=True,
+                separators=(",", ":"),
+            )
+        if "expected" in case and "expected_output" not in case:
+            case["expected_output"] = json.dumps(
+                case.get("expected"),
+                ensure_ascii=True,
+                separators=(",", ":"),
+            )
+        cases.append(case)
 
-    actual_mode = infer_execution_mode(
-        problem.execution_mode,
-        test_cases=problem.test_cases,
-        starter_code=problem.starter_code,
-        examples=problem.examples,
-    )
+    if request.mode == "run":
+        sample_cases = [
+            case for case in cases if case.get("visibility") == "sample"
+        ]
+        cases = sample_cases or cases
 
-    time_limit_seconds = min(
-        10.0,
-        max(0.1, float(problem.time_limit_ms or 2000) / 1000),
-    )
-    memory_limit_mb = (
-        min(1024, max(64, int(problem.memory_limit_mb)))
-        if problem.memory_limit_mb
-        else None
-    )
-
-    if actual_mode == "stdio":
-        metadata = problem.package_metadata or {}
-        cases = problem.test_cases or []
-
-        # Do not rely only on the historical judge_supported import flag.
-        # Standard .in/.ans test cases can be judged by the default validator
-        # even when older package metadata marked the record unsupported.
+    try:
+        package_metadata = problem.package_metadata or {}
         uses_custom_validator = any(
             bool(case.get("validator_name"))
             for case in cases
         )
-        type_values = set(str(item).lower() for item in (metadata.get("type") or []))
-        validation_text = str(metadata.get("validation") or "").lower()
+        type_values = set(str(item).lower() for item in (package_metadata.get("type") or []))
+        validation_text = str(package_metadata.get("validation") or "").lower()
         unsupported_format = bool(
             {"interactive", "multi-pass", "submit-answer", "score"} & type_values
             or any(
@@ -121,7 +121,10 @@ def execute_code(
                 "results": [],
             }
 
-        if unsupported_format or (uses_custom_validator and not metadata.get("judge_supported", False)):
+        if unsupported_format or (
+            uses_custom_validator
+            and not package_metadata.get("judge_supported", False)
+        ):
             return {
                 "status": "Unsupported Problem Format",
                 "summary": (
@@ -133,123 +136,61 @@ def execute_code(
                 "results": [],
             }
 
-        if request.mode == "run":
-            sample_cases = [
-                case for case in cases if case.get("visibility") == "sample"
-            ]
-            cases = sample_cases or cases
-
-        try:
-            package_metadata = problem.package_metadata or {}
-            editor_schema = editor_schema_from_metadata(
-                package_metadata,
-                problem.description,
-                problem.examples,
+        if request.language == "Python":
+            outcomes = run_python_stdio_tests(
+                request.code,
+                cases,
+                time_limit_seconds=time_limit_seconds,
+                memory_limit_mb=memory_limit_mb,
+                package_root=package_metadata.get("package_root"),
+                validation_time_seconds=max(
+                    0.1,
+                    float(package_metadata.get("validation_time_ms", 60000)) / 1000,
+                ),
+                validation_output_bytes=max(
+                    1024,
+                    int(package_metadata.get("validation_output_bytes", 8 * 1024 * 1024)),
+                ),
             )
-            execution_source = adapt_stdio_source(
+        else:
+            outcomes = run_language_stdio_tests(
                 request.code,
                 request.language,
-                editor_schema,
-            )
-            if request.language == "Python":
-                outcomes = run_python_stdio_tests(
-                    execution_source,
-                    cases,
-                    time_limit_seconds=time_limit_seconds,
-                    memory_limit_mb=memory_limit_mb,
-                    package_root=package_metadata.get("package_root"),
-                    validation_time_seconds=max(
-                        0.1,
-                        float(package_metadata.get("validation_time_ms", 60000)) / 1000,
-                    ),
-                    validation_output_bytes=max(
-                        1024,
-                        int(package_metadata.get("validation_output_bytes", 8 * 1024 * 1024)),
-                    ),
-                )
-            else:
-                outcomes = run_language_stdio_tests(
-                    execution_source,
-                    request.language,
-                    cases,
-                    time_limit_seconds=time_limit_seconds,
-                    memory_limit_mb=memory_limit_mb,
-                )
-        except ValueError as exc:
-            return {
-                "status": "Rejected",
-                "summary": str(exc),
-                "error_line": None,
-                "error_column": None,
-                "results": [],
-            }
-        except FileNotFoundError:
-            return {
-                "status": "Runtime Unavailable",
-                "summary": (
-                    f"The {request.language} runtime is not installed or configured "
-                    "on the execution host."
-                ),
-                "error_line": None,
-                "error_column": None,
-                "results": [],
-            }
-        except CodeRejectedError as exc:
-            return {
-                "status": "Rejected",
-                "summary": str(exc),
-                "error_line": extract_error_line(str(exc)),
-                "error_column": (
-                    extract_error_location(str(exc))[1]
-                    if extract_error_location(str(exc))
-                    else None
-                ),
-                "results": [],
-            }
-    else:
-        cases = problem.test_cases or []
-        if request.mode == "run":
-            sample_cases = [
-                case for case in cases if case.get("visibility") == "sample"
-            ]
-            cases = sample_cases or cases
-        try:
-            function_schema = function_editor_schema_from_problem(
-                problem.starter_code,
                 cases,
-                problem.examples,
-                problem.description,
-                explicit_schema=(problem.package_metadata or {}).get("editor_input_schema"),
+                time_limit_seconds=time_limit_seconds,
+                memory_limit_mb=memory_limit_mb,
             )
-            parameter_count = len(function_schema)
-            if request.language == "Python":
-                outcomes = run_python_tests(
-                    request.code,
-                    cases,
-                    time_limit_seconds=time_limit_seconds,
-                    memory_limit_mb=memory_limit_mb,
-                )
-            else:
-                outcomes = run_language_function_tests(
-                    request.code,
-                    request.language,
-                    cases,
-                    parameter_count=parameter_count,
-                    time_limit_seconds=time_limit_seconds,
-                    memory_limit_mb=memory_limit_mb,
-                )
-        except CodeRejectedError as exc:
-            return {
-                "status": "Rejected",
-                "summary": str(exc),
-                "error_line": extract_error_line(str(exc)),
-                "error_column": (
-                    extract_error_location(str(exc))[1]
-                    if extract_error_location(str(exc))
-                    else None
-                ),
-                "results": [],
-            }
+    except ValueError as exc:
+        return {
+            "status": "Rejected",
+            "summary": str(exc),
+            "error_line": None,
+            "error_column": None,
+            "results": [],
+        }
+    except FileNotFoundError:
+        return {
+            "status": "Runtime Unavailable",
+            "summary": (
+                f"The {request.language} runtime is not installed or configured "
+                "on the execution host."
+            ),
+            "error_line": None,
+            "error_column": None,
+            "results": [],
+        }
+    except CodeRejectedError as exc:
+        return {
+            "status": "Rejected",
+            "summary": str(exc),
+            "error_line": extract_error_line(str(exc)),
+            "error_column": (
+                extract_error_location(str(exc))[1]
+                if extract_error_location(str(exc))
+                else None
+            ),
+            "results": [],
+        }
 
     passed = sum(outcome.passed for outcome in outcomes)
     total = len(outcomes)
