@@ -449,13 +449,12 @@ function syncLanguageAvailability(){
 
   const functionStyle=problem.execution_mode!=='stdio';
   [...select.options].forEach(option=>{
-    option.disabled=functionStyle && option.value!=='Python';
+    option.disabled=false;
   });
 
   if(functionStyle){
-    select.value='Python';
-    $('save-status').textContent='Python only for this problem';
-    select.title='This problem uses function-style execution. Non-Python runtimes currently support standard stdin/stdout problems.';
+    $('save-status').textContent='Callable function';
+    select.title='Define solve(...) with the parameters shown in the starter. CodeMentor supplies the test inputs and entry point.';
   }else{
     select.title='';
     if(problem.starter_code?.[$('language').value]){
@@ -731,9 +730,6 @@ document.addEventListener('click',e=>{if(!$('account-menu').contains(e.target)&&
 $('logout-btn').addEventListener('click',()=>{localStorage.removeItem(TOKEN_KEY);location.replace('auth.html')});
 $('language').addEventListener('change',()=>{
   if(!editor||!problem)return;
-  if(problem.execution_mode!=='stdio' && $('language').value!=='Python'){
-    $('language').value='Python';
-  }
   monaco.editor.setModelLanguage(editor.getModel(),LANG_IDS[$('language').value]);
   clearSyntaxMarkers();
   loadDraft();
