@@ -4,6 +4,7 @@ import ast
 import hashlib
 import re
 from collections import Counter, defaultdict
+from keyword import iskeyword
 from typing import Any, Iterable
 
 from backend.stdio_adapter import (
@@ -77,14 +78,80 @@ FUNCTION_STARTERS = {
 }
 
 
+_UNIVERSAL_PARAMETER_KEYWORDS = {
+    # Python
+    "and", "as", "assert", "async", "await", "break", "case", "class",
+    "continue", "def", "del", "elif", "else", "except", "False", "finally",
+    "for", "from", "global", "if", "import", "in", "is", "lambda", "match",
+    "None", "nonlocal", "not", "or", "pass", "raise", "return", "True", "try",
+    "type", "while", "with", "yield",
+    # C/C++/Java/JavaScript/TypeScript/Go/Rust common reserved words.
+    "alignas", "alignof", "asm", "auto", "bool", "case", "catch", "char",
+    "const", "constexpr", "consteval", "constinit", "const_cast", "default",
+    "delete", "do", "double", "dynamic_cast", "enum", "explicit", "export",
+    "extern", "false", "final", "float", "friend", "goto", "inline", "int",
+    "interface", "long", "namespace", "new", "noexcept", "nullptr", "operator",
+    "package", "private", "protected", "public", "register", "reinterpret_cast",
+    "requires", "short", "signed", "sizeof", "static", "static_assert",
+    "static_cast", "struct", "switch", "template", "this", "thread_local",
+    "throw", "true", "try", "typedef", "typename", "union", "unsigned",
+    "using", "virtual", "void", "volatile", "wchar_t", "abstract", "boolean",
+    "byte", "extends", "final", "implements", "instanceof", "native", "strictfp",
+    "super", "synchronized", "throws", "transient", "var", "volatile",
+    "package", "function", "let", "of", "static", "switch", "typeof", "var",
+    "with", "yield", "delete", "debugger", "constructor", "module", "select",
+    "chan", "defer", "fallthrough", "go", "map", "range", "struct", "func",
+    "crate", "dyn", "impl", "loop", "mod", "move", "mut", "pub", "ref", "self",
+    "Self", "trait", "unsafe", "use", "where", "extern", "async", "await",
+}
+
+def _safe_function_parameter_names(names: Iterable[Any]) -> list[str]:
+    """Return deterministic parameter names valid in every supported editor language."""
+    result: list[str] = []
+    used: set[str] = set()
+
+    for index, raw in enumerate(names, start=1):
+        original = str(raw or "").strip()
+        name = re.sub(r"[^A-Za-z0-9_]", "_", original)
+        if not name or not re.match(r"[A-Za-z_]", name):
+            name = f"arg{index}"
+
+        if iskeyword(name) or name in _UNIVERSAL_PARAMETER_KEYWORDS:
+            name = f"{name}_"
+
+        if not name or name in used or iskeyword(name) or name in _UNIVERSAL_PARAMETER_KEYWORDS:
+            base = f"arg{index}"
+            name = base
+            suffix = 2
+            while name in used or iskeyword(name) or name in _UNIVERSAL_PARAMETER_KEYWORDS:
+                name = f"{base}_{suffix}"
+                suffix += 1
+
+        used.add(name)
+        result.append(name)
+
+    return result
+
+
 def _function_parameter_names(starter: Any) -> list[str]:
-    """Extract named parameters from an existing Python solve() starter."""
+    """Extract solve(...) parameter names, including from syntactically invalid legacy starters."""
     if not isinstance(starter, str) or not starter.strip():
         return []
+
     try:
         tree = ast.parse(starter)
     except (SyntaxError, TypeError, ValueError):
-        return []
+        match = re.search(r"(?m)\bdef\s+solve\s*\(([^)]*)\)", starter)
+        if not match:
+            return []
+
+        names: list[str] = []
+        for parameter in match.group(1).split(","):
+            token = parameter.strip().lstrip("*").split(":", 1)[0].split("=", 1)[0].strip()
+            if re.fullmatch(r"[A-Za-z_]\w*", token):
+                names.append(token)
+        return names
+
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "solve":
             names = [arg.arg for arg in node.args.posonlyargs]
@@ -185,6 +252,10 @@ def function_editor_schema_from_problem(
         )
         names = [item["name"] for item in inferred if item["name"] != "input_data"]
 
+    if not names and explicit:
+        names = [item["name"] for item in explicit if item["name"]]
+    names = _safe_function_parameter_names(names)
+
     values = _argument_values(test_cases, len(names))
     schema: list[dict[str, Any]] = []
     for name, value in zip(names, values):
@@ -229,13 +300,13 @@ def _inferred_go_type(value: Any) -> str:
     if isinstance(value, bool):
         return "bool"
     if isinstance(value, int):
-        return "int"
+        return "int64"
     if isinstance(value, float):
         return "float64"
     if isinstance(value, str):
         return "string"
     if isinstance(value, list):
-        inner = _inferred_go_type(value[0]) if value else "int"
+        inner = _inferred_go_type(value[0]) if value else "int64"
         return f"[]{inner}"
     return "any"
 
@@ -800,6 +871,7 @@ def ensure_starter_code(
         if not names:
             schema_for_names = normalize_editor_input_schema(editor_schema)
             names = [item["name"] for item in schema_for_names if item["name"] != "input_data"]
+        names = _safe_function_parameter_names(names)
         values = _argument_values(test_cases, len(names))
         generated = _generated_function_starters(names, values)
         # Rebuild every function starter from the canonical problem contract so
