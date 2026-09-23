@@ -1020,21 +1020,16 @@ def _build_function_driver_source(
         raise CodeRejectedError(f"Unsupported language runtime: {language}.")
 
     if language == "C++":
-        return source.rstrip() + "
-
-" + _CXX_JSON_HELPER + f"""
+        return source.rstrip() + "\n\n" + _CXX_JSON_HELPER + f"""
 int main() {{
     auto __cm_result = solve({call_args});
     __cm_json(std::cout, __cm_result);
-    std::cout << '\n';
+    std::cout << '\\n';
     return 0;
 }}
 """
     if language == "Java":
-        return source.rstrip() + "
-
-public class Main {
-" + _JAVA_JSON_HELPER + f"""
+        return source.rstrip() + "\n\npublic class Main {\n" + _JAVA_JSON_HELPER + f"""
     public static void main(String[] args) {{
         Object __cmResult = new Solution().solve({call_args});
         System.out.println(__cmJson(__cmResult));
@@ -1043,15 +1038,18 @@ public class Main {
 """
     if language in {"JavaScript", "TypeScript"}:
         return source.rstrip() + f"""
+
 const __cmResult = solve({call_args});
 const __cmJson = JSON.stringify(__cmResult === undefined ? null : __cmResult);
-process.stdout.write((__cmJson === undefined ? 'null' : __cmJson) + '\n');
+process.stdout.write((__cmJson === undefined ? 'null' : __cmJson) + '\\n');
 """
     if language == "Go":
-        return source.rstrip() + '
+        body = re.sub(r"(?m)^\\s*package\\s+main\\s*\\n?", "", source, count=1)
+        return (
+            'package main\\n\\nimport "encoding/json"\\n\\n'
+            + body.strip()
+            + f"""
 
-import "encoding/json"
-' + f"""
 func main() {{
     __cmResult := solve({call_args})
     __cmJSON, err := json.Marshal(__cmResult)
@@ -1061,8 +1059,10 @@ func main() {{
     fmt.Println(string(__cmJSON))
 }}
 """
+        )
     if language == "Rust":
         return source.rstrip() + f"""
+
 fn main() {{
     let __cm_result = solve({call_args});
     println!("{{:?}}", __cm_result);
