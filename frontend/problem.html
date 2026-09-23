@@ -480,7 +480,7 @@ function isGenericFunctionDraft(language,value){
 function isStdioBoilerplateDraft(language,value){
   if(problem?.editor_execution_mode!=='function'||typeof value!=='string')return false;
   const compact=value.trim().replace(/\s+/g,'');
-  if(/solve\\(stringinput_data\\)/.test(compact)||/solvestringinput_data/.test(compact)) return true;
+  if(/solve\(stringinput_data\)/.test(compact)||/solvestringinput_data/.test(compact)) return true;
   const signatures={
     Python:['importsys','defsolve():','if__name__==\'__main__\':solve()'],
     'C++':['intmain(){','return0;}'],
