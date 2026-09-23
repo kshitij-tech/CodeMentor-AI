@@ -10,7 +10,10 @@ from backend.execution import (
     extract_error_location,
     _language_commands,
     LANGUAGE_EXTENSIONS,
+    run_language_function_tests,
     run_language_stdio_tests,
+    _build_function_driver_source,
+    _representative_argument_hints,
 )
 
 
@@ -96,6 +99,47 @@ class ExecutionSandboxTests(unittest.TestCase):
             extract_error_location('File "<user_code>", line 9'),
             (9, None),
         )
+
+
+    def test_function_runner_rejects_wrong_argument_count_before_execution(self):
+        with self.assertRaises(CodeRejectedError):
+            run_language_function_tests(
+                "function solve(a) { return a; }",
+                "JavaScript",
+                [{"args": [[1, 2]], "expected": 1}],
+                parameter_count=2,
+            )
+
+    def test_function_driver_embeds_problem_arguments_for_all_languages(self):
+        cases = [
+            {"args": [[5, [[0, 1], [1, 2]], 0]], "expected": 3},
+            {"args": [[3, [], 2]], "expected": 1},
+        ]
+        hints = _representative_argument_hints(cases, 3)
+        sources = {
+            "C++": "auto solve(const long long n, const vector<vector<long long>>& edges, const long long start) { return 3LL; }",
+            "Java": "class Solution { public Object solve(long n, long[][] edges, long start) { return 3L; } }",
+            "JavaScript": "function solve(n, edges, start) { return 3; }",
+            "TypeScript": "function solve(n: any, edges: any, start: any) { return 3; }",
+            "Go": "package main\n\nfunc solve(n int64, edges [][]int64, start int64) any { return int64(3) }",
+            "Rust": "fn solve(n: i64, edges: Vec<Vec<i64>>, start: i64) -> i64 { 3 }",
+        }
+        for language, source in sources.items():
+            with self.subTest(language=language):
+                args = [5, [[0, 1], [1, 2]], 0]
+                driver = _build_function_driver_source(source, language, args, hints)
+                self.assertIn("solve(", driver)
+                self.assertIn("5", driver)
+                self.assertIn("0", driver)
+                if language == "C++":
+                    self.assertIn("vector<vector<long long>>", driver)
+                elif language == "Java":
+                    self.assertIn("new long[][]", driver)
+                elif language == "Go":
+                    self.assertIn("[][]int64", driver)
+                elif language == "Rust":
+                    self.assertIn("vec![", driver)
+
 
     def test_java_runtime_uses_main_class_filename(self):
         compile_command, run_command, docker_shell = _language_commands(
