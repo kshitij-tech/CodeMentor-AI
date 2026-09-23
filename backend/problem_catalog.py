@@ -268,7 +268,7 @@ def _starter_matches_function_contract(
         actual = _function_parameter_names(source)
         return actual == names
 
-    match = re.search(r"solve\\s*\\(([^)]*)\\)", source)
+    match = re.search(r"solve\s*\(([^)]*)\)", source)
     if not match:
         return False
 
