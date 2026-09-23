@@ -1065,7 +1065,7 @@ func main() {{
 
 fn main() {{
     let __cm_result = solve({call_args});
-    println!("{:?}", __cm_result);
+    println!("{{:?}}", __cm_result);
 }
 """
     raise CodeRejectedError(f"Unsupported language runtime: {language}.")
