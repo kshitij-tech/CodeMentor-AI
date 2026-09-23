@@ -141,13 +141,13 @@ def infer_editor_input_schema(
 
     patterns = (
         (
-            "array",
-            r"(?i)\b(?:array|list|sequence)\s+(?:of\s+[A-Za-z]+\s+)?([A-Za-z_][A-Za-z0-9_]*)",
-        ),
-        (
             "counted_array",
             r"(?i)\b(n|m|k|q|size|count|length|len)\s+integers?\s*[:\-]?\s*"
             r"(?:named\s+)?([A-Za-z_][A-Za-z0-9_]*)(?:_\d+)?",
+        ),
+        (
+            "array",
+            r"(?i)\b(?:array|list|sequence)\s+(?:of\s+[A-Za-z]+\s+)?([A-Za-z_][A-Za-z0-9_]*)",
         ),
         ("string", r"(?i)\b(?:string|word)\s+([A-Za-z_][A-Za-z0-9_]*)"),
         (
