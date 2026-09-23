@@ -414,59 +414,101 @@ function difficultyClass(d){
   return 'bg-slate-100 text-slate-600';
 }
 function fallbackStarterCode(language){
-  const functionStyle=problem?.editor_execution_mode==='function';
-  if(functionStyle){
-    const schema=Array.isArray(problem?.editor_input_schema)?problem.editor_input_schema:[];
-    const names=schema.map(item=>item&&item.name).filter(name=>typeof name==='string'&&name.trim());
-    if(names.length){
-      const cppType=kind=>({
-        int:'long long',float:'double',string:'string',raw_string:'string',
-        int_array:'vector<long long>',float_array:'vector<double>',string_array:'vector<string>'
-      }[kind]||'string');
-      const javaType=kind=>({
-        int:'long',float:'double',string:'String',raw_string:'String',
-        int_array:'long[]',float_array:'double[]',string_array:'String[]'
-      }[kind]||'String');
-      const goType=kind=>({
-        int:'int64',float:'float64',string:'string',raw_string:'string',
-        int_array:'[]int64',float_array:'[]float64',string_array:'[]string'
-      }[kind]||'string');
-      const rustType=kind=>({
-        int:'i64',float:'f64',string:'String',raw_string:'String',
-        int_array:'Vec<i64>',float_array:'Vec<f64>',string_array:'Vec<String>'
-      }[kind]||'String');
-      const byName=(language=>{
-        if(language==='Python') return `def solve(${names.join(', ')}):\\n    # Implement the required solution.\\n    pass\\n`;
-        if(language==='C++') return `#include <bits/stdc++.h>\\nusing namespace std;\\n\\nauto solve(${schema.map(item=>`${cppType(item.type)} ${item.name}`).join(', ')}) {\\n    // Implement the required solution.\\n    return 0;\\n}\\n`;
-        if(language==='Java') return `class Solution {\\n    public Object solve(${schema.map(item=>`${javaType(item.type)} ${item.name}`).join(', ')}) {\\n        // Implement the required solution.\\n        return 0L;\\n    }\\n}\\n`;
-        if(language==='JavaScript') return `function solve(${names.join(', ')}) {\\n    // Implement the required solution.\\n    return null;\\n}\\n`;
-        if(language==='TypeScript') return `function solve(${schema.map(item=>`${item.name}: ${item.type==='int'||item.type==='float'?'number':item.type==='string'||item.type==='raw_string'?'string':'any'}`).join(', ')}): any {\\n    // Implement the required solution.\\n    return null;\\n}\\n`;
-        if(language==='Go') return `package main\\n\\nfunc solve(${schema.map(item=>`${item.name} ${goType(item.type)}`).join(', ')}) any {\\n    // Implement the required solution.\\n    return int64(0)\\n}\\n`;
-        if(language==='Rust') return `fn solve(${schema.map(item=>`${item.name}: ${rustType(item.type)}`).join(', ')}) -> impl std::fmt::Debug {\\n    // Implement the required solution.\\n    0i64\\n}\\n`;
-        return '';
-      })(language);
-      if(byName) return byName;
+  const templates={
+    Python:`import sys
+
+# Read all input from standard input.
+input_data = sys.stdin.read()
+
+# Parse the input according to the problem statement.
+# Compute the result and print it.
+result = None
+print(result)
+`,
+    "C++":`#include <bits/stdc++.h>
+using namespace std;
+
+int main() {
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+
+    // Read input from standard input.
+    // Parse it according to the problem statement.
+    // Compute the result and print it.
+    return 0;
+}
+`,
+    Java:`import java.io.*;
+import java.util.*;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        StringBuilder input = new StringBuilder();
+        String line;
+        while ((line = br.readLine()) != null) {
+            input.append(line).append('\\n');
+        }
+
+        // Parse input according to the problem statement.
+        // Compute the result and print it.
+        System.out.println();
     }
-  }
-  const functionTemplates={
-    Python:"def solve(*args):\n    # Implement the required solution.\n    pass\n",
-    "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint solve() {\n    // Implement the required solution.\n    return 0;\n}\n",
-    Java:"class Solution {\n    public int solve() {\n        // Implement the required solution.\n        return 0;\n    }\n}\n",
-    JavaScript:"function solve(...args) {\n    // Implement the required solution.\n    return null;\n}\n",
-    TypeScript:"function solve(...args: any[]): any {\n    // Implement the required solution.\n    return null;\n}\n",
-    Go:"package main\n\nfunc solve(args ...interface{}) interface{} {\n    // Implement the required solution.\n    return nil\n}\n",
-    Rust:"fn solve(args: &[String]) -> String {\n    // Implement the required solution.\n    String::new()\n}\n"
+}
+`,
+    JavaScript:`const fs = require('fs');
+
+const input = fs.readFileSync(0, 'utf8');
+
+// Parse input according to the problem statement.
+// Compute the result and print it.
+const result = '';
+process.stdout.write(String(result));
+`,
+    TypeScript:`declare const require: (name: string) => any;
+const fs: any = require('fs');
+
+const input: string = fs.readFileSync(0, 'utf8');
+
+// Parse input according to the problem statement.
+// Compute the result and print it.
+const result: any = '';
+process.stdout.write(String(result));
+`,
+    Go:`package main
+
+import (
+    "fmt"
+    "io"
+    "os"
+)
+
+func main() {
+    inputBytes, err := io.ReadAll(os.Stdin)
+    if err != nil {
+        panic(err)
+    }
+    input := string(inputBytes)
+    _ = input
+
+    // Parse input according to the problem statement.
+    // Compute the result and print it.
+    fmt.Println()
+}
+`,
+    Rust:`use std::io::{self, Read};
+
+fn main() {
+    let mut input = String::new();
+    io::stdin().read_to_string(&mut input).unwrap();
+
+    // Parse input according to the problem statement.
+    // Compute the result and print it.
+    println!();
+}
+`
   };
-  const stdioTemplates={
-    Python:"import sys\n\ndef solve():\n    # Read from standard input and write the required answer.\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
-    "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    // Read from standard input and write the required answer.\n    return 0;\n}\n",
-    Java:"import java.io.*;\nimport java.util.*;\n\npublic class Main {\n    public static void main(String[] args) throws Exception {\n        // Read from standard input and write the required answer.\n    }\n}\n",
-    JavaScript:"const fs = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\n\nfunction solve(input) {\n    // Read input and return the required answer.\n    return '';\n}\n\nprocess.stdout.write(String(solve(input)));\n",
-    TypeScript:"declare const require: (name: string) => any;\nconst fs: any = require('fs');\nconst input = fs.readFileSync(0, 'utf8').trim();\n\nfunction solve(input: string): string {\n    // Read input and return the required answer.\n    return '';\n}\n\nprocess.stdout.write(String(solve(input)));\n",
-    Go:"package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc main() {\n    in := bufio.NewReader(os.Stdin)\n    _ = in\n    // Read from standard input and write the required answer.\n    fmt.Print()\n}\n",
-    Rust:"use std::io::{self, Read};\n\nfn main() {\n    let mut input = String::new();\n    io::stdin().read_to_string(&mut input).unwrap();\n    // Read input and write the required answer.\n    print!(\"{}\", input);\n}\n"
-  };
-  return (functionStyle?functionTemplates:stdioTemplates)[language]||'';
+  return templates[language]||'';
 }
 function starterCode(language){
   const starter=(problem&&problem.starter_code)||{};
@@ -480,23 +522,13 @@ function syncLanguageAvailability(){
   const select=$('language');
   if(!select||!problem)return;
 
-  const functionStyle=problem.execution_mode!=='stdio';
   [...select.options].forEach(option=>{
     option.disabled=false;
   });
-
-  if(functionStyle){
-    $('save-status').textContent='Callable function';
-    select.title='Define solve(...) with the parameters shown in the starter. CodeMentor supplies the test inputs and entry point.';
-  }else{
-    select.title='';
-    if(problem.starter_code?.[$('language').value]){
-      $('save-status').textContent='Starter';
-    }
-  }
+  select.title='Write a normal stdin/stdout program. You are responsible for reading the input and printing the result.';
 }
 function isGenericFunctionDraft(language,value){
-  if(problem?.editor_execution_mode!=='function'||typeof value!=='string')return false;
+  if(typeof value!=='string')return false;
   const compact=value.trim().replace(/\s+/g,'');
   const signatures={
     Python:['defsolve(*args):','defsolve(**kwargs):'],
@@ -534,7 +566,7 @@ function functionDraftMatchesContract(language,value){
   return actual.every((name,index)=>name===expected[index]);
 }
 function isStdioBoilerplateDraft(language,value){
-  if(problem?.editor_execution_mode!=='function'||typeof value!=='string')return false;
+  if(typeof value!=='string')return false;
   const compact=value.trim().replace(/\s+/g,'');
   if(/solve\(stringinput_data\)/.test(compact)||/solvestringinput_data/.test(compact)) return true;
   const signatures={
@@ -555,11 +587,12 @@ function loadDraft(){
   const hasSaved=typeof saved==='string'&&saved.trim().length>0;
   const staleGeneric=isGenericFunctionDraft(language,saved);
   const staleStdio=isStdioBoilerplateDraft(language,saved);
-  const staleContract=hasSaved && problem?.editor_execution_mode==='function' && !functionDraftMatchesContract(language,saved);
-  const useSaved=hasSaved&&!staleGeneric&&!staleStdio&&!staleContract;
+  const staleContract=hasSaved && !functionDraftMatchesContract(language,saved);
+  const staleCallable=hasSaved && /\\b(?:def\\s+solve|function\\s+solve|func\\s+solve|fn\\s+solve|class\\s+Solution)\\b/.test(saved);
+  const useSaved=hasSaved&&!staleGeneric&&!staleStdio&&!staleContract&&!staleCallable;
   editor.setValue(useSaved?saved:starterCode(language));
   $('save-status').textContent=useSaved?'Draft restored':'Starter';
-  if(staleGeneric||staleStdio||staleContract) localStorage.removeItem(draftKey());
+  if(staleGeneric||staleStdio||staleContract||staleCallable) localStorage.removeItem(draftKey());
   scheduleSyntaxValidation();
 }
 function renderProblem(){
