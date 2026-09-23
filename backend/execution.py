@@ -1046,7 +1046,7 @@ process.stdout.write((__cmJson === undefined ? 'null' : __cmJson) + '\\n');
     if language == "Go":
         body = re.sub(r"(?m)^\\s*package\\s+main\\s*\\n?", "", source, count=1)
         return (
-            'package main\\n\\nimport "encoding/json"\\n\\n'
+            'package main\\n\\nimport (\\n    "encoding/json"\\n    "fmt"\\n)\\n\\n'
             + body.strip()
             + f"""
 
