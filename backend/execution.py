@@ -1045,7 +1045,7 @@ process.stdout.write((__cmJson === undefined ? 'null' : __cmJson) + '\\n');
 """
     if language == "Go":
         user_imports: list[str] = []
-        block = re.search(r"(?ms)^\\s*import\\s*\\((.*?)^\\)\\s*", source)
+        block = re.search(r"(?ms)^\s*import\s*\((.*?)^\)\s*", source)
         if block:
             user_imports.extend(
                 line.strip()
@@ -1054,7 +1054,61 @@ process.stdout.write((__cmJson === undefined ? 'null' : __cmJson) + '\\n');
             )
         user_imports.extend(
             line.strip()
-            for line in re.findall(r'(?m)^\\s*import\\s+([^\\n]+)    if language == "Rust":
+            for line in re.findall(r'(?m)^\s*import\s+([^\n]+)$', source)
+            if line.strip()
+        )
+
+        json_import = next(
+            (
+                spec for spec in user_imports
+                if re.search(r'"encoding/json"\s*$', spec)
+            ),
+            None,
+        )
+        json_name = "json"
+        if json_import:
+            match = re.match(
+                r'^([A-Za-z_][A-Za-z0-9_]*)\s+"encoding/json"$',
+                json_import,
+            )
+            if match:
+                json_name = match.group(1)
+
+        body = re.sub(r"(?m)^\s*package\s+main\s*\n?", "", source, count=1)
+        body = re.sub(r"(?ms)^\s*import\s*\((.*?)^\)\s*\n?", "", body, count=1)
+        body = re.sub(r'(?m)^\s*import\s+"[^"]+"\s*\n?', "", body, count=1)
+
+        merged_imports: list[str] = []
+        seen_import_paths: set[str] = set()
+        for spec in ([json_import] if json_import else ['"encoding/json"']) + user_imports:
+            if not spec:
+                continue
+            match = re.search(r'"([^"]+)"', spec)
+            import_path = match.group(1) if match else spec
+            if import_path in seen_import_paths:
+                continue
+            seen_import_paths.add(import_path)
+            merged_imports.append(spec)
+
+        import_block = "\n".join(f"    {spec}" for spec in merged_imports)
+        return (
+            "package main\n\nimport (\n"
+            + import_block
+            + "\n)\n\n"
+            + body.strip()
+            + f"""
+
+func main() {{
+    __cmResult := solve({call_args})
+    __cmJSON, err := {json_name}.Marshal(__cmResult)
+    if err != nil {{
+        panic(err)
+    }}
+    println(string(__cmJSON))
+}}
+"""
+        )
+    if language == "Rust":
         return source.rstrip() + f"""
 
 fn main() {{
