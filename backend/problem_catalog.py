@@ -9,6 +9,7 @@ from typing import Any, Iterable
 from backend.stdio_adapter import (
     editor_schema_from_metadata,
     generate_stdio_editor_starters,
+    infer_editor_input_schema,
     normalize_editor_input_schema,
 )
 
@@ -139,11 +140,59 @@ def _argument_values(test_cases: Any, count: int) -> list[Any]:
             count > 1
             and len(normalized_args) == 1
             and isinstance(normalized_args[0], list)
-            and len(normalized_args[0]) >= count
+            and len(normalized_args[0]) == count
         ):
             normalized_args = list(normalized_args[0])
         return normalized_args[:count] + [None] * max(0, count - len(normalized_args))
     return [None] * count
+
+
+def _schema_type_from_value(value: Any) -> str:
+    if isinstance(value, bool) or isinstance(value, int):
+        return "int"
+    if isinstance(value, float):
+        return "float"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list):
+        if all(isinstance(item, str) for item in value):
+            return "string_array"
+        if any(isinstance(item, float) for item in value):
+            return "float_array"
+        return "int_array"
+    return "raw_string"
+
+
+def function_editor_schema_from_problem(
+    starter_code: Any,
+    test_cases: Any = None,
+    examples: Any = None,
+    description: Any = None,
+    explicit_schema: Any = None,
+) -> list[dict[str, Any]]:
+    """Build the callable parameter contract exposed to every language editor."""
+    explicit = normalize_editor_input_schema(explicit_schema)
+    names = _function_parameter_names(
+        (starter_code or {}).get("Python") if isinstance(starter_code, dict) else None
+    )
+    if not names:
+        names = _example_parameter_names(examples)
+    if not names and description:
+        inferred = infer_editor_input_schema(
+            description,
+            examples,
+            explicit_schema=explicit,
+        )
+        names = [item["name"] for item in inferred if item["name"] != "input_data"]
+
+    values = _argument_values(test_cases, len(names))
+    schema: list[dict[str, Any]] = []
+    for name, value in zip(names, values):
+        kind = _schema_type_from_value(value)
+        if kind == "raw_string":
+            kind = "string"
+        schema.append({"name": name, "type": kind})
+    return normalize_editor_input_schema(schema)
 
 
 def _inferred_cpp_type(value: Any) -> str:
@@ -199,11 +248,11 @@ def _inferred_rust_type(value: Any) -> str:
     if isinstance(value, float):
         return "f64"
     if isinstance(value, str):
-        return "&str"
+        return "String"
     if isinstance(value, list):
         inner = _inferred_rust_type(value[0]) if value else "i64"
-        return f"&[{inner}]"
-    return "&dyn std::any::Any"
+        return f"Vec<{inner}>"
+    return "String"
 
 
 def _starter_matches_function_contract(
@@ -238,7 +287,7 @@ def _generated_function_starters(
         return {language: FUNCTION_STARTERS[language] for language in SUPPORTED_LANGUAGES}
 
     cpp_params = ", ".join(
-        f"{_inferred_cpp_type(value)}& {name}" if isinstance(value, list)
+        f"const {_inferred_cpp_type(value)}& {name}" if isinstance(value, list)
         else f"{_inferred_cpp_type(value)} {name}"
         for name, value in zip(names, values)
     )
@@ -748,9 +797,14 @@ def ensure_starter_code(
         names = _function_parameter_names(existing.get("Python"))
         if not names or _is_generic_function_starter("Python", existing.get("Python")):
             names = _example_parameter_names(examples)
+        if not names:
+            schema_for_names = normalize_editor_input_schema(editor_schema)
+            names = [item["name"] for item in schema_for_names if item["name"] != "input_data"]
         values = _argument_values(test_cases, len(names))
         generated = _generated_function_starters(names, values)
-        preserve_existing = True
+        # Rebuild every function starter from the canonical problem contract so
+        # old generic or mismatched language signatures cannot leak to the editor.
+        preserve_existing = not bool(names)
 
     result: dict[str, str] = {}
     for language in SUPPORTED_LANGUAGES:
@@ -788,11 +842,28 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
         starter_code=problem.get("starter_code"),
         examples=problem.get("examples"),
     )
+    editor_schema = (
+        editor_schema_from_metadata(
+            problem.get("package_metadata") or {},
+            problem.get("description"),
+            problem.get("examples"),
+        )
+        if normalized["execution_mode"] == "stdio"
+        else function_editor_schema_from_problem(
+            problem.get("starter_code"),
+            problem.get("test_cases"),
+            problem.get("examples"),
+            problem.get("description"),
+            explicit_schema=(problem.get("package_metadata") or {}).get("editor_input_schema"),
+        )
+    )
+    normalized["editor_input_schema"] = editor_schema
     normalized["starter_code"] = ensure_starter_code(
         problem.get("starter_code"),
         normalized["execution_mode"],
         problem.get("test_cases"),
         problem.get("examples"),
+        editor_schema=editor_schema,
     )
 
     external_id = problem.get("external_id")
