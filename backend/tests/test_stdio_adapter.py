@@ -65,7 +65,7 @@ class StdioAdapterTests(unittest.TestCase):
         )
 
         starters = generate_stdio_editor_starters(schema)
-        self.assertIn("solve(int n, vector<int> nums)", starters["C++"])
+        self.assertIn("solve(long long n, vector<long long> nums)", starters["C++"])
         self.assertNotIn("solve(string input_data)", starters["C++"])
 
     def test_unsafe_inferred_schema_falls_back_to_raw_input(self):
