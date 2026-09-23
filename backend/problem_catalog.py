@@ -307,12 +307,12 @@ def _generated_function_starters(
 
     return {
         "Python": f"def solve({', '.join(names)}):\n    # Implement the required solution.\n    pass\n",
-        "C++": f"#include <bits/stdc++.h>\nusing namespace std;\n\nauto solve({cpp_params}) {{\n    // Implement the required solution.\n    return 0;\n}}\n"
-        "Java": f"class Solution {{\n    public Object solve({java_params}) {{\n        // Implement the required solution.\n        return 0L;\n    }}\n}}\n"
+        "C++": f"#include <bits/stdc++.h>\nusing namespace std;\n\nauto solve({cpp_params}) {{\n    // Implement the required solution.\n    return 0;\n}}\n",
+        "Java": f"class Solution {{\n    public Object solve({java_params}) {{\n        // Implement the required solution.\n        return 0L;\n    }}\n}}\n",
         "JavaScript": f"function solve({js_params}) {{\n    // Implement the required solution.\n    return null;\n}}\n",
         "TypeScript": f"function solve({', '.join(f'{name}: any' for name in names)}): any {{\n    // Implement the required solution.\n    return null;\n}}\n",
-        "Go": f"package main\n\nfunc solve({go_params}) any {{\n    // Implement the required solution.\n    return int64(0)\n}}\n"
-        "Rust": f"fn solve({rust_params}) -> impl std::fmt::Debug {{\n    // Implement the required solution.\n    0i64\n}}\n"
+        "Go": f"package main\n\nfunc solve({go_params}) any {{\n    // Implement the required solution.\n    return int64(0)\n}}\n",
+        "Rust": f"fn solve({rust_params}) -> impl std::fmt::Debug {{\n    // Implement the required solution.\n    0i64\n}}\n",
     }
 
 STDIO_STARTERS = {
