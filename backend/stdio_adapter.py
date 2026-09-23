@@ -306,11 +306,11 @@ def editor_schema_from_metadata(
 
 def _cpp_type(kind: str) -> str:
     return {
-        "int": "int",
+        "int": "long long",
         "float": "double",
         "string": "string",
         "raw_string": "string",
-        "int_array": "vector<int>",
+        "int_array": "vector<long long>",
         "float_array": "vector<double>",
         "string_array": "vector<string>",
     }[kind]
@@ -318,11 +318,11 @@ def _cpp_type(kind: str) -> str:
 
 def _java_type(kind: str) -> str:
     return {
-        "int": "int",
+        "int": "long",
         "float": "double",
         "string": "String",
         "raw_string": "String",
-        "int_array": "int[]",
+        "int_array": "long[]",
         "float_array": "double[]",
         "string_array": "String[]",
     }[kind]
@@ -330,11 +330,11 @@ def _java_type(kind: str) -> str:
 
 def _go_type(kind: str) -> str:
     return {
-        "int": "int",
+        "int": "int64",
         "float": "float64",
         "string": "string",
         "raw_string": "string",
-        "int_array": "[]int",
+        "int_array": "[]int64",
         "float_array": "[]float64",
         "string_array": "[]string",
     }[kind]
@@ -342,11 +342,11 @@ def _go_type(kind: str) -> str:
 
 def _rust_type(kind: str) -> str:
     return {
-        "int": "i32",
+        "int": "i64",
         "float": "f64",
         "string": "String",
         "raw_string": "String",
-        "int_array": "Vec<i32>",
+        "int_array": "Vec<i64>",
         "float_array": "Vec<f64>",
         "string_array": "Vec<String>",
     }[kind]
@@ -439,7 +439,7 @@ def _python_reader(item: dict[str, Any]) -> str:
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         parse = {
-            "int_array": "int",
+            "int_array": "int64",
             "float_array": "float",
             "string_array": "str",
         }[kind]
@@ -764,7 +764,7 @@ def _go_reader(item: dict[str, Any]) -> str:
     name, kind = item["name"], item["type"]
     if kind == "int":
         return (
-            f"    var {name} int; "
+            f"    var {name} int64; "
             f"if _, err := fmt.Fscan(reader, &{name}); err != nil {{ panic(err) }}"
         )
     if kind == "float":
@@ -818,7 +818,7 @@ def _render_rust_adapter(
         name, kind = item["name"], item["type"]
         if kind == "int":
             lines.append(
-                f"    let {name}: i32 = __cm_it.next().unwrap().parse().unwrap();"
+                f"    let {name}: i64 = __cm_it.next().unwrap().parse().unwrap();"
             )
         elif kind == "float":
             lines.append(
@@ -834,7 +834,7 @@ def _render_rust_adapter(
             )
         elif kind.endswith("_array") and item.get("length_from"):
             base = {
-                "int_array": "i32",
+                "int_array": "i64",
                 "float_array": "f64",
                 "string_array": "String",
             }[kind]
