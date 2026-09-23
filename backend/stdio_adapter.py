@@ -297,10 +297,10 @@ def editor_schema_from_metadata(
         and "=" not in str(item.get("input") or "")
     ]
 
-    if schema and raw_examples:
-        if not all(_schema_consumes_example(schema, raw) for raw in raw_examples[:3]):
-            return [{"name": "input_data", "type": "raw_string"}]
-
+    # If the statement yielded a concrete schema, keep it for the editor.
+    # Some imported examples contain formatting/header text that cannot be
+    # validated by the simple token parser; that must not collapse the UX back
+    # to solve(string input_data).
     return schema or [{"name": "input_data", "type": "raw_string"}]
 
 
