@@ -764,7 +764,7 @@ def _go_reader(item: dict[str, Any]) -> str:
     name, kind = item["name"], item["type"]
     if kind == "int":
         return (
-            f"    var {name} int; 
+            f"    var {name} int; "
             f"if _, err := fmt.Fscan(reader, &{name}); err != nil {{ panic(err) }}"
         )
     if kind == "float":
