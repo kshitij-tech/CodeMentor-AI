@@ -144,9 +144,47 @@ def _sandbox_mode() -> str:
             "Production execution requires EXECUTION_SANDBOX=docker."
         )
 
-    if EXECUTION_SANDBOX == "docker" and not shutil.which("docker"):
+    if EXECUTION_SANDBOX != "docker":
+        return EXECUTION_SANDBOX
+
+    if not shutil.which("docker"):
         raise CodeRejectedError(
-            "Docker execution is enabled, but the Docker CLI was not found."
+            "Docker execution is enabled, but the Docker CLI was not found. "
+            "Install/start Docker Desktop and ensure 'docker' is on PATH."
+        )
+
+    try:
+        daemon = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise CodeRejectedError(
+            "Docker CLI is installed, but the Docker daemon did not respond. "
+            "Start Docker Desktop and try again."
+        ) from exc
+
+    if daemon.returncode != 0:
+        detail = (daemon.stderr or daemon.stdout or "").strip()
+        detail = _truncate(detail) if detail else "Docker daemon is unavailable."
+        raise CodeRejectedError(f"Docker daemon is unavailable: {detail}")
+
+    image = subprocess.run(
+        ["docker", "image", "inspect", EXECUTION_DOCKER_IMAGE],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+    if image.returncode != 0:
+        raise CodeRejectedError(
+            f"Docker image '{EXECUTION_DOCKER_IMAGE}' was not found. "
+            "Build it with: "
+            "docker build -t codementor-multi-runtime:latest "
+            "-f docker/multi-runtime/Dockerfile docker/multi-runtime"
         )
 
     return EXECUTION_SANDBOX
