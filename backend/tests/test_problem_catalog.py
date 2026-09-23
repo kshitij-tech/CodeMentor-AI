@@ -188,6 +188,39 @@ class ProblemCatalogTests(unittest.TestCase):
             "stdio",
         )
 
+
+    def test_function_starters_match_all_problem_parameters_for_every_language(self):
+        starters = ensure_starter_code(
+            {"Python": "def solve(nums, target):\n    pass\n"},
+            "function",
+            [{"args": [[[2, 7, 11, 15], 9]], "expected": [0, 1]}],
+            [{"input": "nums = [2, 7, 11, 15], target = 9", "output": "[0,1]"}],
+        )
+
+        expected_signatures = {
+            "Python": "def solve(nums, target)",
+            "C++": "solve(const vector<long long>& nums, long long target)",
+            "Java": "solve(long[] nums, long target)",
+            "JavaScript": "solve(nums, target)",
+            "TypeScript": "solve(nums: any, target: any)",
+            "Go": "solve(nums []int, target int)",
+            "Rust": "solve(nums: Vec<i64>, target: i64)",
+        }
+        for language, signature in expected_signatures.items():
+            with self.subTest(language=language):
+                self.assertIn(signature, starters[language])
+
+    def test_function_starters_preserve_nested_array_parameter_shape(self):
+        starters = ensure_starter_code(
+            {"Python": "def solve(n, edges, start):\n    pass\n"},
+            "function",
+            [{"args": [[5, [[0, 1], [1, 2]], 0]], "expected": 3}],
+        )
+        self.assertIn("vector<vector<long long>>", starters["C++"])
+        self.assertIn("long[][] edges", starters["Java"])
+        self.assertIn("edges [][]int", starters["Go"])
+        self.assertIn("edges: Vec<Vec<i64>>", starters["Rust"])
+
     def test_canonical_topic_catalog_is_stable(self):
         self.assertIn("Binary Search", CANONICAL_TOPICS)
         self.assertIn("Dynamic Programming", CANONICAL_TOPICS)
