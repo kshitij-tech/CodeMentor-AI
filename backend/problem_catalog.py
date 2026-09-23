@@ -1003,7 +1003,6 @@ def ensure_starter_code(
 
 
 def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
-(problem: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(problem)
 
     normalized["title"] = normalize_text(problem.get("title"))
