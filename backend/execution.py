@@ -763,6 +763,460 @@ print("__CODEMENTOR_RESULT__" + json.dumps(result, separators=(",", ":")))
 """
 
 
+def _normalize_function_args(args: Any, parameter_count: int | None) -> list[Any]:
+    if not isinstance(args, list):
+        raise CodeRejectedError("Function test-case args must be a list.")
+    normalized = list(args)
+    if (
+        parameter_count
+        and parameter_count > 1
+        and len(normalized) == 1
+        and isinstance(normalized[0], list)
+        and len(normalized[0]) == parameter_count
+    ):
+        normalized = list(normalized[0])
+    if parameter_count is not None and len(normalized) != parameter_count:
+        raise CodeRejectedError(
+            f"Expected {parameter_count} function arguments, got {len(normalized)}."
+        )
+    return normalized
+
+
+def _hint_from_value(value: Any) -> tuple:
+    if isinstance(value, bool):
+        return ("bool",)
+    if isinstance(value, int):
+        return ("int",)
+    if isinstance(value, float):
+        return ("float",)
+    if isinstance(value, str):
+        return ("string",)
+    if isinstance(value, list):
+        for item in value:
+            if item is not None:
+                return ("list", _hint_from_value(item))
+        return ("list", None)
+    return ("string",)
+
+
+def _representative_argument_hints(
+    test_cases: list[dict[str, Any]],
+    parameter_count: int | None,
+) -> list[tuple]:
+    if parameter_count is None or parameter_count <= 0:
+        return []
+    hints: list[tuple | None] = [None] * parameter_count
+    for case in test_cases:
+        try:
+            values = _normalize_function_args(case.get("args", []), parameter_count)
+        except CodeRejectedError:
+            continue
+        for index, value in enumerate(values):
+            candidate = _hint_from_value(value)
+            if hints[index] is None:
+                hints[index] = candidate
+            elif hints[index][0] == "list" and hints[index][1] is None and candidate[0] == "list":
+                hints[index] = candidate
+    return [hint or ("string",) for hint in hints]
+
+
+def _type_name_cxx(hint: tuple) -> str:
+    kind = hint[0]
+    if kind == "bool":
+        return "bool"
+    if kind == "int":
+        return "long long"
+    if kind == "float":
+        return "double"
+    if kind == "string":
+        return "string"
+    if kind == "list":
+        return f"vector<{_type_name_cxx(hint[1] or ('int',))}>"
+    return "string"
+
+
+def _type_name_java(hint: tuple) -> str:
+    kind = hint[0]
+    if kind == "bool":
+        return "boolean"
+    if kind == "int":
+        return "long"
+    if kind == "float":
+        return "double"
+    if kind == "string":
+        return "String"
+    if kind == "list":
+        return f"{_type_name_java(hint[1] or ('int',))}[]"
+    return "String"
+
+
+def _type_name_go(hint: tuple) -> str:
+    kind = hint[0]
+    if kind == "bool":
+        return "bool"
+    if kind == "int":
+        return "int64"
+    if kind == "float":
+        return "float64"
+    if kind == "string":
+        return "string"
+    if kind == "list":
+        return f"[]{_type_name_go(hint[1] or ('int',))}"
+    return "string"
+
+
+def _type_name_rust(hint: tuple) -> str:
+    kind = hint[0]
+    if kind == "bool":
+        return "bool"
+    if kind == "int":
+        return "i64"
+    if kind == "float":
+        return "f64"
+    if kind == "string":
+        return "String"
+    if kind == "list":
+        return f"Vec<{_type_name_rust(hint[1] or ('int',))}>"
+    return "String"
+
+
+def _cxx_literal(value: Any, hint: tuple) -> str:
+    if hint[0] == "list":
+        inner = hint[1] or ("int",)
+        return f"{_type_name_cxx(hint)}{{{', '.join(_cxx_literal(item, inner) for item in value)}}}"
+    if hint[0] == "bool":
+        return "true" if value else "false"
+    if hint[0] == "int":
+        return str(int(value))
+    if hint[0] == "float":
+        return repr(float(value))
+    return json.dumps(str(value), ensure_ascii=True)
+
+
+def _java_literal(value: Any, hint: tuple) -> str:
+    if hint[0] == "list":
+        inner = hint[1] or ("int",)
+        return f"new {_type_name_java(hint)}{{{', '.join(_java_literal(item, inner) for item in value)}}}"
+    if hint[0] == "bool":
+        return "true" if value else "false"
+    if hint[0] == "int":
+        return str(int(value)) + "L"
+    if hint[0] == "float":
+        return repr(float(value))
+    return json.dumps(str(value), ensure_ascii=True)
+
+
+def _go_literal(value: Any, hint: tuple) -> str:
+    if hint[0] == "list":
+        inner = hint[1] or ("int",)
+        return f"{_type_name_go(hint)}{{{', '.join(_go_literal(item, inner) for item in value)}}}"
+    if hint[0] == "bool":
+        return "true" if value else "false"
+    if hint[0] == "int":
+        return str(int(value))
+    if hint[0] == "float":
+        return repr(float(value))
+    return json.dumps(str(value), ensure_ascii=True)
+
+
+def _rust_literal(value: Any, hint: tuple) -> str:
+    if hint[0] == "list":
+        inner = hint[1] or ("int",)
+        return f"vec![{', '.join(_rust_literal(item, inner) for item in value)}]"
+    if hint[0] == "bool":
+        return "true" if value else "false"
+    if hint[0] == "int":
+        return str(int(value)) + "i64"
+    if hint[0] == "float":
+        return repr(float(value)) + "f64"
+    return f"String::from({json.dumps(str(value), ensure_ascii=True)})"
+
+
+_CXX_JSON_HELPER = r"""
+static void __cm_json(std::ostream& out, const std::string& value) {
+    out << '"';
+    for (unsigned char ch : value) {
+        switch (ch) {
+            case '"': out << "\\""; break;
+            case '\\': out << "\\\\"; break;
+            case '
+': out << "\\n"; break;
+            case '': out << "\\r"; break;
+            case '	': out << "\\t"; break;
+            default:
+                if (ch < 0x20) {
+                    const char* hex = "0123456789abcdef";
+                    out << "\\u00" << hex[(ch >> 4) & 0xf] << hex[ch & 0xf];
+                } else {
+                    out << ch;
+                }
+        }
+    }
+    out << '"';
+}
+
+template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
+static void __cm_json(std::ostream& out, T value) {
+    if constexpr (std::is_same_v<T, bool>) out << (value ? "true" : "false");
+    else out << value;
+}
+
+template <typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
+static void __cm_json(std::ostream& out, T value) {
+    out << std::setprecision(17) << value;
+}
+
+template <typename T>
+static void __cm_json(std::ostream& out, const std::vector<T>& value) {
+    out << '[';
+    for (size_t i = 0; i < value.size(); ++i) {
+        if (i) out << ',';
+        __cm_json(out, value[i]);
+    }
+    out << ']';
+}
+"""
+
+
+_JAVA_JSON_HELPER = r"""
+    static String __cmQuote(String value) {
+        StringBuilder out = new StringBuilder();
+        out.append('"');
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '"': out.append("\\""); break;
+                case '\\': out.append("\\\\"); break;
+                case '
+': out.append("\\n"); break;
+                case '': out.append("\\r"); break;
+                case '	': out.append("\\t"); break;
+                default:
+                    if (c < 32) out.append(String.format("\\\\u%04x", (int)c));
+                    else out.append(c);
+            }
+        }
+        return out.append('"').toString();
+    }
+
+    static String __cmJson(Object value) {
+        if (value == null) return "null";
+        if (value instanceof String || value instanceof Character) return __cmQuote(String.valueOf(value));
+        if (value instanceof Boolean || value instanceof Number) return String.valueOf(value);
+        if (value.getClass().isArray()) {
+            int n = java.lang.reflect.Array.getLength(value);
+            StringBuilder out = new StringBuilder("[");
+            for (int i = 0; i < n; i++) {
+                if (i > 0) out.append(',');
+                out.append(__cmJson(java.lang.reflect.Array.get(value, i)));
+            }
+            return out.append(']').toString();
+        }
+        return __cmQuote(String.valueOf(value));
+    }
+"""
+
+
+def _build_function_driver_source(
+    source: str,
+    language: str,
+    args: list[Any],
+    parameter_hints: list[tuple],
+) -> str:
+    if len(args) != len(parameter_hints):
+        raise CodeRejectedError(
+            f"Function argument count mismatch: expected {len(parameter_hints)}, got {len(args)}."
+        )
+
+    literal_builders = {
+        "C++": _cxx_literal,
+        "Java": _java_literal,
+        "Go": _go_literal,
+        "Rust": _rust_literal,
+    }
+    if language in literal_builders:
+        call_args = ", ".join(
+            literal_builders[language](value, hint)
+            for value, hint in zip(args, parameter_hints)
+        )
+    elif language in {"JavaScript", "TypeScript"}:
+        call_args = ", ".join(
+            json.dumps(value, ensure_ascii=True, separators=(",", ":"))
+            for value in args
+        )
+    else:
+        raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+
+    if language == "C++":
+        return source.rstrip() + "
+
+" + _CXX_JSON_HELPER + f"""
+int main() {{
+    auto __cm_result = solve({call_args});
+    __cm_json(std::cout, __cm_result);
+    std::cout << '\n';
+    return 0;
+}}
+"""
+    if language == "Java":
+        return source.rstrip() + "
+
+public class Main {
+" + _JAVA_JSON_HELPER + f"""
+    public static void main(String[] args) {{
+        Object __cmResult = new Solution().solve({call_args});
+        System.out.println(__cmJson(__cmResult));
+    }}
+}}
+"""
+    if language in {"JavaScript", "TypeScript"}:
+        return source.rstrip() + f"""
+const __cmResult = solve({call_args});
+const __cmJson = JSON.stringify(__cmResult === undefined ? null : __cmResult);
+process.stdout.write((__cmJson === undefined ? 'null' : __cmJson) + '\n');
+"""
+    if language == "Go":
+        return source.rstrip() + '
+
+import "encoding/json"
+' + f"""
+func main() {{
+    __cmResult := solve({call_args})
+    __cmJSON, err := json.Marshal(__cmResult)
+    if err != nil {{
+        panic(err)
+    }}
+    fmt.Println(string(__cmJSON))
+}}
+"""
+    if language == "Rust":
+        return source.rstrip() + f"""
+fn main() {{
+    let __cm_result = solve({call_args});
+    println!("{{:?}}", __cm_result);
+}}
+"""
+    raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+
+
+def run_language_function_tests(
+    source: str,
+    language: str,
+    test_cases: list[dict[str, Any]],
+    parameter_count: int | None,
+    time_limit_seconds: float = 2.0,
+    *,
+    memory_limit_mb: int | None = None,
+) -> list[TestOutcome]:
+    """Execute callable solve(...) problems across all supported runtimes."""
+    if language not in LANGUAGE_EXTENSIONS:
+        raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+    if language == "Python":
+        raise CodeRejectedError("Use the Python function runner for Python problems.")
+    if len(source) > MAX_CODE_LENGTH:
+        raise CodeRejectedError(f"Code exceeds the {MAX_CODE_LENGTH} character limit.")
+    if _sandbox_mode() != "docker":
+        raise CodeRejectedError(
+            "Docker sandbox is required for non-Python execution. "
+            "Set EXECUTION_SANDBOX=docker and restart FastAPI."
+        )
+
+    entrypoints = {
+        "C++": r"\b(?:int|signed)\s+main\s*\(",
+        "Java": r"\bstatic\s+void\s+main\s*\(",
+        "JavaScript": r"\bprocess\.stdout\.write\s*\(",
+        "TypeScript": r"\bprocess\.stdout\.write\s*\(",
+        "Go": r"(?m)^\s*func\s+main\s*\(",
+        "Rust": r"(?m)^\s*fn\s+main\s*\(",
+    }
+    if re.search(entrypoints.get(language, r"$^"), source):
+        raise CodeRejectedError(
+            "Implement solve(...) only. CodeMentor supplies the program entry point."
+        )
+
+    hints = _representative_argument_hints(test_cases, parameter_count)
+    outcomes: list[TestOutcome] = []
+
+    for index, case in enumerate(test_cases, start=1):
+        expected = case.get("expected")
+        try:
+            args = _normalize_function_args(case.get("args", []), parameter_count)
+            driver = _build_function_driver_source(source, language, args, hints)
+            raw = run_language_stdio_tests(
+                driver,
+                language,
+                [{
+                    "input": "",
+                    "expected_output": json.dumps(
+                        expected,
+                        ensure_ascii=True,
+                        separators=(",", ":"),
+                    ),
+                }],
+                time_limit_seconds=time_limit_seconds,
+                memory_limit_mb=memory_limit_mb,
+            )[0]
+        except (ValueError, TypeError, CodeRejectedError) as exc:
+            outcomes.append(
+                TestOutcome(
+                    index=index,
+                    passed=False,
+                    status="Rejected",
+                    expected=expected,
+                    actual=None,
+                    runtime_ms=0,
+                    message=str(exc),
+                )
+            )
+            continue
+
+        if raw.status != "Passed":
+            outcomes.append(
+                TestOutcome(
+                    index=index,
+                    passed=False,
+                    status=raw.status,
+                    expected=expected,
+                    actual=raw.actual,
+                    runtime_ms=raw.runtime_ms,
+                    message=raw.message,
+                )
+            )
+            continue
+
+        actual_text = str(raw.actual or "").strip()
+        try:
+            actual_value = json.loads(actual_text)
+        except (TypeError, json.JSONDecodeError):
+            outcomes.append(
+                TestOutcome(
+                    index=index,
+                    passed=False,
+                    status="Wrong Answer",
+                    expected=expected,
+                    actual=actual_text,
+                    runtime_ms=raw.runtime_ms,
+                    message="solve(...) must return a JSON-serializable value.",
+                )
+            )
+            continue
+
+        passed = actual_value == expected
+        outcomes.append(
+            TestOutcome(
+                index=index,
+                passed=passed,
+                status="Passed" if passed else "Wrong Answer",
+                expected=expected,
+                actual=actual_value,
+                runtime_ms=raw.runtime_ms,
+                message=None if passed else f"Expected {expected!r}, got {actual_value!r}.",
+            )
+        )
+
+    return outcomes
+
+
 def _truncate(value: str) -> str:
     return value if len(value) <= MAX_OUTPUT_LENGTH else value[:MAX_OUTPUT_LENGTH] + "\n[output truncated]"
 
