@@ -403,6 +403,91 @@ def _generated_function_starters(
         "Rust": f"fn solve({rust_params}) -> impl std::fmt::Debug {{\n    // Implement the required solution.\n    0i64\n}}\n",
     }
 
+USER_IO_STARTERS = {
+    "Python": (
+        "import sys\n\n"
+        "# Read the complete test input from standard input.\n"
+        "input_data = sys.stdin.read()\n\n"
+        "# Parse input_data according to the problem statement.\n"
+        "# Compute the answer and print it.\n"
+        "result = None\n"
+        "print(result)\n"
+    ),
+    "C++": (
+        "#include <bits/stdc++.h>\n"
+        "using namespace std;\n\n"
+        "int main() {\n"
+        "    ios::sync_with_stdio(false);\n"
+        "    cin.tie(nullptr);\n\n"
+        "    // Read the test input from standard input.\n"
+        "    // Parse it according to the problem statement.\n"
+        "    // Compute the answer and print it.\n"
+        "    return 0;\n"
+        "}\n"
+    ),
+    "Java": (
+        "import java.io.*;\n"
+        "import java.util.*;\n\n"
+        "public class Main {\n"
+        "    public static void main(String[] args) throws Exception {\n"
+        "        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n"
+        "        StringBuilder sb = new StringBuilder();\n"
+        "        String line;\n"
+        "        while ((line = br.readLine()) != null) sb.append(line).append('\\n');\n\n"
+        "        // Parse input according to the problem statement.\n"
+        "        // Compute the answer and print it.\n"
+        "        System.out.println();\n"
+        "    }\n"
+        "}\n"
+    ),
+    "JavaScript": (
+        "const fs = require('fs');\n\n"
+        "const input = fs.readFileSync(0, 'utf8');\n\n"
+        "// Parse input according to the problem statement.\n"
+        "// Compute the answer and print it.\n"
+        "const result = '';\n"
+        "process.stdout.write(String(result));\n"
+    ),
+    "TypeScript": (
+        "declare const require: (name: string) => any;\n"
+        "const fs: any = require('fs');\n\n"
+        "const input: string = fs.readFileSync(0, 'utf8');\n\n"
+        "// Parse input according to the problem statement.\n"
+        "// Compute the answer and print it.\n"
+        "const result: any = '';\n"
+        "process.stdout.write(String(result));\n"
+    ),
+    "Go": (
+        "package main\n\n"
+        "import (\n"
+        "    "fmt"\n"
+        "    "io"\n"
+        "    "os"\n"
+        ")\n\n"
+        "func main() {\n"
+        "    inputBytes, err := io.ReadAll(os.Stdin)\n"
+        "    if err != nil {\n"
+        "        panic(err)\n"
+        "    }\n"
+        "    input := string(inputBytes)\n"
+        "    _ = input\n\n"
+        "    // Parse input according to the problem statement.\n"
+        "    // Compute the answer and print it.\n"
+        "    fmt.Println()\n"
+        "}\n"
+    ),
+    "Rust": (
+        "use std::io::{self, Read};\n\n"
+        "fn main() {\n"
+        "    let mut input = String::new();\n"
+        "    io::stdin().read_to_string(&mut input).unwrap();\n\n"
+        "    // Parse input according to the problem statement.\n"
+        "    // Compute the answer and print it.\n"
+        "    println!();\n"
+        "}\n"
+    ),
+}
+
 STDIO_STARTERS = {
     "Python": (
         "import sys\n\n"
@@ -859,6 +944,11 @@ def infer_execution_mode(
     return "function"
 
 
+def ensure_user_io_starter_code(starter_code: Any = None) -> dict[str, str]:
+    """Return complete stdin/stdout programs; the user owns input parsing and output."""
+    return {language: USER_IO_STARTERS[language] for language in SUPPORTED_LANGUAGES}
+
+
 def ensure_starter_code(
     starter_code: Any,
     execution_mode: str | None = None,
@@ -891,8 +981,6 @@ def ensure_starter_code(
         names = _safe_function_parameter_names(names)
         values = _argument_values(test_cases, len(names), schema)
         generated = _generated_function_starters(names, values)
-        # Rebuild every function starter from the canonical problem contract so
-        # old generic or mismatched language signatures cannot leak to the editor.
         preserve_existing = not bool(names)
 
     result: dict[str, str] = {}
@@ -915,6 +1003,7 @@ def ensure_starter_code(
 
 
 def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
+(problem: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(problem)
 
     normalized["title"] = normalize_text(problem.get("title"))
