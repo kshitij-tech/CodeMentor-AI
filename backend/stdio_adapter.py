@@ -141,6 +141,11 @@ def infer_editor_input_schema(
 
     patterns = (
         (
+            "array_with_length",
+            r"(?i)\b(?:array|list|sequence)\s+([A-Za-z_][A-Za-z0-9_]*)\s+of\s+"
+            r"(n|m|k|q|size|count|length|len)\s+integers?",
+        ),
+        (
             "counted_array",
             r"(?i)\b(n|m|k|q|size|count|length|len)\s+integers?\s*[:\-]?\s*"
             r"(?:named\s+)?([A-Za-z_][A-Za-z0-9_]*)(?:_\d+)?",
@@ -162,6 +167,12 @@ def infer_editor_input_schema(
             if kind == "counted_array":
                 length_name, name = match.group(1), match.group(2)
                 item_kind = "array"
+            elif kind == "array_with_length":
+                name, length_name = match.group(1), match.group(2)
+                item_kind = "array"
+                if length_name not in seen:
+                    matches.append((match.start(), length_name, "int"))
+                    seen.add(length_name)
             else:
                 name = match.group(1)
                 length_name = None
@@ -171,7 +182,7 @@ def infer_editor_input_schema(
                 or name in seen
             ):
                 continue
-            matches.append((match.start(), name, item_kind))
+            matches.append((match.start() + (1 if kind == "array_with_length" else 0), name, item_kind))
             seen.add(name)
             if item_kind == "array" and length_name:
                 counted_lengths[name] = length_name
