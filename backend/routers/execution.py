@@ -67,6 +67,13 @@ def execute_code(
     if problem is None:
         raise HTTPException(status_code=404, detail="Problem not found.")
 
+    # Use the persisted problem limits instead of undefined request-local values.
+    time_limit_seconds = min(
+        10.0,
+        max(0.1, float(problem.time_limit_ms or 2000) / 1000),
+    )
+    memory_limit_mb = problem.memory_limit_mb
+
     # Every problem is now judged as a normal stdin/stdout program.
     # Legacy callable test cases are converted to a single JSON input document,
     # so the user's code is always responsible for parsing stdin itself.
