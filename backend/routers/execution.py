@@ -208,6 +208,11 @@ def execute_code(
             }
     else:
         cases = problem.test_cases or []
+        if request.mode == "run":
+            sample_cases = [
+                case for case in cases if case.get("visibility") == "sample"
+            ]
+            cases = sample_cases or cases
         try:
             function_schema = function_editor_schema_from_problem(
                 problem.starter_code,
