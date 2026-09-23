@@ -415,6 +415,39 @@ function difficultyClass(d){
 }
 function fallbackStarterCode(language){
   const functionStyle=problem?.editor_execution_mode==='function';
+  if(functionStyle){
+    const schema=Array.isArray(problem?.editor_input_schema)?problem.editor_input_schema:[];
+    const names=schema.map(item=>item&&item.name).filter(name=>typeof name==='string'&&name.trim());
+    if(names.length){
+      const cppType=kind=>({
+        int:'long long',float:'double',string:'string',raw_string:'string',
+        int_array:'vector<long long>',float_array:'vector<double>',string_array:'vector<string>'
+      }[kind]||'string');
+      const javaType=kind=>({
+        int:'long',float:'double',string:'String',raw_string:'String',
+        int_array:'long[]',float_array:'double[]',string_array:'String[]'
+      }[kind]||'String');
+      const goType=kind=>({
+        int:'int64',float:'float64',string:'string',raw_string:'string',
+        int_array:'[]int64',float_array:'[]float64',string_array:'[]string'
+      }[kind]||'string');
+      const rustType=kind=>({
+        int:'i64',float:'f64',string:'String',raw_string:'String',
+        int_array:'Vec<i64>',float_array:'Vec<f64>',string_array:'Vec<String>'
+      }[kind]||'String');
+      const byName=(language=>{
+        if(language==='Python') return `def solve(${names.join(', ')}):\\n    # Implement the required solution.\\n    pass\\n`;
+        if(language==='C++') return `#include <bits/stdc++.h>\\nusing namespace std;\\n\\nauto solve(${schema.map(item=>`${cppType(item.type)} ${item.name}`).join(', ')}) {\\n    // Implement the required solution.\\n    return 0;\\n}\\n`;
+        if(language==='Java') return `class Solution {\\n    public Object solve(${schema.map(item=>`${javaType(item.type)} ${item.name}`).join(', ')}) {\\n        // Implement the required solution.\\n        return 0L;\\n    }\\n}\\n`;
+        if(language==='JavaScript') return `function solve(${names.join(', ')}) {\\n    // Implement the required solution.\\n    return null;\\n}\\n`;
+        if(language==='TypeScript') return `function solve(${schema.map(item=>`${item.name}: ${item.type==='int'||item.type==='float'?'number':item.type==='string'||item.type==='raw_string'?'string':'any'}`).join(', ')}): any {\\n    // Implement the required solution.\\n    return null;\\n}\\n`;
+        if(language==='Go') return `package main\\n\\nfunc solve(${schema.map(item=>`${item.name} ${goType(item.type)}`).join(', ')}) any {\\n    // Implement the required solution.\\n    return int64(0)\\n}\\n`;
+        if(language==='Rust') return `fn solve(${schema.map(item=>`${item.name}: ${rustType(item.type)}`).join(', ')}) -> impl std::fmt::Debug {\\n    // Implement the required solution.\\n    0i64\\n}\\n`;
+        return '';
+      })(language);
+      if(byName) return byName;
+    }
+  }
   const functionTemplates={
     Python:"def solve(*args):\n    # Implement the required solution.\n    pass\n",
     "C++":"#include <bits/stdc++.h>\nusing namespace std;\n\nint solve() {\n    // Implement the required solution.\n    return 0;\n}\n",
@@ -476,6 +509,30 @@ function isGenericFunctionDraft(language,value){
   };
   return (signatures[language]||[]).some(signature=>compact.includes(signature));
 }
+function functionDraftMatchesContract(language,value){
+  const expected=(problem?.editor_input_schema||[])
+    .map(item=>item&&item.name)
+    .filter(name=>typeof name==='string'&&name.trim());
+  if(problem?.editor_execution_mode!=='function'||!expected.length)return true;
+  if(typeof value!=='string')return false;
+
+  const match=value.match(/\\b(?:def\\s+solve|function\\s+solve|solve)\\s*\\(([^)]*)\\)/);
+  if(!match)return false;
+
+  const parts=match[1].split(',').map(part=>part.trim()).filter(Boolean);
+  if(parts.length!==expected.length)return false;
+
+  const actual=parts.map(part=>{
+    part=part.replace(/^\\s*[*&]+/,'').trim();
+    part=part.split('=',1)[0].trim();
+    part=part.split(':',1)[0].trim();
+    if(language==='Go')return (part.match(/[A-Za-z_][A-Za-z0-9_]*/)||[]).pop()||'';
+    if(language==='Java'||language==='C++')return (part.match(/[A-Za-z_][A-Za-z0-9_]*\\s*$/)||[])[0]?.trim()||'';
+    return (part.match(/[A-Za-z_][A-Za-z0-9_]*$/)||[])[0]||'';
+  });
+
+  return actual.every((name,index)=>name===expected[index]);
+}
 function isStdioBoilerplateDraft(language,value){
   if(problem?.editor_execution_mode!=='function'||typeof value!=='string')return false;
   const compact=value.trim().replace(/\s+/g,'');
@@ -498,10 +555,11 @@ function loadDraft(){
   const hasSaved=typeof saved==='string'&&saved.trim().length>0;
   const staleGeneric=isGenericFunctionDraft(language,saved);
   const staleStdio=isStdioBoilerplateDraft(language,saved);
-  const useSaved=hasSaved&&!staleGeneric&&!staleStdio;
+  const staleContract=hasSaved && problem?.editor_execution_mode==='function' && !functionDraftMatchesContract(language,saved);
+  const useSaved=hasSaved&&!staleGeneric&&!staleStdio&&!staleContract;
   editor.setValue(useSaved?saved:starterCode(language));
   $('save-status').textContent=useSaved?'Draft restored':'Starter';
-  if(staleGeneric||staleStdio) localStorage.removeItem(draftKey());
+  if(staleGeneric||staleStdio||staleContract) localStorage.removeItem(draftKey());
   scheduleSyntaxValidation();
 }
 function renderProblem(){
