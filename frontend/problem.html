@@ -716,9 +716,13 @@ async function execute(mode){
     }
     $('execution-status').textContent=(data.status||'Complete')+' · '+(data.summary||'');
   }catch(err){
-    $('execution-status').textContent=err.message||'Execution failed.';
+    const rawMessage=err?.message||'Execution failed.';
+    const message=rawMessage==='Failed to fetch'
+      ? 'Cannot reach the CodeMentor API at '+API+'. Make sure Uvicorn is running and check the backend console for Docker/runtime errors.'
+      : rawMessage;
+    $('execution-status').textContent=message;
     $('results').classList.remove('hidden');
-    $('result-body').innerHTML='<div class="text-xs text-rose-400 p-3">'+esc(err.message||'Execution failed.')+'</div>';
+    $('result-body').innerHTML='<div class="text-xs text-rose-400 p-3">'+esc(message)+'</div>';
   }finally{
     $('run-btn').disabled=false;$('submit-btn').disabled=false;
     $('run-btn').classList.remove('cm-loading');$('submit-btn').classList.remove('cm-loading');
