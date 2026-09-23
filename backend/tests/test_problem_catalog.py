@@ -124,6 +124,44 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("func solve", starters["Go"])
         self.assertIn("fn solve", starters["Rust"])
 
+    def test_reserved_function_parameter_names_are_made_cross_language_safe(self):
+        starters = ensure_starter_code(
+            {
+                "Python": "def solve(n, of, in, except):\n    pass\n",
+            },
+            "function",
+            [{"args": [[5, "x", "y", "z"]], "expected": 1}],
+        )
+        self.assertIn("def solve(n, of, in_, except_):", starters["Python"])
+        self.assertIn("solve(n, of, in_, except_)", starters["JavaScript"])
+        self.assertIn("in_", starters["C++"])
+        self.assertIn("except_", starters["Java"])
+        self.assertIn("in_", starters["Go"])
+        self.assertIn("except_", starters["Rust"])
+
+    def test_single_string_function_argument_uses_input_schema_name(self):
+        starters = ensure_starter_code(
+            {},
+            "function",
+            [{"args": [["hello world"]], "expected": 5}],
+            [],
+            editor_schema=[{"name": "input_data", "type": "string"}],
+        )
+        self.assertIn("def solve(input_data):", starters["Python"])
+        self.assertIn("function solve(input_data)", starters["JavaScript"])
+        self.assertIn("solve(input_data:", starters["TypeScript"])
+        self.assertIn("input_data string", starters["Go"])
+        self.assertIn("input_data: String", starters["Rust"])
+
+    def test_go_function_starters_use_int64_contract(self):
+        starters = ensure_starter_code(
+            {"Python": "def solve(nums, target):\n    pass\n"},
+            "function",
+            [{"args": [[1, 2, 3], 7], "expected": 1}],
+        )
+        self.assertIn("nums []int64", starters["Go"])
+        self.assertIn("target int64", starters["Go"])
+
     def test_function_starters_use_named_problem_parameters(self):
         starters = ensure_starter_code(
             {
