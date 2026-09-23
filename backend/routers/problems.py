@@ -17,6 +17,7 @@ from backend.problem_catalog import (
     TOPIC_HIERARCHY,
     canonicalize_topics,
     ensure_starter_code,
+    function_editor_schema_from_problem,
     infer_execution_mode,
     is_english_problem,
     normalize_difficulty,
@@ -144,7 +145,13 @@ def serialize(problem: Problem) -> dict:
             problem.examples,
         )
         if actual_mode == "stdio"
-        else []
+        else function_editor_schema_from_problem(
+            problem.starter_code,
+            problem.test_cases,
+            problem.examples,
+            problem.description,
+            explicit_schema=package_metadata.get("editor_input_schema"),
+        )
     )
     editor_mode = "function" if actual_mode == "function" or editor_schema else "stdio"
 
