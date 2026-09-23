@@ -98,7 +98,7 @@ _UNIVERSAL_PARAMETER_KEYWORDS = {
     "using", "virtual", "void", "volatile", "wchar_t", "abstract", "boolean",
     "byte", "extends", "final", "implements", "instanceof", "native", "strictfp",
     "super", "synchronized", "throws", "transient", "var", "volatile",
-    "package", "function", "let", "of", "static", "switch", "typeof", "var",
+    "package", "function", "let", "static", "switch", "typeof", "var",
     "with", "yield", "delete", "debugger", "constructor", "module", "select",
     "chan", "defer", "fallthrough", "go", "map", "range", "struct", "func",
     "crate", "dyn", "impl", "loop", "mod", "move", "mut", "pub", "ref", "self",
