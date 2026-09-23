@@ -120,36 +120,45 @@ PROBLEMS = [
 ]
 
 def seed_problems(db):
-    for item in PROBLEMS:
-        item = dict(item)
+    for original in PROBLEMS:
+        item = dict(original)
+
+        # Normalize the callable arguments before persisting them. Older seed
+        # rows used an extra list nesting such as [[[nums], budget]], which
+        # makes solve(nums, budget) receive one argument instead of two.
+        normalized_tests = []
+        for case in item.get("test_cases", []):
+            copied = dict(case)
+            args = list(copied.get("args", []))
+            if (
+                len(args) == 1
+                and isinstance(args[0], list)
+                and args[0]
+                and isinstance(args[0][0], list)
+            ):
+                args = args[0]
+            copied["args"] = args
+            normalized_tests.append(copied)
+        item["test_cases"] = normalized_tests
+
         item["starter_code"] = ensure_starter_code(
             item.get("starter_code"),
             item.get("execution_mode", "function"),
             item.get("test_cases"),
             item.get("examples"),
         )
+
         existing = db.query(Problem).filter(Problem.slug == item["slug"]).first()
         if existing is None:
             db.add(Problem(**item))
         else:
-            # Keep the seeded execution contract in sync. Also repair the earlier
-            # single-list cases that accidentally had one extra nesting level.
-            seeded_tests = item.get("test_cases", [])
-            normalized_tests = []
-            for case in seeded_tests:
-                copied = dict(case)
-                args = list(copied.get("args", []))
-                if len(args) == 1 and isinstance(args[0], list) and args[0] and isinstance(args[0][0], list):
-                    args = args[0]
-                copied["args"] = args
-                normalized_tests.append(copied)
             existing.title = item["title"]
             existing.difficulty = item["difficulty"]
             existing.topics = item["topics"]
             existing.description = item["description"]
             existing.constraints = item["constraints"]
             existing.examples = item["examples"]
-            existing.test_cases = normalized_tests
+            existing.test_cases = item["test_cases"]
             existing.starter_code = item["starter_code"]
             existing.execution_mode = item.get("execution_mode", "function")
     db.commit()
