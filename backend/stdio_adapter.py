@@ -121,7 +121,14 @@ def infer_editor_input_schema(
     explicit_schema: Any = None,
 ) -> list[dict[str, Any]]:
     explicit = normalize_editor_input_schema(explicit_schema)
-    if explicit:
+    # A persisted raw_string schema is only a fallback. Re-infer from the
+    # problem statement so older imported problems can be upgraded without a
+    # database migration.
+    if explicit and not (
+        len(explicit) == 1
+        and explicit[0].get("name") == "input_data"
+        and explicit[0].get("type") == "raw_string"
+    ):
         return explicit
 
     assignment = _assignment_schema(examples)
@@ -137,6 +144,11 @@ def infer_editor_input_schema(
             "array",
             r"(?i)\b(?:array|list|sequence)\s+(?:of\s+[A-Za-z]+\s+)?([A-Za-z_][A-Za-z0-9_]*)",
         ),
+        (
+            "counted_array",
+            r"(?i)\b(n|m|k|q|size|count|length|len)\s+integers?\s+"
+            r"(?:named\s+)?([A-Za-z_][A-Za-z0-9_]*)(?:_\d+)?",
+        ),
         ("string", r"(?i)\b(?:string|word)\s+([A-Za-z_][A-Za-z0-9_]*)"),
         (
             "int",
@@ -144,16 +156,25 @@ def infer_editor_input_schema(
         ),
     )
 
+    counted_lengths: dict[str, str] = {}
     for kind, pattern in patterns:
         for match in re.finditer(pattern, section):
-            name = match.group(1)
+            if kind == "counted_array":
+                length_name, name = match.group(1), match.group(2)
+                item_kind = "array"
+            else:
+                name = match.group(1)
+                length_name = None
+                item_kind = kind
             if (
                 name.lower() in {"the", "a", "an", "input", "output"}
                 or name in seen
             ):
                 continue
-            matches.append((match.start(), name, kind))
+            matches.append((match.start(), name, item_kind))
             seen.add(name)
+            if item_kind == "array" and length_name:
+                counted_lengths[name] = length_name
 
     candidates = [
         (name, kind)
@@ -182,7 +203,10 @@ def infer_editor_input_schema(
     for name, kind in candidates:
         if kind == "array":
             item = {"name": name, "type": "int_array"}
-            if length_name and length_name != name:
+            inferred_length = counted_lengths.get(name)
+            if inferred_length:
+                item["length_from"] = inferred_length
+            elif length_name and length_name != name:
                 item["length_from"] = length_name
         elif kind == "string":
             item = {"name": name, "type": "string"}
@@ -274,11 +298,11 @@ def editor_schema_from_metadata(
 
 def _cpp_type(kind: str) -> str:
     return {
-        "int": "long long",
+        "int": "int",
         "float": "double",
         "string": "string",
         "raw_string": "string",
-        "int_array": "vector<long long>",
+        "int_array": "vector<int>",
         "float_array": "vector<double>",
         "string_array": "vector<string>",
     }[kind]
@@ -286,11 +310,11 @@ def _cpp_type(kind: str) -> str:
 
 def _java_type(kind: str) -> str:
     return {
-        "int": "long",
+        "int": "int",
         "float": "double",
         "string": "String",
         "raw_string": "String",
-        "int_array": "long[]",
+        "int_array": "int[]",
         "float_array": "double[]",
         "string_array": "String[]",
     }[kind]
@@ -298,11 +322,11 @@ def _java_type(kind: str) -> str:
 
 def _go_type(kind: str) -> str:
     return {
-        "int": "int64",
+        "int": "int",
         "float": "float64",
         "string": "string",
         "raw_string": "string",
-        "int_array": "[]int64",
+        "int_array": "[]int",
         "float_array": "[]float64",
         "string_array": "[]string",
     }[kind]
@@ -310,11 +334,11 @@ def _go_type(kind: str) -> str:
 
 def _rust_type(kind: str) -> str:
     return {
-        "int": "i64",
+        "int": "i32",
         "float": "f64",
         "string": "String",
         "raw_string": "String",
-        "int_array": "Vec<i64>",
+        "int_array": "Vec<i32>",
         "float_array": "Vec<f64>",
         "string_array": "Vec<String>",
     }[kind]
