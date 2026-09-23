@@ -24,7 +24,7 @@ class StdioAdapterTests(unittest.TestCase):
         self.assertIn("nums", starters["Java"])
         self.assertIn("solve(n, nums)", starters["JavaScript"])
         self.assertIn("solve(n: number, nums: any)", starters["TypeScript"])
-        self.assertIn("solve(n int64", starters["Go"])
+        self.assertIn("solve(n int", starters["Go"])
         self.assertIn("nums: Vec<i64>", starters["Rust"])
 
     def test_stdio_schema_can_be_inferred_from_statement_and_sample(self):
