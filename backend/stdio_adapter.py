@@ -787,7 +787,7 @@ def _go_reader(item: dict[str, Any]) -> str:
     length = item.get("length_from")
     if kind.endswith("_array") and length:
         typ = {
-            "int_array": "int",
+            "int_array": "int64",
             "float_array": "float64",
             "string_array": "string",
         }[kind]
