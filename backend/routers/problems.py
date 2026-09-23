@@ -17,6 +17,7 @@ from backend.problem_catalog import (
     TOPIC_HIERARCHY,
     canonicalize_topics,
     ensure_starter_code,
+    ensure_user_io_starter_code,
     function_editor_schema_from_problem,
     infer_execution_mode,
     is_english_problem,
@@ -153,7 +154,10 @@ def serialize(problem: Problem) -> dict:
             explicit_schema=package_metadata.get("editor_input_schema"),
         )
     )
-    editor_mode = "function" if actual_mode == "function" or editor_schema else "stdio"
+    # The editor always uses direct stdin/stdout execution. The backend
+    # never invokes solve(...) or injects function arguments into user code.
+    editor_mode = "stdio"
+    user_io_starters = ensure_user_io_starter_code(problem.starter_code)
 
     return {
         "id": problem.id,
@@ -164,17 +168,11 @@ def serialize(problem: Problem) -> dict:
         "description": strip_examples_from_description(problem.description, problem.examples),
         "constraints": problem.constraints,
         "examples": problem.examples,
-        "starter_code": ensure_starter_code(
-            problem.starter_code,
-            actual_mode,
-            problem.test_cases,
-            problem.examples,
-            editor_schema=editor_schema,
-        ),
+        "starter_code": user_io_starters,
         "source": problem.source,
         "external_id": problem.external_id,
         "external_url": problem.external_url,
-        "execution_mode": actual_mode,
+        "execution_mode": "stdio",
         "editor_execution_mode": editor_mode,
         "editor_input_schema": editor_schema,
         "time_limit_ms": problem.time_limit_ms,
