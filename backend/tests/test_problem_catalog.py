@@ -241,7 +241,7 @@ class ProblemCatalogTests(unittest.TestCase):
             "Java": "solve(long[] nums, long target)",
             "JavaScript": "solve(nums, target)",
             "TypeScript": "solve(nums: any, target: any)",
-            "Go": "solve(nums []int, target int)",
+            "Go": "solve(nums []int64, target int64)",
             "Rust": "solve(nums: Vec<i64>, target: i64)",
         }
         for language, signature in expected_signatures.items():
@@ -256,7 +256,7 @@ class ProblemCatalogTests(unittest.TestCase):
         )
         self.assertIn("vector<vector<long long>>", starters["C++"])
         self.assertIn("long[][] edges", starters["Java"])
-        self.assertIn("edges [][]int", starters["Go"])
+        self.assertIn("edges [][]int64", starters["Go"])
         self.assertIn("edges: Vec<Vec<i64>>", starters["Rust"])
 
     def test_canonical_topic_catalog_is_stable(self):
