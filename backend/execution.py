@@ -934,25 +934,7 @@ def _rust_literal(value: Any, hint: tuple) -> str:
 
 _CXX_JSON_HELPER = r"""
 static void __cm_json(std::ostream& out, const std::string& value) {
-    out << '"';
-    for (unsigned char ch : value) {
-        switch (ch) {
-            case '"': out << "\\""; break;
-            case '\\': out << "\\\\"; break;
-            case '
-': out << "\\n"; break;
-            case '': out << "\\r"; break;
-            case '	': out << "\\t"; break;
-            default:
-                if (ch < 0x20) {
-                    const char* hex = "0123456789abcdef";
-                    out << "\\u00" << hex[(ch >> 4) & 0xf] << hex[ch & 0xf];
-                } else {
-                    out << ch;
-                }
-        }
-    }
-    out << '"';
+    out << std::quoted(value);
 }
 
 template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
@@ -980,23 +962,13 @@ static void __cm_json(std::ostream& out, const std::vector<T>& value) {
 
 _JAVA_JSON_HELPER = r"""
     static String __cmQuote(String value) {
-        StringBuilder out = new StringBuilder();
-        out.append('"');
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            switch (c) {
-                case '"': out.append("\\""); break;
-                case '\\': out.append("\\\\"); break;
-                case '
-': out.append("\\n"); break;
-                case '': out.append("\\r"); break;
-                case '	': out.append("\\t"); break;
-                default:
-                    if (c < 32) out.append(String.format("\\\\u%04x", (int)c));
-                    else out.append(c);
-            }
-        }
-        return out.append('"').toString();
+        return "\"" + value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\n", "\\n")
+            .replace("\r", "\\r")
+            .replace("\t", "\\t")
+            + "\"";
     }
 
     static String __cmJson(Object value) {
