@@ -12,6 +12,7 @@ from backend.execution import (
     CodeRejectedError,
     extract_error_line,
     extract_error_location,
+    run_language_function_tests,
     run_language_stdio_tests,
     run_python_stdio_tests,
     run_python_tests,
@@ -68,16 +69,14 @@ def execute_code(
     if problem is None:
         raise HTTPException(status_code=404, detail="Problem not found.")
 
-    if request.language != "Python" and problem.execution_mode != "stdio":
-        return {
-            "status": "Unsupported Language",
-            "summary": (
-                "Non-Python execution currently supports standard stdin/stdout "
-                "problems. Function-style execution remains Python-only."
-            ),
-            "error_line": None,
-            "results": [],
-        }
+    from backend.problem_catalog import infer_execution_mode, function_editor_schema_from_problem
+
+    actual_mode = infer_execution_mode(
+        problem.execution_mode,
+        test_cases=problem.test_cases,
+        starter_code=problem.starter_code,
+        examples=problem.examples,
+    )
 
     time_limit_seconds = min(
         10.0,
@@ -89,7 +88,7 @@ def execute_code(
         else None
     )
 
-    if problem.execution_mode == "stdio":
+    if actual_mode == "stdio":
         metadata = problem.package_metadata or {}
         cases = problem.test_cases or []
 
@@ -210,12 +209,30 @@ def execute_code(
     else:
         cases = problem.test_cases or []
         try:
-            outcomes = run_python_tests(
-                request.code,
+            function_schema = function_editor_schema_from_problem(
+                problem.starter_code,
                 cases,
-                time_limit_seconds=time_limit_seconds,
-                memory_limit_mb=memory_limit_mb,
+                problem.examples,
+                problem.description,
+                explicit_schema=(problem.package_metadata or {}).get("editor_input_schema"),
             )
+            parameter_count = len(function_schema)
+            if request.language == "Python":
+                outcomes = run_python_tests(
+                    request.code,
+                    cases,
+                    time_limit_seconds=time_limit_seconds,
+                    memory_limit_mb=memory_limit_mb,
+                )
+            else:
+                outcomes = run_language_function_tests(
+                    request.code,
+                    request.language,
+                    cases,
+                    parameter_count=parameter_count,
+                    time_limit_seconds=time_limit_seconds,
+                    memory_limit_mb=memory_limit_mb,
+                )
         except CodeRejectedError as exc:
             return {
                 "status": "Rejected",
