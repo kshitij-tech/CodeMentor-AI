@@ -460,9 +460,9 @@ USER_IO_STARTERS = {
     "Go": (
         "package main\n\n"
         "import (\n"
-        "    "fmt"\n"
-        "    "io"\n"
-        "    "os"\n"
+        "    \\"fmt\\"\n"
+        "    \\"io\\"\n"
+        "    \\"os\\"\n"
         ")\n\n"
         "func main() {\n"
         "    inputBytes, err := io.ReadAll(os.Stdin)\n"
