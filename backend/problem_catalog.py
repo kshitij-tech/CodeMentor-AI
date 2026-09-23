@@ -193,7 +193,12 @@ def _is_generic_function_starter(language: str, source: Any) -> bool:
 
 
 
-def _argument_values(test_cases: Any, count: int) -> list[Any]:
+def _argument_values(
+    test_cases: Any,
+    count: int,
+    schema: Any = None,
+) -> list[Any]:
+    normalized_schema = normalize_editor_input_schema(schema)
     if not isinstance(test_cases, list):
         return [None] * count
     for case in test_cases:
@@ -210,6 +215,17 @@ def _argument_values(test_cases: Any, count: int) -> list[Any]:
             and len(normalized_args[0]) == count
         ):
             normalized_args = list(normalized_args[0])
+        elif (
+            count == 1
+            and len(normalized_args) == 1
+            and isinstance(normalized_args[0], list)
+            and len(normalized_args[0]) == 1
+            and normalized_schema
+            and not str(normalized_schema[0].get("type", "")).endswith("_array")
+        ):
+            # Some imported function cases historically wrapped a single
+            # scalar/string argument in one extra list layer.
+            normalized_args = [normalized_args[0][0]]
         return normalized_args[:count] + [None] * max(0, count - len(normalized_args))
     return [None] * count
 
@@ -256,10 +272,11 @@ def function_editor_schema_from_problem(
         names = [item["name"] for item in explicit if item["name"]]
     names = _safe_function_parameter_names(names)
 
-    values = _argument_values(test_cases, len(names))
+    values = _argument_values(test_cases, len(names), explicit)
     schema: list[dict[str, Any]] = []
-    for name, value in zip(names, values):
-        kind = _schema_type_from_value(value)
+    explicit_types = [item["type"] for item in explicit]
+    for index, (name, value) in enumerate(zip(names, values)):
+        kind = explicit_types[index] if index < len(explicit_types) else _schema_type_from_value(value)
         if kind == "raw_string":
             kind = "string"
         schema.append({"name": name, "type": kind})
@@ -872,7 +889,7 @@ def ensure_starter_code(
             schema_for_names = normalize_editor_input_schema(editor_schema)
             names = [item["name"] for item in schema_for_names if item["name"]]
         names = _safe_function_parameter_names(names)
-        values = _argument_values(test_cases, len(names))
+        values = _argument_values(test_cases, len(names), schema)
         generated = _generated_function_starters(names, values)
         # Rebuild every function starter from the canonical problem contract so
         # old generic or mismatched language signatures cannot leak to the editor.
