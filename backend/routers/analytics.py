@@ -55,6 +55,19 @@ def analytics_summary(
         for attempt in recent
     }
 
+    # A streak is consecutive calendar days on which the user actually
+    # solved at least one problem. Running code, failed submissions, and
+    # multiple attempts on the same day do not extend the streak.
+    solved_days = {
+        _naive_utc(attempt.created_at).date()
+        for attempt in accepted_submissions
+    }
+    current_streak = 0
+    streak_day = now.date()
+    while streak_day in solved_days:
+        current_streak += 1
+        streak_day -= timedelta(days=1)
+
     # Count hints through a lightweight SQL query without adding ORM relationships.
     from sqlalchemy import func
     from backend.models import MentorSession
@@ -141,6 +154,7 @@ def analytics_summary(
         "acceptance_rate": round((len(accepted_submissions) / len(submissions)) * 100) if submissions else 0,
         "solved_last_7_days": len(recent_solved),
         "active_days_last_7_days": len(recent_active_days),
+        "current_streak": current_streak,
         "velocity_pace": round(len(recent_solved) / max(len(recent_active_days), 1), 1),
         "ai_hints": int(hint_count),
         "average_runtime_ms": round(sum(runtimes) / len(runtimes), 1) if runtimes else None,
