@@ -201,6 +201,9 @@ def _docker_base_command(
         "docker",
         "run",
         "--rm",
+        # Keep STDIN attached so submitted programs using input()/cin/Scanner/
+        # fs.readFileSync(0) receive the test input supplied by the judge.
+        "-i",
         "--name",
         docker_name,
         "--network",
