@@ -22,6 +22,63 @@ router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
 TOPICS = CANONICAL_TOPICS
 
+# A learning dependency graph for the roadmap. The graph is intentionally
+# limited to the topics that can actually appear in the Practice catalogue.
+# Missing prerequisites are ignored, so a small catalogue does not create
+# impossible locks.
+ROADMAP_PREREQUISITES = {
+    "Arrays & Strings": [],
+    "Hashing & Hash Maps": ["Arrays & Strings"],
+    "Sorting": ["Arrays & Strings"],
+    "Prefix Sum": ["Arrays & Strings"],
+    "Two Pointers": ["Arrays & Strings", "Sorting"],
+    "Sliding Window": ["Arrays & Strings", "Two Pointers"],
+    "Binary Search": ["Arrays & Strings", "Sorting"],
+    "Stacks & Queues": ["Arrays & Strings"],
+    "Linked Lists": ["Arrays & Strings"],
+    "Intervals": ["Arrays & Strings", "Sorting"],
+    "Trees & BST": ["Stacks & Queues"],
+    "Heaps & Priority Queues": ["Trees & BST"],
+    "Backtracking": ["Trees & BST"],
+    "Greedy Algorithms": ["Sorting", "Prefix Sum"],
+    "Bit Manipulation": ["Arrays & Strings"],
+    "Graphs (BFS/DFS)": ["Trees & BST"],
+    "Dynamic Programming": ["Arrays & Strings", "Prefix Sum"],
+    "Math": ["Arrays & Strings"],
+}
+
+ROADMAP_TIER = {
+    "Arrays & Strings": 1,
+    "Hashing & Hash Maps": 1,
+    "Sorting": 1,
+    "Prefix Sum": 1,
+    "Math": 1,
+    "Two Pointers": 2,
+    "Sliding Window": 2,
+    "Binary Search": 2,
+    "Stacks & Queues": 2,
+    "Linked Lists": 2,
+    "Intervals": 2,
+    "Bit Manipulation": 2,
+    "Trees & BST": 3,
+    "Heaps & Priority Queues": 3,
+    "Backtracking": 3,
+    "Greedy Algorithms": 3,
+    "Graphs (BFS/DFS)": 4,
+    "Dynamic Programming": 4,
+}
+
+EXPERIENCE_TARGET_TIER = {
+    "Beginner": 1,
+    "Intermediate": 2,
+    "Advanced": 3,
+}
+
+ROADMAP_MASTERY_UNLOCK = 60
+ROADMAP_MIN_EVIDENCE = 3
+ROADMAP_MASTERED = 75
+
+
 def _naive_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=None) if value.tzinfo else value
 
@@ -184,16 +241,26 @@ def learning_roadmap(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Build a roadmap only from topics that have real Practice questions."""
+    """Build an evidence-driven prerequisite roadmap from the real Practice catalogue."""
+    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+    experience = (profile.experience_level if profile else "Beginner") or "Beginner"
+    target_tier = EXPERIENCE_TARGET_TIER.get(experience, 1)
+
     catalog = _catalog_rows(db)
     catalog_by_id = {int(row["id"]): row for row in catalog}
 
     available_topic_counts = defaultdict(int)
+    difficulty_counts = defaultdict(lambda: defaultdict(int))
     for row in catalog:
         for topic in row["topics"]:
             available_topic_counts[topic] += 1
+            difficulty_counts[topic][row["difficulty"]] += 1
 
-    available_topics = [topic for topic in TOPICS if available_topic_counts[topic] > 0]
+    available_topics = [
+        topic for topic in TOPICS
+        if available_topic_counts[topic] > 0
+    ]
+    available_set = set(available_topics)
 
     attempts = (
         db.query(CodingAttempt, Problem)
@@ -220,77 +287,161 @@ def learning_roadmap(
                     stats[topic]["accepted"] += 1
                     stats[topic]["solved_problem_ids"].add(problem.id)
 
-    def mastery(topic: str) -> float:
+    def topic_mastery(topic: str) -> int:
         stat = stats[topic]
         attempted = len(stat["problem_ids"])
         solved = len(stat["solved_problem_ids"])
         if not attempted:
-            return 0.0
-
+            return 0
         evidence = min(1.0, attempted / 10.0)
         solve_rate = solved / attempted
         acceptance = stat["accepted"] / max(stat["submissions"], 1)
         return round((0.70 * solve_rate + 0.30 * acceptance) * evidence * 100)
 
+    def is_mastered(topic: str) -> bool:
+        stat = stats[topic]
+        return (
+            topic_mastery(topic) >= ROADMAP_MASTERED
+            and len(stat["problem_ids"]) >= ROADMAP_MIN_EVIDENCE
+        )
+
+    def prerequisite_topics(topic: str) -> list[str]:
+        # Only catalogue topics matter. A prerequisite that is absent from
+        # Practice cannot reasonably block a learner.
+        return [
+            item for item in ROADMAP_PREREQUISITES.get(topic, [])
+            if item in available_set
+        ]
+
+    def prerequisites_met(topic: str) -> bool:
+        return all(
+            is_mastered(prerequisite)
+            for prerequisite in prerequisite_topics(topic)
+        )
+
+    def recommended_difficulty(topic: str) -> str | None:
+        counts = difficulty_counts[topic]
+        mastery = topic_mastery(topic)
+        if mastery < 40:
+            preferred = ["Easy", "Medium", "Hard"]
+        elif mastery < ROADMAP_MASTERED:
+            preferred = ["Medium", "Easy", "Hard"]
+        else:
+            preferred = ["Hard", "Medium", "Easy"]
+        return next((level for level in preferred if counts[level] > 0), None)
+
     rows = []
     for topic in available_topics:
         stat = stats[topic]
+        mastery = topic_mastery(topic)
         attempted = len(stat["problem_ids"])
         solved = len(stat["solved_problem_ids"])
-        value = mastery(topic)
+        mastered = is_mastered(topic)
+        prereqs = prerequisite_topics(topic)
+        unmet = [item for item in prereqs if not is_mastered(item)]
+        unlocked = not unmet
+        tier = ROADMAP_TIER.get(topic, 2)
+        status = "mastered" if mastered else ("available" if unlocked else "locked")
 
-        if value >= 75 and attempted >= 3:
-            status = "mastered"
-        elif attempted > 0:
-            status = "in_progress"
+        if mastered:
+            why = "Mastery evidence is established for this topic."
+        elif unmet:
+            why = "Complete the prerequisite topic(s) first: " + ", ".join(unmet) + "."
+        elif tier < target_tier:
+            why = (
+                f"Foundation topic kept in the path before the {experience.lower()} "
+                "starting tier."
+            )
+        elif attempted:
+            why = "This topic is available and your current evidence shows room to improve."
         else:
-            status = "not_started"
-
-        priority = (
-            (100 - value) * 1.5
-            + (25 if status == "in_progress" else 12)
-            + (8 if status == "not_started" else 0)
-            + min(10, available_topic_counts[topic] / 10)
-        )
+            why = "This topic is available and ready to enter your current learning path."
 
         rows.append({
             "topic": topic,
             "status": status,
-            "mastery": value,
+            "mastery": mastery,
             "attempted_problems": attempted,
             "solved_problems": solved,
             "available_problems": available_topic_counts[topic],
+            "available_easy": difficulty_counts[topic]["Easy"],
+            "available_medium": difficulty_counts[topic]["Medium"],
+            "available_hard": difficulty_counts[topic]["Hard"],
+            "recommended_difficulty": recommended_difficulty(topic),
             "acceptance_rate": round(
                 stat["accepted"] / stat["submissions"] * 100
             ) if stat["submissions"] else 0,
-            "priority": round(priority, 2),
+            "tier": tier,
+            "prerequisites": prereqs,
+            "unmet_prerequisites": unmet,
+            "unlocked": unlocked,
+            "why": why,
         })
 
-    mastered = sorted(
-        [row for row in rows if row["status"] == "mastered"],
+    # Choose the current focus from unlocked, non-mastered topics. The target
+    # experience tier influences where we enter the graph, but prerequisites
+    # always win, so an Advanced profile cannot silently skip foundations.
+    candidates = [
+        row for row in rows
+        if row["unlocked"] and row["status"] != "mastered"
+    ]
+    candidates.sort(
+        key=lambda row: (
+            abs(row["tier"] - target_tier),
+            row["mastery"],
+            -row["available_problems"],
+            row["topic"],
+        )
+    )
+    current_topic = candidates[0]["topic"] if candidates else None
+
+    roadmap = []
+    for row in rows:
+        if row["status"] == "mastered":
+            position = "completed"
+        elif row["topic"] == current_topic:
+            position = "current"
+        elif row["unlocked"]:
+            position = "up_next"
+        else:
+            position = "locked"
+
+        roadmap.append({
+            **row,
+            "position": position,
+        })
+
+    # Keep the UI focused: show completed milestones, the current focus, the
+    # next few unlocked topics, and a small preview of locked prerequisites.
+    completed = sorted(
+        [row for row in roadmap if row["position"] == "completed"],
         key=lambda row: (-row["mastery"], row["topic"]),
     )[:3]
-    active = sorted(
-        [row for row in rows if row["status"] != "mastered"],
-        key=lambda row: (-row["priority"], row["topic"]),
-    )[:7]
+    current = [row for row in roadmap if row["position"] == "current"]
+    up_next = sorted(
+        [row for row in roadmap if row["position"] == "up_next"],
+        key=lambda row: (
+            abs(row["tier"] - target_tier),
+            row["mastery"],
+            row["topic"],
+        ),
+    )[:5]
+    locked = sorted(
+        [row for row in roadmap if row["position"] == "locked"],
+        key=lambda row: (row["tier"], row["topic"]),
+    )[:3]
 
-    roadmap = mastered[::-1] + active
-    for index, row in enumerate(roadmap):
-        if row["status"] == "mastered":
-            row["position"] = "completed"
-        elif index == len(mastered):
-            row["position"] = "current"
-        else:
-            row["position"] = "up_next"
+    visible = completed[::-1] + current + up_next + locked
 
     return {
-        "items": roadmap,
-        "current_topic": next(
-            (row["topic"] for row in roadmap if row["position"] == "current"),
-            None,
-        ),
+        "items": visible,
+        "current_topic": current_topic,
         "available_topic_count": len(available_topics),
+        "experience_level": experience,
+        "target_tier": target_tier,
+        "unlock_mastery": ROADMAP_MASTERY_UNLOCK,
+        "unlock_evidence": ROADMAP_MIN_EVIDENCE,
+        "mastery_threshold": ROADMAP_MASTERED,
     }
 
 @router.get("/weak")
