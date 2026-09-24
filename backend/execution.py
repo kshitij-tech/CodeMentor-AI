@@ -214,8 +214,11 @@ def _docker_base_command(
         "--read-only",
         "--tmpfs",
         "/tmp:rw,noexec,nosuid,size=64m",
+        # Compiled C++/Go/Rust binaries are created in /runner and must be
+        # executable. Keep /tmp noexec, but explicitly allow execution on the
+        # isolated runner tmpfs.
         "--tmpfs",
-        "/runner:rw,nosuid,size=64m",
+        "/runner:rw,nosuid,exec,size=64m",
         "--cap-drop",
         "ALL",
         "--security-opt",
