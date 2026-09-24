@@ -110,10 +110,6 @@ tailwind.config = {
       <p class="text-[10px] text-on-surface-variant mt-1">Practice telemetry will appear here.</p>
       <div id="streak-calendar" class="grid grid-cols-7 gap-1.5 mt-3" aria-label="Last seven days of solving activity"></div>
     </div>
-    <div class="flex flex-col gap-1">
-      <button id="preferences-btn" class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">tune</span>Preferences</button>
-      <button id="settings-btn" class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">settings</span>Settings</button>
-    </div>
   </div>
 </aside>
 
@@ -319,8 +315,22 @@ function navNotice(area){ toast(area + ' will be connected in the next implement
 let currentRecommendation=null;
 let dashboardUserId=null;
 
+function tokenUserId(){
+  try{
+    const raw=token();
+    if(!raw)return null;
+    const parts=raw.split('.');
+    if(parts.length!==3)return null;
+    const payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+    return payload?.sub ? String(payload.sub) : null;
+  }catch(_err){
+    return null;
+  }
+}
+
 function recommendationStorageKey(){
-  return dashboardUserId ? 'codementor_current_recommendation_'+String(dashboardUserId) : null;
+  const userId=dashboardUserId || tokenUserId();
+  return userId ? 'codementor_current_recommendation_'+String(userId) : null;
 }
 
 function startRecommendation(){
@@ -469,8 +479,10 @@ async function loadRecommendation(){
     }
   }catch(err){
     console.warn('Recommendation load failed:',err);
-    document.getElementById('recommendation-title').textContent='Choose your next problem';
-    document.getElementById('recommendation-reason').textContent='We could not calculate a personalized recommendation right now.';
+    document.getElementById('recommendation-title').textContent='Recommendation unavailable';
+    document.getElementById('recommendation-difficulty').textContent='Error';
+    document.getElementById('recommendation-topics').innerHTML='';
+    document.getElementById('recommendation-reason').textContent=(err?.message||'Could not calculate a recommendation.')+' Open Practice to choose a problem while the service is unavailable.';
   }
 }
 
@@ -525,8 +537,9 @@ function renderLearningRoadmap(items,currentTopic){
   const badge=document.getElementById('roadmap-focus');
   if(!host)return;
   if(!items?.length){
-    host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Solve a few problems to build your adaptive roadmap.</div>';
-    if(badge)badge.textContent='Awaiting practice';
+    host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant"><p class="font-semibold">No roadmap topics are available yet.</p><p class="mt-1">The roadmap only uses topics that have real Practice questions. Open Practice to confirm the current question catalogue.</p><button type="button" id="roadmap-practice-link" class="mt-3 px-3 py-2 rounded-lg bg-primary text-white font-semibold">Open Practice</button></div>';
+    if(badge)badge.textContent='No eligible topics';
+    document.getElementById('roadmap-practice-link')?.addEventListener('click',()=>window.location.replace('practice.html'));
     return;
   }
   if(badge)badge.textContent=currentTopic?'Focus: '+currentTopic:'Based on your Practice library';
@@ -620,6 +633,33 @@ function renderAnalytics(data){
   labels.innerHTML=points.map(point=>'<span class="flex-1 text-center">'+point.date.slice(5)+'</span>').join('');
 }
 
+async function loadRoadmap(){
+  const host=document.getElementById('learning-roadmap');
+  const badge=document.getElementById('roadmap-focus');
+  try{
+    const res=await fetch(API_BASE_URL+'/recommendations/roadmap',{
+      headers:{Authorization:'Bearer '+token()}
+    });
+    if(res.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      window.location.replace('auth.html');
+      return;
+    }
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok){
+      throw new Error(data.detail || ('Roadmap request failed ('+res.status+').'));
+    }
+    renderLearningRoadmap(data.items||[],data.current_topic);
+  }catch(err){
+    console.warn('Roadmap load failed:',err);
+    if(host){
+      host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-error text-xs"><p class="font-semibold">Roadmap unavailable</p><p class="mt-1">'+esc(err?.message||'Could not load the adaptive roadmap.')+'</p><button type="button" id="roadmap-retry" class="mt-3 px-3 py-2 rounded-lg bg-primary text-white font-semibold">Retry</button></div>';
+      document.getElementById('roadmap-retry')?.addEventListener('click',()=>void loadRoadmap());
+    }
+    if(badge)badge.textContent='Unavailable';
+  }
+}
+
 async function loadDashboard(){
   if(!requireAuth()) return;
   renderSkills();
@@ -627,6 +667,11 @@ async function loadDashboard(){
   void loadPracticeTopics();
 
   const headers={headers:{Authorization:'Bearer '+token()}};
+
+  // Recommendation and roadmap are core dashboard modules. Start them immediately
+  // and keep them independent from profile/analytics/mentor requests.
+  void loadRecommendation();
+  void loadRoadmap();
 
   // Load identity independently so an analytics failure cannot leave the
   // entire dashboard showing prototype/default account information.
@@ -645,7 +690,6 @@ async function loadDashboard(){
     const me=meRes.ok?await meRes.json():{};
 
     dashboardUserId=me.id || null;
-    void loadRecommendation();
 
     const name=profile.full_name || 'CodeMentor User';
     const role=profile.target_role || 'Complete your profile';
@@ -696,28 +740,6 @@ async function loadDashboard(){
 
   renderSkills();
 
-  // Load the roadmap independently so it stays visible even when another
-  // dashboard data source is slow or unavailable.
-  try{
-    const roadmapRes=await fetch(API_BASE_URL+'/recommendations/roadmap',headers);
-    if(roadmapRes.ok){
-      const roadmap=await roadmapRes.json();
-      renderLearningRoadmap(roadmap.items||[],roadmap.current_topic);
-    }else{
-      const detail=await roadmapRes.text().catch(()=> '');
-      const host=document.getElementById('learning-roadmap');
-      const badge=document.getElementById('roadmap-focus');
-      if(host)host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-error">Roadmap could not load ('+roadmapRes.status+').'+(detail?' Check that the FastAPI backend is running.':'')+'</div>';
-      if(badge)badge.textContent='Unavailable';
-    }
-  }catch(err){
-    const host=document.getElementById('learning-roadmap');
-    const badge=document.getElementById('roadmap-focus');
-    if(host)host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-error">Roadmap could not load. Make sure the FastAPI backend is running at 127.0.0.1:8000.</div>';
-    if(badge)badge.textContent='Unavailable';
-    console.warn('Roadmap load failed:',err);
-  }
-
   try{
     const detailRes=await fetch(API_BASE_URL+'/analytics/detail',headers);
     if(detailRes.ok){
@@ -745,9 +767,8 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
 document.getElementById('roadmap-jump')?.addEventListener('click',()=>{
-  document.getElementById('learning-roadmap')?.scrollIntoView({behavior:'smooth',block:'start'});
+  document.getElementById('adaptive-roadmap')?.scrollIntoView({behavior:'smooth',block:'start'});
 });
-document.getElementById('roadmap-jump')?.addEventListener('click',()=>document.getElementById('adaptive-roadmap')?.scrollIntoView({behavior:'smooth',block:'start'}));
 const dashboardMentorMessages=[];
 let dashboardMentorSessionId=null;
 function cleanDashboardMentorText(value){
@@ -849,8 +870,6 @@ document.getElementById('search-btn')?.addEventListener('click',openSearch);
 document.getElementById('close-search')?.addEventListener('click',closeSearch);
 document.getElementById('search-panel')?.addEventListener('click',e=>{if(e.target.id==='search-panel')closeSearch();});
 document.getElementById('search-input')?.addEventListener('input',e=>{document.getElementById('search-result').textContent=e.target.value.trim()?'Problem search will connect to the authorized problem provider in the next stage.':'Search will connect to the problem index in the next stage.';});
-document.getElementById('preferences-btn')?.addEventListener('click',()=>window.location.replace('preferences.html?v=20260921'));
-document.getElementById('settings-btn')?.addEventListener('click',()=>window.location.replace('settings.html'));
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();} if(e.key==='Escape'){closeSearch();document.getElementById('notification-panel')?.classList.add('hidden');closeAccount();closeSkillModal();}});
 loadDashboard();
 </script>
