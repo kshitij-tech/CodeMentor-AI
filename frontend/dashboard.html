@@ -164,6 +164,17 @@ tailwind.config = {
 </section>
 
 <section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary">route</span><h3 class="text-lg font-bold">Adaptive Learning Roadmap</h3></div><p class="text-xs text-on-surface-variant mt-1">Your path changes as your solving evidence changes.</p></div>
+    <span id="roadmap-focus" class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low text-primary">Building path…</span>
+  </div>
+  <div id="learning-roadmap" class="mt-6 flex flex-col gap-3">
+    <div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Analyzing your skill signals…</div>
+  </div>
+</section>
+
+
+<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
   <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Velocity &amp; Problem Solving Mastery</h3><p class="text-xs text-on-surface-variant">Your real trend will be computed from practice sessions.</p></div><span id="telemetry-badge" class="font-mono text-[10px] px-2 py-1 rounded bg-surface-container-low">No attempts yet</span></div>
   <div class="mt-5 p-5 rounded-xl bg-surface-container-low min-h-56">
     <div id="daily-telemetry" class="h-44 flex items-end justify-between gap-2 px-2"></div>
@@ -187,15 +198,6 @@ tailwind.config = {
   </div>
 </section>
 
-<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary">route</span><h3 class="text-lg font-bold">Adaptive Learning Roadmap</h3></div><p class="text-xs text-on-surface-variant mt-1">Your path changes as your solving evidence changes.</p></div>
-    <span id="roadmap-focus" class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low text-primary">Building path…</span>
-  </div>
-  <div id="learning-roadmap" class="mt-6 flex flex-col gap-3">
-    <div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Analyzing your skill signals…</div>
-  </div>
-</section>
 
 <section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
   <div class="flex items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Weak Areas &amp; AI Remediation Plan</h3><p class="text-xs text-on-surface-variant">Built from your actual submission history.</p></div><span class="material-symbols-outlined text-primary">construction</span></div>
@@ -640,7 +642,11 @@ async function loadDashboard(){
 
   // Analytics is intentionally independent from identity/profile rendering.
   try{
-    const analyticsRes=await fetch(API_BASE_URL+'/analytics/summary',headers);
+    const clientTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const analyticsRes=await fetch(
+      API_BASE_URL+'/analytics/summary?timezone_name='+encodeURIComponent(clientTimeZone),
+      headers
+    );
     if(analyticsRes.status===401){
       localStorage.removeItem(TOKEN_KEY);
       window.location.replace('auth.html');
@@ -666,13 +672,25 @@ async function loadDashboard(){
 
   renderSkills();
 
+  // Load the roadmap independently so it stays visible even when another
+  // dashboard data source is slow or unavailable.
   try{
     const roadmapRes=await fetch(API_BASE_URL+'/recommendations/roadmap',headers);
     if(roadmapRes.ok){
       const roadmap=await roadmapRes.json();
       renderLearningRoadmap(roadmap.items||[],roadmap.current_topic);
+    }else{
+      const detail=await roadmapRes.text().catch(()=> '');
+      const host=document.getElementById('learning-roadmap');
+      const badge=document.getElementById('roadmap-focus');
+      if(host)host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-error">Roadmap could not load ('+roadmapRes.status+').'+(detail?' Check that the FastAPI backend is running.':'')+'</div>';
+      if(badge)badge.textContent='Unavailable';
     }
   }catch(err){
+    const host=document.getElementById('learning-roadmap');
+    const badge=document.getElementById('roadmap-focus');
+    if(host)host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-error">Roadmap could not load. Make sure the FastAPI backend is running at 127.0.0.1:8000.</div>';
+    if(badge)badge.textContent='Unavailable';
     console.warn('Roadmap load failed:',err);
   }
 
