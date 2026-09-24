@@ -968,7 +968,7 @@ def _schema_input_code(language: str, schema: list[dict[str, Any]], indent: str 
             return [
                 input_comment,
                 f"{indent}java.util.Scanner scanner = new java.util.Scanner(System.in);",
-                f"{indent}String input_data = scanner.hasNextLine() ? scanner.nextLine() : \"";",
+                f"{indent}String input_data = scanner.hasNextLine() ? scanner.nextLine() : \\\"\\\";",
                 f"{indent}// TODO: parse input_data according to the problem statement.",
                 output_comment,
             ]
