@@ -588,54 +588,34 @@ function syncLanguageAvailability(){
 function isLegacyFunctionStyleCode(language,value){
   if(typeof value!=='string'||!value.trim())return false;
   const source=value.replace(/\r/g,'');
-  const compact=source.replace(/\s+/g,'');
   const signatures={
-    Python:[/\bdef\s+solve\s*\(/, /\bdef\s+solution\s*\(/],
-    'C++':[/\b(?:int|long|long\s+long|auto|bool|void)\s+solve\s*\(/],
-    Java:[/\bclass\s+Solution\b/, /\b(?:public\s+)?(?:static\s+)?(?:int|long|boolean|double|String|Object|void)\s+solve\s*\(/],
-    JavaScript:[/\bfunction\s+solve\s*\(/, /\b(?:const|let|var)\s+solve\s*=\s*(?:async\s*)?\(/],
-    TypeScript:[/\bfunction\s+solve\s*\(/, /\b(?:const|let|var)\s+solve\s*=\s*(?:async\s*)?\(/],
-    Go:[/\bfunc\s+solve\s*\(/],
-    Rust:[/\bfn\s+solve\s*\(/]
+    Python:[/\bdef\s+(?:solve|solution)\s*\(([^)]*)\)/],
+    'C++':[/\b(?:int|long|long\s+long|auto|bool|void)\s+solve\s*\(([^)]*)\)/],
+    Java:[/\b(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:int|long|boolean|double|String|Object|void)\s+solve\s*\(([^)]*)\)/],
+    JavaScript:[/\bfunction\s+solve\s*\(([^)]*)\)/,/\b(?:const|let|var)\s+solve\s*=\s*(?:async\s*)?\(([^)]*)\)/],
+    TypeScript:[/\bfunction\s+solve\s*\(([^)]*)\)/,/\b(?:const|let|var)\s+solve\s*=\s*(?:async\s*)?\(([^)]*)\)/],
+    Go:[/\bfunc\s+solve\s*\(([^)]*)\)/],
+    Rust:[/\bfn\s+solve\s*\(([^)]*)\)/]
   };
-  if((signatures[language]||[]).some(pattern=>pattern.test(source)))return true;
 
-  // Catch the exact generic legacy starters even when formatting differs.
-  const legacySignatures={
-    Python:['defsolve('],
-    'C++':['solve('],
-    Java:['classsolution','solves('],
-    JavaScript:['functionsolve('],
-    TypeScript:['functionsolve('],
-    Go:['funcsolve('],
-    Rust:['fnsolve(']
-  };
-  return (legacySignatures[language]||[]).some(signature=>compact.includes(signature));
+  // Only parameterized solve(...) functions are legacy callable templates.
+  // A parameterless solve() is the current stdin/stdout editor format.
+  if((signatures[language]||[]).some(pattern=>{
+    const match=source.match(pattern);
+    return Boolean(match && String(match[1]||'').trim());
+  }))return true;
+
+  // Java's old callable template convention also commonly used Solution,
+  // but a current parameterless Solution.solve() is valid and must be kept.
+  if(language==='Java' && /\bclass\s+Solution\b/.test(source)){
+    const match=source.match(/\bsolve\s*\(([^)]*)\)/);
+    return Boolean(match && String(match[1]||'').trim());
+  }
+
+  return false;
 }
-function functionDraftMatchesContract(language,value){
-  const expected=(problem?.editor_input_schema||[])
-    .map(item=>item&&item.name)
-    .filter(name=>typeof name==='string'&&name.trim());
-  if(problem?.editor_execution_mode!=='function'||!expected.length)return true;
-  if(typeof value!=='string')return false;
 
-  const match=value.match(/\\b(?:def\\s+solve|function\\s+solve|solve)\\s*\\(([^)]*)\\)/);
-  if(!match)return false;
 
-  const parts=match[1].split(',').map(part=>part.trim()).filter(Boolean);
-  if(parts.length!==expected.length)return false;
-
-  const actual=parts.map(part=>{
-    part=part.replace(/^\\s*[*&]+/,'').trim();
-    part=part.split('=',1)[0].trim();
-    part=part.split(':',1)[0].trim();
-    if(language==='Go')return (part.match(/[A-Za-z_][A-Za-z0-9_]*/)||[]).pop()||'';
-    if(language==='Java'||language==='C++')return (part.match(/[A-Za-z_][A-Za-z0-9_]*\\s*$/)||[])[0]?.trim()||'';
-    return (part.match(/[A-Za-z_][A-Za-z0-9_]*$/)||[])[0]||'';
-  });
-
-  return actual.every((name,index)=>name===expected[index]);
-}
 function isStdioBoilerplateDraft(language,value){
   if(typeof value!=='string')return false;
   const compact=value.trim().replace(/\s+/g,'');
