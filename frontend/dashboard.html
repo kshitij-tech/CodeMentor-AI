@@ -108,6 +108,7 @@ tailwind.config = {
       <div class="flex items-center justify-between"><span class="font-mono text-[10px] text-on-surface-variant">Daily Streak</span><span class="material-symbols-outlined text-primary text-[18px]">local_fire_department</span></div>
       <div class="mt-1"><span id="streak-days" class="font-bold text-2xl">0</span><span class="text-xs text-on-surface-variant ml-1">day streak</span></div>
       <p class="text-[10px] text-on-surface-variant mt-1">Practice telemetry will appear here.</p>
+      <div id="streak-calendar" class="grid grid-cols-7 gap-1.5 mt-3" aria-label="Last seven days of solving activity"></div>
     </div>
     <div class="flex flex-col gap-1">
       <button id="preferences-btn" class="flex items-center gap-3 px-3 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">tune</span>Preferences</button>
@@ -141,7 +142,8 @@ tailwind.config = {
   <button data-action="problem" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold shadow-sm"><span class="material-symbols-outlined text-[18px]">bolt</span>Solve Today's Problem</button>
   <button data-action="weak" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-error text-[18px]">target</span>Review Weak Topics</button>
   <button data-action="mentor" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-secondary text-[18px]">smart_toy</span>Ask AI Mentor</button>
-  <button data-action="analytics" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">insights</span>View Detailed Analytics</button><button id="roadmap-jump" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/15 text-sm shadow-sm" type="button"><span class="material-symbols-outlined text-[18px]">route</span>Learning Roadmap</button>
+  <button data-action="analytics" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">insights</span>View Detailed Analytics</button>
+  <button id="roadmap-jump" type="button" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-primary text-[18px]">route</span>Learning Roadmap</button><button id="roadmap-jump" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/15 text-sm shadow-sm" type="button"><span class="material-symbols-outlined text-[18px]">route</span>Learning Roadmap</button>
 </section>
 
 <section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
@@ -573,6 +575,25 @@ function renderWeakAreas(topics){
   host.querySelectorAll('[data-weak-topic]').forEach(btn=>btn.addEventListener('click',()=>window.location.href='practice.html?topic='+encodeURIComponent(btn.dataset.weakTopic)));
 }
 
+function renderStreakCalendar(data){
+  const host=document.getElementById('streak-calendar');
+  if(!host)return;
+  const days=data.streak_calendar||[];
+  host.innerHTML=days.map(item=>{
+    const date=new Date(item.date+'T12:00:00');
+    const label=date.toLocaleDateString([], {weekday:'short'}).slice(0,2);
+    const day=date.getDate();
+    const solved=Boolean(item.solved);
+    return '<div class="flex flex-col items-center gap-1" title="'+item.date+': '+(solved?'solved':'no accepted solve')+'">'+
+      '<span class="text-[8px] font-mono text-on-surface-variant">'+label+'</span>'+
+      '<span class="w-7 h-7 rounded-lg flex items-center justify-center '+(solved?'bg-emerald-100 text-emerald-700':'bg-surface-container text-on-surface-variant')+'">'+
+        '<span class="material-symbols-outlined text-[14px]">'+(solved?'check':'remove')+'</span>'+
+      '</span>'+
+      '<span class="text-[8px] font-mono text-on-surface-variant">'+day+'</span>'+
+    '</div>';
+  }).join('');
+}
+
 function renderAnalytics(data){
   document.getElementById('streak-days').textContent=String(data.current_streak||0);
   document.getElementById('metric-solved').textContent=String(data.total_solved||0);
@@ -580,6 +601,7 @@ function renderAnalytics(data){
   document.getElementById('metric-acceptance-note').textContent=String(data.total_submissions||0)+' submissions';
   document.getElementById('metric-velocity').textContent=String(data.velocity_pace||0)+'/day';
   document.getElementById('metric-hints').textContent=String(data.ai_hints||0);
+  renderStreakCalendar(data);
   document.getElementById('metric-runtime').textContent=data.average_runtime_ms==null?'No runtime data':'Avg runtime '+data.average_runtime_ms+' ms';
   const badge=document.getElementById('telemetry-badge');
   if(badge){
@@ -722,6 +744,9 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
+document.getElementById('roadmap-jump')?.addEventListener('click',()=>{
+  document.getElementById('learning-roadmap')?.scrollIntoView({behavior:'smooth',block:'start'});
+});
 document.getElementById('roadmap-jump')?.addEventListener('click',()=>document.getElementById('adaptive-roadmap')?.scrollIntoView({behavior:'smooth',block:'start'}));
 const dashboardMentorMessages=[];
 let dashboardMentorSessionId=null;
