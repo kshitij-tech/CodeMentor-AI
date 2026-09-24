@@ -264,11 +264,12 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
   </div>
   <div id="mentor-messages" class="flex-1 overflow-y-auto scroll p-3 space-y-3"></div>
   <div class="shrink-0 border-t border-slate-700 p-3">
-    <div class="grid grid-cols-4 gap-1.5 mb-2">
+    <div class="grid grid-cols-5 gap-1.5 mb-2">
       <button data-mentor="hint" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Hint</button>
       <button data-mentor="debug" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Debug</button>
       <button data-mentor="complexity" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Complexity</button>
       <button data-mentor="edge" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Edge cases</button>
+      <button data-mentor="modify" class="mentor-action px-2 py-2 rounded-lg bg-slate-900 text-[9px]">Suggest change</button>
     </div>
     <div class="flex gap-2">
       <textarea id="mentor-input" rows="1" placeholder="Ask about this problem…" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-2 text-[11px] resize-none outline-none"></textarea>
@@ -779,9 +780,27 @@ function renderProblem(){
 function renderMentor(){
   const host=$('mentor-messages');
   let html=mentorMessages.length
-    ? mentorMessages.map(m=>{
+    ? mentorMessages.map((m,index)=>{
         const user=m.role==='user';
-        return '<div class="'+(user?'text-right':'text-left')+'"><div class="text-[9px] text-slate-500 mb-1">'+(user?'You':'AI Mentor')+'</div><div class="mentor-msg inline-block max-w-[90%] text-left px-3 py-2 rounded-xl '+(user?'bg-indigo-600':'bg-slate-800 border border-slate-700')+' text-[11px]">'+esc(m.text)+'</div></div>';
+        let messageHtml='<div class="text-[9px] text-slate-500 mb-1">'+(user?'You':'AI Mentor')+'</div>';
+        messageHtml+='<div class="mentor-msg inline-block max-w-[90%] text-left px-3 py-2 rounded-xl '+(user?'bg-indigo-600':'bg-slate-800 border border-slate-700')+' text-[11px]">'+esc(m.text)+'</div>';
+
+        if(!user&&m.patch){
+          const patch=m.patch;
+          const preview=String(patch.replacement||'').split('\n').slice(0,8).join('\n');
+          messageHtml+=
+            '<div class="mt-2 max-w-[90%] rounded-xl border border-indigo-400/30 bg-slate-950 p-2.5 text-left">'+
+              '<div class="text-[9px] uppercase tracking-wide text-indigo-300 mb-1.5">Suggested change</div>'+
+              '<div class="text-[9px] text-slate-500 mb-1">Lines '+esc(patch.start_line)+'–'+esc(patch.end_line)+'</div>'+
+              '<pre class="mono text-[9px] leading-5 text-slate-300 whitespace-pre-wrap overflow-x-auto max-h-32 scroll">'+esc(preview)+'</pre>'+
+              '<div class="flex items-center gap-1.5 mt-2">'+
+                '<button data-apply-mentor-patch="'+index+'" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white text-[9px] font-semibold">Apply change</button>'+
+                '<button data-dismiss-mentor-patch="'+index+'" class="px-2.5 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-[9px]">Keep my code</button>'+
+              '</div>'+
+            '</div>';
+        }
+
+        return '<div class="'+(user?'text-right':'text-left')+'">'+messageHtml+'</div>';
       }).join('')
     : '<div class="text-[11px] text-slate-500">Ask for a hint, debugging help, complexity analysis, edge cases, or a conceptual explanation.</div>';
 
@@ -790,7 +809,57 @@ function renderMentor(){
   }
 
   host.innerHTML=html;
+  host.querySelectorAll('[data-apply-mentor-patch]').forEach(button=>{
+    button.addEventListener('click',()=>applyMentorPatch(Number(button.dataset.applyMentorPatch)));
+  });
+  host.querySelectorAll('[data-dismiss-mentor-patch]').forEach(button=>{
+    button.addEventListener('click',()=>dismissMentorPatch(Number(button.dataset.dismissMentorPatch)));
+  });
   host.scrollTop=host.scrollHeight;
+}
+
+function applyMentorPatch(index){
+  const message=mentorMessages[index];
+  const patch=message&&message.patch;
+  if(!editor||!patch)return;
+
+  const model=editor.getModel();
+  const startLine=Math.trunc(Number(patch.start_line));
+  const endLine=Math.trunc(Number(patch.end_line));
+  if(!Number.isInteger(startLine)||!Number.isInteger(endLine)||startLine<1||endLine<startLine||endLine>model.getLineCount()){
+    toast('The suggested change no longer matches this code.');
+    return;
+  }
+
+  const endColumn=model.getLineMaxColumn(endLine);
+  editor.executeEdits('codementor-ai',[
+    {
+      range:{
+        startLineNumber:startLine,
+        startColumn:1,
+        endLineNumber:endLine,
+        endColumn
+      },
+      text:String(patch.replacement||''),
+      forceMoveMarkers:true
+    }
+  ]);
+
+  message.patch=null;
+  queueWorkspaceSave();
+  scheduleSyntaxValidation();
+  mentorMessages.push({
+    role:'assistant',
+    text:'I applied the suggested change. Review it carefully, understand why it helps, and continue solving the problem yourself.'
+  });
+  renderMentor();
+}
+
+function dismissMentorPatch(index){
+  const message=mentorMessages[index];
+  if(!message)return;
+  message.patch=null;
+  renderMentor();
 }
 async function loadMentorHistory(){
   try{
@@ -808,7 +877,7 @@ async function loadMentorHistory(){
 }
 async function askMentor(action,question=null){
   if(!problem||!editor)return;
-  const presets={hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity of my current approach?',edge:'What edge cases should I test?'};
+  const presets={hint:'Give me the next hint.',debug:'Help me debug my current code.',complexity:'What is the time and space complexity of my current approach?',edge:'What edge cases should I test?',modify:'Suggest the smallest change that would help with my current code. Do not give me the full solution.'};
   const text=question||presets[action]||'Help me with this problem.';
   mentorMessages.push({role:'user',text});
   mentorThinking=true;
@@ -833,7 +902,7 @@ async function askMentor(action,question=null){
     const data=await res.json().catch(()=>({}));
     if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
     mentorSessionId=data.session_id||mentorSessionId;
-    mentorMessages.push({role:'assistant',text:data.answer||'No mentor response.'});
+    mentorMessages.push({role:'assistant',text:data.answer||'No mentor response.',patch:data.patch||null});
     if(action==='hint')hintLevel=Math.min(4,hintLevel+1);
     renderMentor();
   }catch(err){
