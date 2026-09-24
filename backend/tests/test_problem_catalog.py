@@ -114,6 +114,43 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("io.ReadAll(os.Stdin)", starters["Go"])
         self.assertIn("read_to_string", starters["Rust"])
 
+
+    def test_user_io_starter_preserves_problem_boilerplate_without_function_parameters(self):
+        from backend.problem_catalog import ensure_user_io_starter_code
+
+        schema = [
+            {"name": "n", "type": "int"},
+            {"name": "nums", "type": "int_array", "length_from": "n"},
+        ]
+        starters = ensure_user_io_starter_code(
+            {
+                "Python": "import math\n\ndef solve(n, nums):\n    # Keep this problem-specific section.\n    pass\n",
+                "C++": "#include <vector>\nusing namespace std;\n\nint solve(int n, vector<int> nums) {\n    // Keep this problem-specific section.\n    return 0;\n}\n",
+                "Java": "import java.util.*;\nclass Solution {\n    public int solve(int n, int[] nums) {\n        // Keep this problem-specific section.\n        return 0;\n    }\n}\n",
+            },
+            schema,
+        )
+
+        self.assertIn("import math", starters["Python"])
+        self.assertIn("def solve():", starters["Python"])
+        self.assertIn("n = int(__cm_take())", starters["Python"])
+        self.assertIn("nums = [int(__cm_take()) for _ in range(n)]", starters["Python"])
+        self.assertNotIn("def solve(n, nums)", starters["Python"])
+
+        self.assertIn("#include <vector>", starters["C++"])
+        self.assertIn("int solve()", starters["C++"])
+        self.assertIn("int n; cin >> n;", starters["C++"])
+        self.assertIn("vector<long long> nums(n);", starters["C++"])
+        self.assertNotIn("solve(int n, vector<int> nums)", starters["C++"])
+        self.assertIn("int main()", starters["C++"])
+
+        self.assertIn("import java.util.*;", starters["Java"])
+        self.assertIn("int solve()", starters["Java"])
+        self.assertIn("long n = __cm_scanner.nextLong();", starters["Java"])
+        self.assertIn("long[] nums = new long[(int)n];", starters["Java"])
+        self.assertNotIn("solve(int n, int[] nums)", starters["Java"])
+        self.assertIn("public static void main", starters["Java"])
+
     def test_all_supported_languages_receive_starters_for_stdio(self):
         starters = ensure_starter_code({"Python": "def solve():\n    pass\n"}, "stdio")
         self.assertEqual(set(starters), set(SUPPORTED_LANGUAGES))
