@@ -188,6 +188,16 @@ tailwind.config = {
 </section>
 
 <section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary">route</span><h3 class="text-lg font-bold">Adaptive Learning Roadmap</h3></div><p class="text-xs text-on-surface-variant mt-1">Your path changes as your solving evidence changes.</p></div>
+    <span id="roadmap-focus" class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low text-primary">Building path…</span>
+  </div>
+  <div id="learning-roadmap" class="mt-6 flex flex-col gap-3">
+    <div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Analyzing your skill signals…</div>
+  </div>
+</section>
+
+<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
   <div class="flex items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Weak Areas &amp; AI Remediation Plan</h3><p class="text-xs text-on-surface-variant">Built from your actual submission history.</p></div><span class="material-symbols-outlined text-primary">construction</span></div>
   <div id="weak-areas" class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
     <div class="sm:col-span-2 p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Analyzing your practice history…</div>
@@ -504,6 +514,38 @@ function renderRecentPractice(items){
   host.querySelectorAll('[data-activity-slug]').forEach(btn=>btn.addEventListener('click',()=>window.location.href='problem.html?problem='+encodeURIComponent(btn.dataset.activitySlug)));
 }
 
+function renderLearningRoadmap(items,currentTopic){
+  const host=document.getElementById('learning-roadmap');
+  const badge=document.getElementById('roadmap-focus');
+  if(!host)return;
+  if(!items?.length){
+    host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Solve a few problems to build your adaptive roadmap.</div>';
+    if(badge)badge.textContent='Awaiting practice';
+    return;
+  }
+  if(badge)badge.textContent=currentTopic?'Focus: '+currentTopic:'Roadmap ready';
+  host.innerHTML=items.map((item,index)=>{
+    const completed=item.position==='completed';
+    const current=item.position==='current';
+    const statusText=completed?'Completed':current?'Current focus':'Up next';
+    const icon=completed?'check_circle':current?'adjust': 'radio_button_unchecked';
+    const tone=completed?'bg-emerald-100 text-emerald-700':current?'bg-primary text-white':'bg-surface-container text-on-surface-variant';
+    const border=current?'border-primary/30 shadow-sm':'border-surface-container-high';
+    return '<button type="button" class="w-full text-left flex items-center gap-4 p-4 rounded-xl border '+border+' bg-surface-container-lowest hover:bg-surface-container-low transition-colors" data-roadmap-topic="'+esc(item.topic)+'">'+
+      '<div class="w-9 h-9 rounded-full '+tone+' flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[18px]">'+icon+'</span></div>'+
+      '<div class="min-w-0 flex-1">'+
+        '<div class="flex flex-wrap items-center gap-2"><span class="text-sm font-semibold">'+esc(item.topic)+'</span><span class="text-[9px] font-semibold px-2 py-0.5 rounded-full '+(current?'bg-primary/10 text-primary':'bg-surface-container text-on-surface-variant')+'">'+statusText+'</span></div>'+
+        '<div class="mt-2 flex items-center gap-3 text-[9px] text-on-surface-variant"><span>'+esc(item.attempted_problems)+' practiced</span><span>'+esc(item.solved_problems)+' solved</span><span>'+esc(item.mastery)+'% mastery</span></div>'+
+      '</div>'+
+      '<div class="w-24 hidden sm:block"><div class="h-1.5 rounded-full bg-surface-container overflow-hidden"><div class="h-full rounded-full '+(current?'bg-primary':'bg-secondary')+'" style="width:'+Math.max(0,Math.min(100,Number(item.mastery)||0))+'%"></div></div></div>'+
+      '<span class="material-symbols-outlined text-[17px] text-on-surface-variant">chevron_right</span>'+
+    '</button>';
+  }).join('');
+  host.querySelectorAll('[data-roadmap-topic]').forEach(btn=>btn.addEventListener('click',()=>{
+    window.location.href='practice.html?topic='+encodeURIComponent(btn.dataset.roadmapTopic);
+  }));
+}
+
 function renderWeakAreas(topics){
   const host=document.getElementById('weak-areas');
   if(!host)return;
@@ -623,6 +665,16 @@ async function loadDashboard(){
   }
 
   renderSkills();
+
+  try{
+    const roadmapRes=await fetch(API_BASE_URL+'/recommendations/roadmap',headers);
+    if(roadmapRes.ok){
+      const roadmap=await roadmapRes.json();
+      renderLearningRoadmap(roadmap.items||[],roadmap.current_topic);
+    }
+  }catch(err){
+    console.warn('Roadmap load failed:',err);
+  }
 
   try{
     const detailRes=await fetch(API_BASE_URL+'/analytics/detail',headers);
