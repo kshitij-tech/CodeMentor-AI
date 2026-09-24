@@ -1326,6 +1326,11 @@ def run_python_stdio_tests(
         with open(script_path, "w", encoding="utf-8") as script:
             script.write(source)
 
+        # Docker runs submitted programs as the unprivileged runner user.
+        # Make the read-only bind-mounted source readable inside the container.
+        if os.name != "nt":
+            os.chmod(script_path, 0o644)
+
         env = {
             "PYTHONIOENCODING": "utf-8",
             "PYTHONDONTWRITEBYTECODE": "1",
