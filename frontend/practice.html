@@ -24,7 +24,6 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
 .topic-btn.active{background:#4338ca;color:white}
 .topic-btn.active .count{background:rgba(255,255,255,.15);color:white}
 .difficulty-btn.active{background:#4338ca;color:white}
-.execution-btn.active{background:#4338ca;color:white}
 .problem-card{transition:transform .15s,box-shadow .15s,border-color .15s}
 .problem-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,23,42,.08);border-color:#c7d2fe}
 </style>
@@ -103,14 +102,6 @@ body{font-family:"Plus Jakarta Sans",sans-serif}
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[19px] text-slate-400">search</span>
           <input id="search" type="search" placeholder="Search problems by title..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-300 outline-none text-sm">
         </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <label for="execution-format" class="text-xs font-bold text-slate-500 whitespace-nowrap">Execution Format</label>
-          <select id="execution-format" class="px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 outline-none focus:border-indigo-300">
-            <option value="">All formats</option>
-            <option value="function">Function-style</option>
-            <option value="stdio">Standard Input / Output</option>
-          </select>
-        </div>
       </div>
 
       <div class="flex items-center justify-between gap-3 mb-3">
@@ -141,7 +132,6 @@ const TOKEN_KEY='codementor_access_token';
 const PAGE_SIZE=100;
 let topic='';
 let difficulty='';
-let executionMode='';
 let search='';
 let page=0;
 let total=0;
@@ -168,11 +158,6 @@ function renderDifficultyFilters(){
   $('difficulty-filters').innerHTML=values.map(([value,label,count])=>'<button data-difficulty="'+esc(value)+'" type="button" class="difficulty-btn '+(difficulty===value?'active ':'')+'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100"><span>'+label+'</span><span class="mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">'+count+'</span></button>').join('');
   document.querySelectorAll('[data-difficulty]').forEach(btn=>btn.addEventListener('click',()=>{difficulty=btn.dataset.difficulty;page=0;renderDifficultyFilters();loadProblems()}));
 }
-function renderExecutionFilters(){
-  const select=$('execution-format');
-  if(select)select.value=executionMode;
-}
-
 function renderTopicFilters(){
   $('topic-filters').innerHTML=topicFacets.map(item=>'<button data-topic="'+esc(item.name)+'" type="button" class="topic-btn '+(topic===item.name?'active ':'')+'w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-100"><span class="truncate text-left">'+esc(item.name)+'</span><span class="count mono text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">'+item.count+'</span></button>').join('');
   document.querySelectorAll('[data-topic]').forEach(btn=>btn.addEventListener('click',()=>{topic=btn.dataset.topic;page=0;renderTopicFilters();loadProblems()}));
@@ -185,7 +170,6 @@ function renderProblems(items=loadedItems){
   const filters=[];
   if(difficulty)filters.push(difficulty);
   if(topic)filters.push(topic);
-  if(executionMode)filters.push(executionMode==='stdio'?'Standard Input / Output':'Function-style');
   if(search)filters.push('“'+search+'”');
   $('active-filter').textContent=filters.length?filters.join(' · '):'All problems';
 
@@ -228,7 +212,6 @@ async function loadProblems({reset=true}={}){
   const params=new URLSearchParams({limit:String(PAGE_SIZE),offset:String(offset)});
   if(topic)params.set('topic',topic);
   if(difficulty)params.set('difficulty',difficulty);
-  if(executionMode)params.set('execution_mode',executionMode);
   if(search)params.set('search',search);
 
   try{
@@ -255,10 +238,8 @@ async function load(){
   const params=new URLSearchParams(location.search);
   topic=params.get('topic')||'';
   difficulty=params.get('difficulty')||'';
-  executionMode=params.get('execution_mode')||'';
   search=params.get('search')||'';
   $('search').value=search;
-  renderExecutionFilters();
 
   // Problem data and filters do not depend on the profile request, so start
   // them together instead of making the problem catalogue wait for identity.
@@ -301,13 +282,9 @@ $('search').addEventListener('input',()=>{
   searchTimer=setTimeout(()=>loadProblems({reset:true}),250);
 });
 $('clear-topic').addEventListener('click',()=>{topic='';renderTopicFilters();loadProblems({reset:true})});
-$('execution-format').addEventListener('change',()=>{
-  executionMode=$('execution-format').value||'';
-  loadProblems({reset:true});
-});
 $('reset-filters').addEventListener('click',()=>{
-  topic='';difficulty='';executionMode='';search='';$('search').value='';
-  renderDifficultyFilters();renderExecutionFilters();renderTopicFilters();loadProblems({reset:true});
+  topic='';difficulty='';search='';$('search').value='';
+  renderDifficultyFilters();renderTopicFilters();loadProblems({reset:true});
 });
 $('load-more-btn').addEventListener('click',async()=>{
   const button=$('load-more-btn');
