@@ -130,9 +130,10 @@ class ProblemCatalogTests(unittest.TestCase):
         )
 
         self.assertIn("def solve():", starters["Python"])
-        self.assertIn("n = int(__cm_take())", starters["Python"])
-        self.assertIn("nums = [int(__cm_take()) for _ in range(n)]", starters["Python"])
+        self.assertIn("n = int(input())", starters["Python"])
+        self.assertIn("nums = list(map(int, input().split()))", starters["Python"])
         self.assertIn("if __name__ == '__main__':", starters["Python"])
+        self.assertIn("# Output: return the final answer from solve(). The runner will print it.", starters["Python"])
 
         self.assertIn("auto solve()", starters["C++"])
         self.assertIn("long long n; cin >> n;", starters["C++"])
@@ -140,7 +141,7 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("int main()", starters["C++"])
 
         self.assertIn("solve()", starters["Java"])
-        self.assertIn("long n = __cm_scanner.nextLong();", starters["Java"])
+        self.assertIn("long n = scanner.nextLong();", starters["Java"])
         self.assertIn("long[] nums = new long[(int)n];", starters["Java"])
         self.assertIn("public static void main", starters["Java"])
         self.assertNotIn("solve(n, nums)", starters["Java"])
