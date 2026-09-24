@@ -179,7 +179,7 @@ class ProblemCatalogTests(unittest.TestCase):
 
         self.assertIn("import java.util.*;", starters["Java"])
         self.assertIn("int solve()", starters["Java"])
-        self.assertIn("long n = __cm_scanner.nextLong();", starters["Java"])
+        self.assertIn("long n = scanner.nextLong();", starters["Java"])
         self.assertIn("long[] nums = new long[(int)n];", starters["Java"])
         self.assertNotIn("solve(int n, int[] nums)", starters["Java"])
         self.assertIn("public static void main", starters["Java"])
