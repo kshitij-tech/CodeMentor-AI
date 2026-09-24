@@ -166,7 +166,7 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("import math", starters["Python"])
         self.assertIn("def solve():", starters["Python"])
         self.assertIn("n = int(input())", starters["Python"])
-        self.assertIn("nums = [int(__cm_take()) for _ in range(n)]", starters["Python"])
+        self.assertIn("nums = list(map(int, input().split()))", starters["Python"])
         self.assertNotIn("def solve(n, nums)", starters["Python"])
 
         self.assertIn("#include <vector>", starters["C++"])
