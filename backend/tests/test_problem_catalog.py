@@ -115,6 +115,36 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("read_to_string", starters["Rust"])
 
 
+    def test_user_io_starter_adds_input_boilerplate_to_generic_parameterless_templates(self):
+        schema = [
+            {"name": "n", "type": "int"},
+            {"name": "nums", "type": "int_array", "length_from": "n"},
+        ]
+        starters = ensure_user_io_starter_code(
+            {
+                "Python": "def solve():\n    # Implement the required solution.\n    pass\n",
+                "C++": "#include <bits/stdc++.h>\nusing namespace std;\n\nauto solve() {\n    // Implement the required solution.\n    return 0;\n}\n",
+                "Java": "class Solution {\n    public Object solve() {\n        // Implement the required solution.\n        return 0;\n    }\n}\n",
+            },
+            schema,
+        )
+
+        self.assertIn("def solve():", starters["Python"])
+        self.assertIn("n = int(__cm_take())", starters["Python"])
+        self.assertIn("nums = [int(__cm_take()) for _ in range(n)]", starters["Python"])
+        self.assertIn("if __name__ == '__main__':", starters["Python"])
+
+        self.assertIn("auto solve()", starters["C++"])
+        self.assertIn("long long n; cin >> n;", starters["C++"])
+        self.assertIn("vector<long long> nums(n);", starters["C++"])
+        self.assertIn("int main()", starters["C++"])
+
+        self.assertIn("solve()", starters["Java"])
+        self.assertIn("long n = __cm_scanner.nextLong();", starters["Java"])
+        self.assertIn("long[] nums = new long[(int)n];", starters["Java"])
+        self.assertIn("public static void main", starters["Java"])
+        self.assertNotIn("solve(n, nums)", starters["Java"])
+
     def test_user_io_starter_preserves_problem_boilerplate_without_function_parameters(self):
         from backend.problem_catalog import ensure_user_io_starter_code
 
