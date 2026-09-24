@@ -13,6 +13,7 @@ from backend.problem_catalog import (
 )
 from backend.models import CodingAttempt, Problem, User, UserProfile
 from backend.routers.auth import get_current_user
+from backend.routers.problems import _catalog_rows
 
 
 _VALID_DIFFICULTIES = {"Easy", "Medium", "Hard"}
@@ -31,32 +32,41 @@ def next_recommendation(
     db: Session = Depends(get_db),
 ):
     profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
+
+    # Use the exact same cleaned catalogue as Practice: English problems,
+    # supported difficulty, canonical topic names.
+    catalog = _catalog_rows(db)
+    catalog_by_id = {int(row["id"]): row for row in catalog}
+
     attempts = (
         db.query(CodingAttempt, Problem)
         .join(Problem, CodingAttempt.problem_id == Problem.id)
         .filter(CodingAttempt.user_id == current_user.id)
         .all()
     )
-    problems = [
-        problem for problem in db.query(Problem).order_by(Problem.id.asc()).all()
-        if normalize_difficulty(problem.difficulty) in _VALID_DIFFICULTIES
-    ]
 
     solved_ids = {
         attempt.problem_id
-        for attempt, _ in attempts
-        if attempt.mode == "submit" and attempt.status == "Accepted"
+        for attempt, _problem in attempts
+        if attempt.problem_id in catalog_by_id
+        and attempt.mode == "submit"
+        and attempt.status == "Accepted"
     }
+
     recent_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     recent_ids = {
         attempt.problem_id
-        for attempt, _ in attempts
-        if _naive_utc(attempt.created_at) >= _naive_utc(recent_cutoff)
+        for attempt, _problem in attempts
+        if attempt.problem_id in catalog_by_id
+        and _naive_utc(attempt.created_at) >= _naive_utc(recent_cutoff)
     }
 
     topic_stats = defaultdict(lambda: {"attempted": 0, "accepted": 0, "failures": 0})
     for attempt, problem in attempts:
-        for topic in canonicalize_topics(problem.topics):
+        catalog_problem = catalog_by_id.get(problem.id)
+        if not catalog_problem:
+            continue
+        for topic in catalog_problem["topics"]:
             topic_stats[topic]["attempted"] += 1
             if attempt.mode == "submit" and attempt.status == "Accepted":
                 topic_stats[topic]["accepted"] += 1
@@ -78,15 +88,11 @@ def next_recommendation(
         "Advanced": "Medium",
     }.get(experience, "Medium")
 
-    # A dashboard recommendation stays active until the user solves it.
-    # This prevents the recommendation from changing on each dashboard refresh.
+    # Keep the active recommendation stable until that exact problem is solved.
     if current_problem_id is not None:
-        current_problem = next(
-            (problem for problem in problems if problem.id == current_problem_id),
-            None,
-        )
-        if current_problem is not None and current_problem.id not in solved_ids:
-            current_topics = canonicalize_topics(current_problem.topics)
+        current_problem = catalog_by_id.get(current_problem_id)
+        if current_problem is not None and current_problem_id not in solved_ids:
+            current_topics = list(current_problem["topics"])
             current_weak_topic = min(
                 current_topics,
                 key=lambda topic: topic_health(topic),
@@ -94,18 +100,17 @@ def next_recommendation(
             )
             return {
                 "problem": {
-                    "id": current_problem.id,
-                    "slug": current_problem.slug,
-                    "title": current_problem.title,
-                    "difficulty": normalize_difficulty(current_problem.difficulty),
+                    "id": current_problem["id"],
+                    "slug": current_problem["slug"],
+                    "title": current_problem["title"],
+                    "difficulty": current_problem["difficulty"],
                     "topics": current_topics,
                 },
                 "reason": (
-                    f"Keep working on this problem. A new recommendation will appear "
-                    f"after you solve it."
+                    "Keep working on this problem. A new recommendation will appear after you solve it."
                     if not current_topics
                     else f"Keep working on this problem to strengthen {current_weak_topic}. "
-                         f"A new recommendation will appear after you solve it."
+                         "A new recommendation will appear after you solve it."
                 ),
                 "focus_topic": current_weak_topic,
                 "score": None,
@@ -115,17 +120,17 @@ def next_recommendation(
                 "profile_experience": experience,
             }
 
-    # Only unsolved problems can become the next recommendation.
-    # Once the active problem is accepted, it is excluded and a fresh problem is chosen.
     scored = []
-    for problem in problems:
-        if problem.id in solved_ids:
+    for problem in catalog:
+        problem_id = int(problem["id"])
+        if problem_id in solved_ids:
             continue
 
-        topics = canonicalize_topics(problem.topics)
+        topics = list(problem["topics"])
         weakness = sum(topic_health(topic) for topic in topics) / max(len(topics), 1)
-        difficulty_bonus = 1.0 if problem.difficulty == preferred_difficulty else 0.35
-        recent_penalty = 0.45 if problem.id in recent_ids else 0.0
+        difficulty = problem["difficulty"]
+        difficulty_bonus = 1.0 if difficulty == preferred_difficulty else 0.35
+        recent_penalty = 0.45 if problem_id in recent_ids else 0.0
         exploration_bonus = 0.25 if not any(topic in topic_stats for topic in topics) else 0.0
         score = weakness * 5.0 + difficulty_bonus * 2.0 + 3.0 + exploration_bonus - recent_penalty
         scored.append((score, problem, weakness))
@@ -142,26 +147,27 @@ def next_recommendation(
             "profile_experience": experience,
         }
 
-    scored.sort(key=lambda item: (-item[0], item[1].id))
+    scored.sort(key=lambda item: (-item[0], int(item[1]["id"])))
     chosen_score, chosen, chosen_weakness = scored[0]
-    chosen_topics = canonicalize_topics(chosen.topics)
+    chosen_topics = list(chosen["topics"])
     weak_topic = min(
         chosen_topics,
         key=lambda topic: topic_health(topic),
         default=chosen_topics[0] if chosen_topics else "General DSA",
     )
+
     reason = (
         f"Recommended because {weak_topic} is currently one of your less-practiced or less-stable areas."
         if chosen_topics
-        else "Recommended as a fresh problem from the current problem set."
+        else "Recommended as a fresh problem from the current Practice library."
     )
 
     return {
         "problem": {
-            "id": chosen.id,
-            "slug": chosen.slug,
-            "title": chosen.title,
-            "difficulty": normalize_difficulty(chosen.difficulty),
+            "id": chosen["id"],
+            "slug": chosen["slug"],
+            "title": chosen["title"],
+            "difficulty": chosen["difficulty"],
             "topics": chosen_topics,
         },
         "reason": reason,
@@ -178,29 +184,16 @@ def learning_roadmap(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Build a roadmap only from topics that have real questions in Practice."""
-    all_problems = db.query(Problem).order_by(Problem.id.asc()).all()
+    """Build a roadmap only from topics that have real Practice questions."""
+    catalog = _catalog_rows(db)
+    catalog_by_id = {int(row["id"]): row for row in catalog}
 
-    # Practice uses the same quality gate: English problems with a supported
-    # difficulty. A roadmap topic is eligible only when at least one such
-    # problem actually exists in the catalogue.
     available_topic_counts = defaultdict(int)
-    available_problem_topics = {}
-    for problem in all_problems:
-        if not is_english_problem(problem.title, problem.description):
-            continue
-        if normalize_difficulty(problem.difficulty) not in _VALID_DIFFICULTIES:
-            continue
-
-        topics = canonicalize_topics(problem.topics)
-        available_problem_topics[problem.id] = topics
-        for topic in topics:
+    for row in catalog:
+        for topic in row["topics"]:
             available_topic_counts[topic] += 1
 
-    available_topics = [
-        topic for topic in TOPICS
-        if available_topic_counts[topic] > 0
-    ]
+    available_topics = [topic for topic in TOPICS if available_topic_counts[topic] > 0]
 
     attempts = (
         db.query(CodingAttempt, Problem)
@@ -209,8 +202,6 @@ def learning_roadmap(
         .all()
     )
 
-    # Use distinct problem counts for learning evidence. Repeated submissions
-    # on the same problem should not make a topic look more advanced than it is.
     stats = defaultdict(lambda: {
         "problem_ids": set(),
         "solved_problem_ids": set(),
@@ -218,10 +209,10 @@ def learning_roadmap(
         "accepted": 0,
     })
     for attempt, problem in attempts:
-        topics = available_problem_topics.get(problem.id)
-        if not topics:
+        catalog_problem = catalog_by_id.get(problem.id)
+        if not catalog_problem:
             continue
-        for topic in topics:
+        for topic in catalog_problem["topics"]:
             stats[topic]["problem_ids"].add(problem.id)
             if attempt.mode == "submit":
                 stats[topic]["submissions"] += 1
@@ -255,8 +246,6 @@ def learning_roadmap(
         else:
             status = "not_started"
 
-        # Availability is part of the score, not an afterthought: untouched
-        # topics with zero questions are never eligible for the roadmap.
         priority = (
             (100 - value) * 1.5
             + (25 if status == "in_progress" else 12)
@@ -277,8 +266,6 @@ def learning_roadmap(
             "priority": round(priority, 2),
         })
 
-    # Preserve a learning-shaped order: completed milestones first, then the
-    # evidence-driven current focus, then remaining available topics.
     mastered = sorted(
         [row for row in rows if row["status"] == "mastered"],
         key=lambda row: (-row["mastery"], row["topic"]),
