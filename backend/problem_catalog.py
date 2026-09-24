@@ -1213,11 +1213,22 @@ def _append_user_io_entrypoint(source: str, language: str) -> str:
         is_void = bool(re.search(r"\bvoid\s+solve\s*\(\s*\)", source))
         if is_void:
             body = "    solve();"
+            printer = ""
         else:
-            body = "    auto __cm_result = solve();\n    cout << __cm_result << '\\n';"
+            body = "    auto __cm_result = solve();\n    __cm_print(__cm_result);"
+            printer = (
+                "\n\ntemplate <typename T> void __cm_print(const T& value) { cout << value; }\n"
+                "template <typename T> void __cm_print(const vector<T>& value) {\n"
+                "    for (size_t i = 0; i < value.size(); ++i) {\n"
+                "        if (i) cout << ' ';\n"
+                "        __cm_print(value[i]);\n"
+                "    }\n"
+                "}\n"
+            )
         return (
             source.rstrip()
-            + "\n\nint main() {\n"
+            + printer
+            + "\nint main() {\n"
             + "    ios::sync_with_stdio(false);\n"
             + "    cin.tie(nullptr);\n"
             + body
@@ -1248,7 +1259,13 @@ def _append_user_io_entrypoint(source: str, language: str) -> str:
         return source.rstrip() + "\n\nprocess.stdout.write(String(solve()));\n"
 
     if language == "Go":
-        return source.rstrip() + "\n\nfunc main() {\n    __cm_result := solve()\n    fmt.Println(__cm_result)\n}\n"
+        solve_signature = re.search(r"\bfunc\s+solve\(\)\s*([^{\n]*)\{", source)
+        returns_value = bool(solve_signature and solve_signature.group(1).strip())
+        if returns_value:
+            body = "    __cm_result := solve()\n    fmt.Println(__cm_result)"
+        else:
+            body = "    solve()"
+        return source.rstrip() + "\n\nfunc main() {\n" + body + "\n}\n"
 
     return source.rstrip() + '\n\nfn main() {\n    println!("{}", solve());\n}\n'
 
