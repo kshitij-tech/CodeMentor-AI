@@ -247,8 +247,8 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
         </button>
       </div>
     </div>
-    <div class="flex-1 min-h-0 overflow-auto bg-[#020617]">
-      <pre id="history-code-view" class="m-0 p-5 text-[12px] leading-6 font-mono text-slate-200 whitespace-pre overflow-x-auto"></pre>
+    <div class="flex-1 min-h-0 overflow-hidden bg-[#020617]">
+      <div id="history-code-view" class="w-full h-full"></div>
     </div>
   </div>
 </div>
@@ -286,6 +286,8 @@ const LANG_IDS=JSON.parse('{"Python":"python","C++":"cpp","Java":"java","JavaScr
 let userId='unknown';
 let problem=null;
 let editor=null;
+let historyCodeEditor=null;
+let historyCodeLanguage='plaintext';
 let mentorSessionId=null;
 let mentorMessages=[];
 let mentorThinking=false;
@@ -932,9 +934,35 @@ function openHistoryCode(item){
   $('history-code-status').textContent=item.status||'Submission';
   $('history-code-status').className='text-[9px] px-2 py-1 rounded-full '+(item.status==='Accepted'?'bg-emerald-950 text-emerald-300':'bg-rose-950 text-rose-300');
   $('history-code-meta').textContent=(item.language||'Unknown')+' · '+(item.mode||'run')+' · '+time.absolute+' · '+(item.runtime_ms==null?'—':item.runtime_ms+' ms');
-  $('history-code-view').textContent=item.code||'No source code was recorded for this submission.';
+
+  const language=item.language||'plaintext';
+  const modelLanguage=LANG_IDS[language]||'plaintext';
+  if(!historyCodeEditor){
+    historyCodeEditor=monaco.editor.create($('history-code-view'),{
+      value:item.code||'No source code was recorded for this submission.',
+      language:modelLanguage,
+      theme:'vs-dark',
+      readOnly:true,
+      automaticLayout:true,
+      minimap:{enabled:true},
+      fontSize:13,
+      lineHeight:21,
+      padding:{top:14,bottom:14},
+      scrollBeyondLastLine:false,
+      wordWrap:'off',
+      renderWhitespace:'selection',
+      smoothScrolling:true,
+      cursorBlinking:'solid',
+      contextmenu:true,
+    });
+  }else{
+    monaco.editor.setModelLanguage(historyCodeEditor.getModel(),modelLanguage);
+    historyCodeEditor.setValue(item.code||'No source code was recorded for this submission.');
+  }
+  historyCodeLanguage=modelLanguage;
   modal.classList.remove('hidden');
   modal.classList.add('flex');
+  setTimeout(()=>historyCodeEditor?.layout(),50);
 }
 
 function closeHistoryCode(){
@@ -1123,7 +1151,7 @@ $('history-code-modal').addEventListener('click',(event)=>{
   if(event.target.id==='history-code-modal')closeHistoryCode();
 });
 $('history-code-copy').addEventListener('click',async()=>{
-  const code=$('history-code-view').textContent||'';
+  const code=historyCodeEditor ? historyCodeEditor.getValue() : '';
   try{
     await navigator.clipboard.writeText(code);
     $('history-code-copy').innerHTML='<span class="material-symbols-outlined text-[14px]">check</span> Copied';
