@@ -306,12 +306,19 @@ def _run_python_process(
 
     docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
     script_name = os.path.basename(script_path)
+    # Enforce the user's time limit inside the container. The outer
+    # subprocess timeout includes Docker Desktop/container startup overhead,
+    # which can be larger than a 1-second competitive-programming limit.
+    inner_limit = min(MAX_TIMEOUT_SECONDS, max(0.1, float(timeout_seconds)))
     command = _docker_base_command(
         workdir,
         memory_limit_mb=memory_limit,
         docker_name=docker_name,
     ) + [
         EXECUTION_DOCKER_IMAGE,
+        "timeout",
+        "--signal=KILL",
+        f"{inner_limit:.3f}s",
         "python",
         "-I",
         "-B",
@@ -324,7 +331,7 @@ def _run_python_process(
             input=input_data,
             capture_output=True,
             text=True,
-            timeout=timeout_seconds,
+            timeout=inner_limit + 5.0,
             check=False,
         )
     except subprocess.TimeoutExpired:
@@ -1374,6 +1381,26 @@ def run_python_stdio_tests(
                         actual=stdout,
                         runtime_ms=runtime_ms,
                         message=f"Program output exceeded {MAX_OUTPUT_LENGTH} characters.",
+                    )
+                )
+                continue
+
+            if completed.returncode == 124:
+                outcomes.append(
+                    TestOutcome(
+                        index=index,
+                        passed=False,
+                        status="Time Limit Exceeded",
+                        expected=expected,
+                        actual=stdout,
+                        runtime_ms=int(
+                            min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000
+                        ),
+                        message=(
+                            f"Test exceeded the "
+                            f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s "
+                            "execution limit."
+                        ),
                     )
                 )
                 continue
