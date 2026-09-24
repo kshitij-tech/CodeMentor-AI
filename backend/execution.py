@@ -1322,6 +1322,10 @@ def run_python_stdio_tests(
     outcomes: list[TestOutcome] = []
 
     with tempfile.TemporaryDirectory(prefix="codementor-stdio-") as workdir:
+        # Docker executes as uid 65532, so the bind-mounted workspace must be
+        # traversable even though the temporary directory defaults to 0700.
+        if os.name != "nt":
+            os.chmod(workdir, 0o755)
         script_path = os.path.join(workdir, "solution.py")
         with open(script_path, "w", encoding="utf-8") as script:
             script.write(source)
@@ -1522,6 +1526,8 @@ def run_python_tests(
     outcomes: list[TestOutcome] = []
 
     with tempfile.TemporaryDirectory(prefix="codementor-run-") as workdir:
+        if os.name != "nt":
+            os.chmod(workdir, 0o755)
         script_path = os.path.join(workdir, "runner.py")
 
         for index, case in enumerate(test_cases, start=1):
