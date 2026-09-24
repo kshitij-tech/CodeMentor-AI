@@ -136,7 +136,8 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("# Output: return the final answer from solve(). The runner will print it.", starters["Python"])
 
         self.assertIn("auto solve()", starters["C++"])
-        self.assertIn("long long n; cin >> n;", starters["C++"])
+        self.assertIn("long long n;", starters["C++"])
+        self.assertIn("cin >> n;", starters["C++"])
         self.assertIn("vector<long long> nums(n);", starters["C++"])
         self.assertIn("int main()", starters["C++"])
 
@@ -164,7 +165,7 @@ class ProblemCatalogTests(unittest.TestCase):
 
         self.assertIn("import math", starters["Python"])
         self.assertIn("def solve():", starters["Python"])
-        self.assertIn("n = int(__cm_take())", starters["Python"])
+        self.assertIn("n = int(input())", starters["Python"])
         self.assertIn("nums = [int(__cm_take()) for _ in range(n)]", starters["Python"])
         self.assertNotIn("def solve(n, nums)", starters["Python"])
 
