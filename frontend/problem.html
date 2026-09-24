@@ -178,9 +178,13 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
           <span class="text-xs font-semibold">Results</span>
           <span id="result-badge" class="px-2 py-1 rounded text-[9px] bg-slate-800 text-slate-300">—</span>
         </div>
-        <button id="clear-results" class="text-[10px] text-slate-500 hover:text-slate-200">Clear</button>
+        <div class="flex items-center gap-2">
+          <button id="history-btn" class="text-[10px] text-slate-500 hover:text-slate-200">History</button>
+          <button id="clear-results" class="text-[10px] text-slate-500 hover:text-slate-200">Clear</button>
+        </div>
       </div>
       <div id="result-body" class="flex-1 min-h-0 overflow-y-auto overscroll-contain scroll p-3 space-y-2"></div>
+      <div id="history-body" class="hidden flex-1 min-h-0 overflow-y-auto overscroll-contain scroll p-3 space-y-2"></div>
     </div>
 
     <div class="h-12 shrink-0 bg-[#111827] border-t border-white/10 px-3 flex items-center justify-between">
@@ -243,6 +247,10 @@ let syntaxTimer=null;
 let syntaxRequestId=0;
 let syntaxLineDecorations=[];
 let lastExecution=null;
+let workspaceLoadRequest=0;
+let workspaceSaveTimer=null;
+let workspaceSaveVersion=0;
+let showingHistory=false;
 
 const $=id=>document.getElementById(id);
 function token(){return localStorage.getItem(TOKEN_KEY)}
@@ -581,20 +589,95 @@ function isStdioBoilerplateDraft(language,value){
   return (signatures[language]||[]).filter(signature=>compact.includes(signature)).length>=2;
 }
 function loadDraft(){
-  if(!problem||!editor)return;
+  if(!problem||!editor)return false;
   const language=$('language').value;
   const saved=localStorage.getItem(draftKey());
   const hasSaved=typeof saved==='string'&&saved.trim().length>0;
   const staleGeneric=isGenericFunctionDraft(language,saved);
   const staleStdio=isStdioBoilerplateDraft(language,saved);
-  const staleContract=hasSaved && !functionDraftMatchesContract(language,saved);
   const staleCallable=hasSaved && /\\b(?:def\\s+solve|function\\s+solve|func\\s+solve|fn\\s+solve|class\\s+Solution)\\b/.test(saved);
-  const useSaved=hasSaved&&!staleGeneric&&!staleStdio&&!staleContract&&!staleCallable;
+  const stale=staleGeneric||staleStdio||staleCallable;
+  const useSaved=hasSaved&&!stale;
   editor.setValue(useSaved?saved:starterCode(language));
-  $('save-status').textContent=useSaved?'Draft restored':'Starter';
-  if(staleGeneric||staleStdio||staleContract||staleCallable) localStorage.removeItem(draftKey());
+  $('save-status').textContent=useSaved?'Local draft':'Starter';
+  if(stale)localStorage.removeItem(draftKey());
   scheduleSyntaxValidation();
+  return useSaved;
 }
+
+async function loadWorkspace(language=$('language').value){
+  if(!problem||!editor)return;
+  const request=++workspaceLoadRequest;
+  try{
+    const res=await fetch(API+'/workspace?problem_slug='+encodeURIComponent(problem.slug)+'&language='+encodeURIComponent(language),{
+      headers:{Authorization:'Bearer '+token()}
+    });
+    if(request!==workspaceLoadRequest)return;
+    if(res.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace('auth.html');
+      return;
+    }
+    if(!res.ok)throw new Error('Workspace request failed.');
+    const data=await res.json();
+    if(request!==workspaceLoadRequest)return;
+
+    if(typeof data.code==='string'&&data.code.trim()){
+      editor.setValue(data.code);
+      localStorage.setItem(draftKey(),data.code);
+      $('save-status').textContent='Saved remotely';
+      scheduleSyntaxValidation();
+      return;
+    }
+
+    const usedLocal=loadDraft();
+    if(usedLocal){
+      $('save-status').textContent='Saving draft…';
+      void saveWorkspace();
+    }
+  }catch(_err){
+    if(request!==workspaceLoadRequest)return;
+    loadDraft();
+    $('save-status').textContent='Local draft';
+  }
+}
+
+function saveWorkspace(){
+  if(!problem||!editor)return Promise.resolve();
+  const language=$('language').value;
+  const code=editor.getValue();
+  const version=++workspaceSaveVersion;
+  $('save-status').textContent='Saving…';
+  return fetch(API+'/workspace',{
+    method:'PUT',
+    headers:{
+      'Content-Type':'application/json',
+      Authorization:'Bearer '+token()
+    },
+    body:JSON.stringify({
+      problem_slug:problem.slug,
+      language,
+      code
+    })
+  }).then(async res=>{
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.detail||'Workspace save failed.');
+    if(version===workspaceSaveVersion)$('save-status').textContent='Saved remotely';
+    return data;
+  }).catch(err=>{
+    if(version===workspaceSaveVersion)$('save-status').textContent='Saved locally';
+    console.warn('Workspace save failed:',err);
+  });
+}
+
+function queueWorkspaceSave(){
+  if(!problem||!editor)return;
+  localStorage.setItem(draftKey(),editor.getValue());
+  $('save-status').textContent='Saving…';
+  clearTimeout(workspaceSaveTimer);
+  workspaceSaveTimer=setTimeout(()=>{void saveWorkspace()},700);
+}
+
 function renderProblem(){
   $('header-title').textContent=problem.title;
   $('title').textContent=problem.title;
@@ -682,14 +765,59 @@ async function askMentor(action,question=null){
 }
 function renderResults(data){
   lastExecution=data;
+  showingHistory=false;
   $('results').classList.remove('hidden');
+  $('result-body').classList.remove('hidden');
+  $('history-body').classList.add('hidden');
+  $('history-btn').textContent='History';
   $('result-badge').textContent=data.status||'Complete';
   const host=$('result-body');
   host.innerHTML=(data.results||[]).map(t=>{
     const pass=!!t.passed;
-    return '<div class="rounded-lg border '+(pass?'border-emerald-800':'border-rose-800')+' bg-slate-950 p-3"><div class="flex justify-between text-[10px]"><span>'+esc(t.test||'Test')+' · '+esc(t.status||'')+'</span><span>'+esc(t.runtime_ms||'')+' ms</span></div>'+(t.message?'<div class="mt-1 text-[10px] text-slate-400">'+esc(t.message)+'</div>':'')+'<\/div>';
+    return '<div class="rounded-lg border '+(pass?'border-emerald-800':'border-rose-800')+' bg-slate-950 p-3"><div class="flex justify-between text-[10px]"><span>'+esc(t.test||'Test')+' · '+esc(t.status||'')+'</span><span>'+esc(t.runtime_ms||'')+' ms</span></div>'+(t.message?'<div class="mt-1 text-[10px] text-slate-400">'+esc(t.message)+'</div>':'')+'<\\/div>';
   }).join('')||'<div class="text-xs text-slate-500">No test results.</div>';
 }
+
+function renderSubmissionHistory(items){
+  const host=$('history-body');
+  if(!items.length){
+    host.innerHTML='<div class="text-xs text-slate-500">No submissions for this problem yet.</div>';
+    return;
+  }
+  host.innerHTML=items.map(item=>{
+    const pass=item.status==='Accepted';
+    const when=item.created_at?new Date(item.created_at.endsWith('Z')?item.created_at:item.created_at+'Z').toLocaleString([],{
+      month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'
+    }):'Unknown time';
+    return '<div class="rounded-lg border '+(pass?'border-emerald-900':'border-slate-700')+' bg-slate-950 p-3">'+
+      '<div class="flex items-center justify-between gap-2">'+
+        '<div class="flex items-center gap-2"><span class="text-[10px] font-semibold">'+esc(item.status)+'</span><span class="text-[9px] text-slate-500">'+esc(item.mode)+'</span></div>'+
+        '<span class="mono text-[9px] text-slate-500">'+esc(when)+'</span>'+
+      '</div>'+
+      '<div class="mt-2 flex items-center gap-3 text-[9px] text-slate-400"><span>'+esc(item.language)+'</span><span>'+esc(item.summary||'')+'</span>'+(item.runtime_ms==null?'':'<span>'+esc(item.runtime_ms)+' ms</span>')+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+async function loadSubmissionHistory(){
+  if(!problem)return;
+  try{
+    const res=await fetch(API+'/workspace/history?problem_slug='+encodeURIComponent(problem.slug),{
+      headers:{Authorization:'Bearer '+token()}
+    });
+    if(res.status===401){
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace('auth.html');
+      return;
+    }
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.detail||'Unable to load submission history.');
+    renderSubmissionHistory(data.items||[]);
+  }catch(err){
+    $('history-body').innerHTML='<div class="text-xs text-rose-400">'+esc(err.message||'Unable to load submission history.')+'</div>';
+  }
+}
+
 async function execute(mode){
   if(!problem||!editor)return;
   const code=editor.getValue();
@@ -709,6 +837,7 @@ async function execute(mode){
     if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
     if(!res.ok)throw new Error(data.detail||'Execution failed.');
     renderResults(data);
+    void loadSubmissionHistory();
     if(data.status==='Accepted'){
       clearExecutionMarkers();
     }else{
@@ -746,11 +875,10 @@ function initEditor(){
     });
     editor.onDidChangeModelContent(()=>{
       if(!problem)return;
-      localStorage.setItem(draftKey(),editor.getValue());
-      $('save-status').textContent='Saved locally';
+      queueWorkspaceSave();
       scheduleSyntaxValidation();
     });
-    if(problem)loadDraft();
+    if(problem)void loadWorkspace();
     $('run-btn').disabled=!problem;
     $('submit-btn').disabled=!problem;
   },err=>showError('Code editor failed to load. Refresh the page.'));
@@ -812,7 +940,7 @@ async function load(){
 
     if(problem){
       syncLanguageAvailability();
-      loadDraft();
+      void loadWorkspace($('language').value);
     }
     restoreResultsHeight();
   }catch(err){
@@ -827,14 +955,32 @@ $('language').addEventListener('change',()=>{
   if(!editor||!problem)return;
   monaco.editor.setModelLanguage(editor.getModel(),LANG_IDS[$('language').value]);
   clearSyntaxMarkers();
-  loadDraft();
+  void loadWorkspace($('language').value);
   syncLanguageAvailability();
   scheduleSyntaxValidation();
 });
-$('reset-btn').addEventListener('click',()=>{if(!problem||!editor)return;localStorage.removeItem(draftKey());editor.setValue(starterCode($('language').value));$('save-status').textContent='Starter'});
+$('reset-btn').addEventListener('click',()=>{
+  if(!problem||!editor)return;
+  localStorage.removeItem(draftKey());
+  editor.setValue(starterCode($('language').value));
+  $('save-status').textContent='Saving reset…';
+  void saveWorkspace();
+});
 $('run-btn').addEventListener('click',()=>execute('run'));
 $('submit-btn').addEventListener('click',()=>execute('submit'));
-$('clear-results').addEventListener('click',()=>{$('results').classList.add('hidden');$('result-body').innerHTML='';lastExecution=null});
+$('clear-results').addEventListener('click',()=>{
+  $('results').classList.add('hidden');
+  $('result-body').innerHTML='';
+  $('history-body').innerHTML='';
+  lastExecution=null;
+});
+$('history-btn').addEventListener('click',async()=>{
+  showingHistory=!showingHistory;
+  $('result-body').classList.toggle('hidden',showingHistory);
+  $('history-body').classList.toggle('hidden',!showingHistory);
+  $('history-btn').textContent=showingHistory?'Results':'History';
+  if(showingHistory)await loadSubmissionHistory();
+});
 $('mentor-open').addEventListener('click',()=>{const panel=$('mentor-panel');const isOpen=!panel.classList.contains('hidden');panel.classList.toggle('hidden',isOpen);panel.classList.toggle('flex',!isOpen);if(!isOpen)renderMentor()});
 $('mentor-close').addEventListener('click',()=>{$('mentor-panel').classList.add('hidden');$('mentor-panel').classList.remove('flex')});
 $('mentor-clear').addEventListener('click',async()=>{mentorMessages=[];mentorSessionId=null;renderMentor()});
