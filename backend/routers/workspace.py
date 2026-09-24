@@ -167,6 +167,7 @@ def workspace_history(
                     if runtimes
                     else None
                 ),
+                "code": attempt.code,
                 "created_at": attempt.created_at.replace(
                     tzinfo=timezone.utc
                 ).isoformat()
