@@ -1003,7 +1003,7 @@ async function loadExistingProfile() {
     const profile = await response.json();
 
     if (profile.onboarding_completed) {
-      window.location.replace('dashboard.html');
+      window.location.replace('dashboard.html?v=20260924');
       return;
     }
 
@@ -1079,7 +1079,7 @@ function launchWorkspace() {
     window.location.replace('auth.html');
     return;
   }
-  window.location.replace('dashboard.html');
+  window.location.replace('dashboard.html?v=20260924');
 }
 
 document.getElementById('info-modal')?.addEventListener('click', (event) => {
