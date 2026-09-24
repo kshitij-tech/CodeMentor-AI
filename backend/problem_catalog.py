@@ -945,180 +945,203 @@ def infer_execution_mode(
 
 
 def _schema_input_code(language: str, schema: list[dict[str, Any]], indent: str = "    ") -> list[str]:
-    """Create problem-specific stdin parsing boilerplate without function parameters."""
+    """Create simple, problem-specific stdin parsing boilerplate."""
+    input_comment = f"{indent}// Input: read the values in the same order as the problem statement." if language != "Python" else f"{indent}# Input: read the values in the same order as the problem statement."
+    output_comment = f"{indent}// Output: return the final answer from solve(). The runner will print it." if language != "Python" else f"{indent}# Output: return the final answer from solve(). The runner will print it."
+
     if not schema:
         if language == "Python":
             return [
+                input_comment,
                 f"{indent}input_data = sys.stdin.read()",
-                f"{indent}# Parse input_data according to the problem statement.",
+                f"{indent}# TODO: parse input_data according to the problem statement.",
+                output_comment,
             ]
         if language == "C++":
             return [
+                input_comment,
                 f"{indent}string input_data((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());",
-                f"{indent}// Parse input_data according to the problem statement.",
+                f"{indent}// TODO: parse input_data according to the problem statement.",
+                output_comment,
             ]
         if language == "Java":
             return [
-                f"{indent}java.util.Scanner __cm_scanner = new java.util.Scanner(System.in);",
-                f"{indent}String input_data = __cm_scanner.useDelimiter(\"\\\\A\").hasNext() ? __cm_scanner.next() : \"\";",
-                f"{indent}// Parse input_data according to the problem statement.",
+                input_comment,
+                f"{indent}java.util.Scanner scanner = new java.util.Scanner(System.in);",
+                f"{indent}String input_data = scanner.hasNextLine() ? scanner.nextLine() : \"";",
+                f"{indent}// TODO: parse input_data according to the problem statement.",
+                output_comment,
             ]
         if language in {"JavaScript", "TypeScript"}:
             return [
+                input_comment,
                 f"{indent}const input = fs.readFileSync(0, 'utf8');",
-                f"{indent}// Parse input according to the problem statement.",
+                f"{indent}// TODO: parse input according to the problem statement.",
+                output_comment,
             ]
         if language == "Go":
             return [
+                input_comment,
                 f"{indent}data, _ := io.ReadAll(os.Stdin)",
                 f"{indent}input := string(data)",
                 f"{indent}_ = input",
-                f"{indent}// Parse input according to the problem statement.",
+                f"{indent}// TODO: parse input according to the problem statement.",
+                output_comment,
             ]
         return [
+            input_comment,
             f"{indent}let mut input = String::new();",
             f"{indent}std::io::stdin().read_to_string(&mut input).unwrap();",
-            f"{indent}// Parse input according to the problem statement.",
+            f"{indent}// TODO: parse input according to the problem statement.",
+            output_comment,
         ]
 
-    lines: list[str] = []
+    lines: list[str] = [input_comment]
 
     if language == "Python":
-        lines += [
-            f"{indent}__cm_tokens = sys.stdin.read().split()",
-            f"{indent}__cm_i = 0",
-            f"{indent}def __cm_take():",
-            f"{indent}    global __cm_i",
-            f"{indent}    if __cm_i >= len(__cm_tokens):",
-            f"{indent}        raise ValueError('Insufficient input for the problem schema.')",
-            f"{indent}    value = __cm_tokens[__cm_i]",
-            f"{indent}    __cm_i += 1",
-            f"{indent}    return value",
-        ]
         for item in schema:
             name, kind = item["name"], item["type"]
+            length = item.get("length_from")
             if kind == "int":
-                lines.append(f"{indent}{name} = int(__cm_take())")
+                lines.append(f"{indent}{name} = int(input())")
             elif kind == "float":
-                lines.append(f"{indent}{name} = float(__cm_take())")
+                lines.append(f"{indent}{name} = float(input())")
             elif kind == "string":
-                lines.append(f"{indent}{name} = __cm_take()")
+                lines.append(f"{indent}{name} = input().strip()")
             elif kind == "raw_string":
-                lines.append(f"{indent}{name} = ' '.join(__cm_tokens)")
-            elif kind.endswith("_array") and item.get("length_from"):
+                lines.append(f"{indent}{name} = sys.stdin.read()")
+            elif kind.endswith("_array") and length:
                 parser = {"int_array": "int", "float_array": "float", "string_array": "str"}[kind]
-                lines.append(f"{indent}{name} = [{parser}(__cm_take()) for _ in range({item['length_from']})]")
+                lines.append(f"{indent}{name} = list(map({parser}, input().split()))")
+                lines.append(f"{indent}# {name} should contain {length} values.")
+        lines.extend([
+            f"{indent}# TODO: solve the problem using the input above.",
+            output_comment,
+        ])
         return lines
 
     if language == "C++":
         for item in schema:
             name, kind = item["name"], item["type"]
+            length = item.get("length_from")
             if kind == "int":
-                lines.append(f"{indent}long long {name}; cin >> {name};")
+                lines.append(f"{indent}long long {name};")
+                lines.append(f"{indent}cin >> {name};")
             elif kind == "float":
-                lines.append(f"{indent}double {name}; cin >> {name};")
+                lines.append(f"{indent}double {name};")
+                lines.append(f"{indent}cin >> {name};")
             elif kind == "string":
-                lines.append(f"{indent}string {name}; cin >> {name};")
+                lines.append(f"{indent}string {name};")
+                lines.append(f"{indent}cin >> {name};")
             elif kind == "raw_string":
-                lines.append(f"{indent}string {name}((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());")
-            elif kind.endswith("_array") and item.get("length_from"):
+                lines.append(f"{indent}string {name};")
+                lines.append(f"{indent}getline(cin >> ws, {name});")
+            elif kind.endswith("_array") and length:
                 typ = {"int_array": "long long", "float_array": "double", "string_array": "string"}[kind]
-                lines.append(
-                    f"{indent}vector<{typ}> {name}({item['length_from']}); "
-                    f"for (auto &v : {name}) cin >> v;"
-                )
+                lines.append(f"{indent}vector<{typ}> {name}({length});")
+                lines.append(f"{indent}for (auto &value : {name}) cin >> value;")
+        lines.extend([
+            f"{indent}// TODO: solve the problem using the input above.",
+            output_comment,
+        ])
         return lines
 
     if language == "Java":
-        lines.append(f"{indent}java.util.Scanner __cm_scanner = new java.util.Scanner(System.in);")
+        lines.append(f"{indent}java.util.Scanner scanner = new java.util.Scanner(System.in);")
         for item in schema:
             name, kind = item["name"], item["type"]
+            length = item.get("length_from")
             if kind == "int":
-                lines.append(f"{indent}long {name} = __cm_scanner.nextLong();")
+                lines.append(f"{indent}long {name} = scanner.nextLong();")
             elif kind == "float":
-                lines.append(f"{indent}double {name} = __cm_scanner.nextDouble();")
+                lines.append(f"{indent}double {name} = scanner.nextDouble();")
             elif kind == "string":
-                lines.append(f"{indent}String {name} = __cm_scanner.next();")
+                lines.append(f"{indent}String {name} = scanner.next();")
             elif kind == "raw_string":
-                lines.append(f"{indent}String {name} = __cm_scanner.useDelimiter(\"\\\\A\").hasNext() ? __cm_scanner.next() : \"\";")
-            elif kind.endswith("_array") and item.get("length_from"):
+                lines.append(f"{indent}String {name} = scanner.hasNextLine() ? scanner.nextLine() : \"\";")
+            elif kind.endswith("_array") and length:
                 if kind == "int_array":
-                    lines.append(
-                        f"{indent}long[] {name} = new long[(int){item['length_from']}]; "
-                        f"for (int i=0;i<{name}.length;i++) {name}[i]=__cm_scanner.nextLong();"
-                    )
+                    lines.append(f"{indent}long[] {name} = new long[(int){length}];")
+                    lines.append(f"{indent}for (int i = 0; i < {name}.length; i++) {name}[i] = scanner.nextLong();")
                 elif kind == "float_array":
-                    lines.append(
-                        f"{indent}double[] {name} = new double[(int){item['length_from']}]; "
-                        f"for (int i=0;i<{name}.length;i++) {name}[i]=__cm_scanner.nextDouble();"
-                    )
-                elif kind == "string_array":
-                    lines.append(
-                        f"{indent}String[] {name} = new String[(int){item['length_from']}]; "
-                        f"for (int i=0;i<{name}.length;i++) {name}[i]=__cm_scanner.next();"
-                    )
+                    lines.append(f"{indent}double[] {name} = new double[(int){length}];")
+                    lines.append(f"{indent}for (int i = 0; i < {name}.length; i++) {name}[i] = scanner.nextDouble();")
+                else:
+                    lines.append(f"{indent}String[] {name} = new String[(int){length}];")
+                    lines.append(f"{indent}for (int i = 0; i < {name}.length; i++) {name}[i] = scanner.next();")
+        lines.extend([
+            f"{indent}// TODO: solve the problem using the input above.",
+            output_comment,
+        ])
         return lines
 
     if language in {"JavaScript", "TypeScript"}:
-        lines += [
-            f"{indent}const __cm_tokens = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).filter(Boolean);",
-            f"{indent}let __cm_i = 0;",
-            f"{indent}const __cm_take = () => __cm_tokens[__cm_i++];",
-        ]
+        lines.extend([
+            f"{indent}const input = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).filter(Boolean);",
+            f"{indent}let index = 0;",
+            f"{indent}const next = () => input[index++];",
+        ])
         for item in schema:
             name, kind = item["name"], item["type"]
+            length = item.get("length_from")
             if kind in {"int", "float"}:
-                lines.append(f"{indent}const {name} = Number(__cm_take());")
-            elif kind == "string":
-                lines.append(f"{indent}const {name} = __cm_take();")
-            elif kind == "raw_string":
-                lines.append(f"{indent}const {name} = fs.readFileSync(0, 'utf8');")
-            elif kind.endswith("_array") and item.get("length_from"):
-                if kind == "string_array":
-                    lines.append(f"{indent}const {name} = [...Array(Number({item['length_from']}))].map(() => __cm_take());")
-                else:
-                    lines.append(f"{indent}const {name} = [...Array(Number({item['length_from']}))].map(() => Number(__cm_take()));")
+                lines.append(f"{indent}const {name} = Number(next());")
+            elif kind in {"string", "raw_string"}:
+                lines.append(f"{indent}const {name} = next();")
+            elif kind.endswith("_array") and length:
+                lines.append(f"{indent}const {name} = Array.from({{length: Number({length})}}, () => Number(next()));" if kind != "string_array" else f"{indent}const {name} = Array.from({{length: Number({length})}}, () => next());")
+        lines.extend([
+            f"{indent}// TODO: solve the problem using the input above.",
+            output_comment,
+        ])
         return lines
 
     if language == "Go":
-        lines.append(f"{indent}in := bufio.NewReader(os.Stdin)")
+        lines.append(f"{indent}reader := bufio.NewReader(os.Stdin)")
         for item in schema:
             name, kind = item["name"], item["type"]
+            length = item.get("length_from")
             if kind == "int":
-                lines.append(f"{indent}var {name} int64; fmt.Fscan(in, &{name})")
+                lines.append(f"{indent}var {name} int64")
+                lines.append(f"{indent}fmt.Fscan(reader, &{name})")
             elif kind == "float":
-                lines.append(f"{indent}var {name} float64; fmt.Fscan(in, &{name})")
+                lines.append(f"{indent}var {name} float64")
+                lines.append(f"{indent}fmt.Fscan(reader, &{name})")
             elif kind == "string":
-                lines.append(f"{indent}var {name} string; fmt.Fscan(in, &{name})")
-            elif kind.endswith("_array") and item.get("length_from"):
+                lines.append(f"{indent}var {name} string")
+                lines.append(f"{indent}fmt.Fscan(reader, &{name})")
+            elif kind.endswith("_array") and length:
                 typ = {"int_array": "int64", "float_array": "float64", "string_array": "string"}[kind]
-                lines.append(f"{indent}{name} := make([]{typ}, {item['length_from']})")
-                lines.append(f"{indent}for i := range {name} {{ fmt.Fscan(in, &{name}[i]) }}")
+                lines.append(f"{indent}{name} := make([]{typ}, {length})")
+                lines.append(f"{indent}for i := range {name} {{ fmt.Fscan(reader, &{name}[i]) }}")
+        lines.extend([
+            f"{indent}// TODO: solve the problem using the input above.",
+            output_comment,
+        ])
         return lines
 
-    lines += [
-        f"{indent}let mut __cm_input = String::new();",
-        f"{indent}std::io::stdin().read_to_string(&mut __cm_input).unwrap();",
-        f"{indent}let mut __cm_it = __cm_input.split_whitespace();",
-    ]
+    lines.extend([
+        f"{indent}let mut input = String::new();",
+        f"{indent}std::io::stdin().read_to_string(&mut input).unwrap();",
+        f"{indent}let mut iter = input.split_whitespace();",
+    ])
     for item in schema:
         name, kind = item["name"], item["type"]
+        length = item.get("length_from")
         if kind == "int":
-            lines.append(f'{indent}let {name}: i64 = __cm_it.next().unwrap().parse().unwrap();')
+            lines.append(f'{indent}let {name}: i64 = iter.next().unwrap().parse().unwrap();')
         elif kind == "float":
-            lines.append(f'{indent}let {name}: f64 = __cm_it.next().unwrap().parse().unwrap();')
+            lines.append(f'{indent}let {name}: f64 = iter.next().unwrap().parse().unwrap();')
         elif kind == "string":
-            lines.append(f'{indent}let {name} = __cm_it.next().unwrap().to_string();')
-        elif kind.endswith("_array") and item.get("length_from"):
+            lines.append(f'{indent}let {name} = iter.next().unwrap().to_string();')
+        elif kind.endswith("_array") and length:
             typ = {"int_array": "i64", "float_array": "f64", "string_array": "String"}[kind]
-            parse = {
-                "int_array": "parse::<i64>().unwrap()",
-                "float_array": "parse::<f64>().unwrap()",
-                "string_array": "to_string()",
-            }[kind]
-            lines.append(
-                f"{indent}let {name}: Vec<{typ}> = (0..{item['length_from']}).map(|_| __cm_it.next().unwrap().{parse}).collect();"
-            )
+            parse = {"int_array": "parse::<i64>().unwrap()", "float_array": "parse::<f64>().unwrap()", "string_array": "to_string()"}[kind]
+            lines.append(f"{indent}let {name}: Vec<{typ}> = (0..{length}).map(|_| iter.next().unwrap().{parse}).collect();")
+    lines.extend([
+        f"{indent}// TODO: solve the problem using the input above.",
+        output_comment,
+    ])
     return lines
 
 
