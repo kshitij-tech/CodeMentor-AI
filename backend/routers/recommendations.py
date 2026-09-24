@@ -168,6 +168,100 @@ def next_recommendation(
         "profile_experience": experience,
     }
 
+@router.get("/roadmap")
+def learning_roadmap(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return an adaptive topic roadmap derived from the user's actual submissions."""
+    attempts = (
+        db.query(CodingAttempt, Problem)
+        .join(Problem, CodingAttempt.problem_id == Problem.id)
+        .filter(CodingAttempt.user_id == current_user.id)
+        .all()
+    )
+
+    stats = defaultdict(lambda: {
+        "attempted": 0,
+        "solved": 0,
+        "submissions": 0,
+        "accepted": 0,
+    })
+    for attempt, problem in attempts:
+        for topic in canonicalize_topics(problem.topics):
+            stats[topic]["attempted"] += 1
+            if attempt.mode == "submit":
+                stats[topic]["submissions"] += 1
+                if attempt.status == "Accepted":
+                    stats[topic]["accepted"] += 1
+                    stats[topic]["solved"] += 1
+
+    def mastery(topic: str) -> float:
+        stat = stats[topic]
+        if not stat["attempted"]:
+            return 0.0
+        distinct_signal = min(1.0, stat["attempted"] / 10.0)
+        solve_rate = stat["solved"] / max(stat["attempted"], 1)
+        acceptance = stat["accepted"] / max(stat["submissions"], 1)
+        return round((0.70 * solve_rate + 0.30 * acceptance) * distinct_signal * 100)
+
+    rows = []
+    for topic in TOPICS:
+        stat = stats[topic]
+        value = mastery(topic)
+        if value >= 75 and stat["attempted"] >= 3:
+            status = "mastered"
+        elif stat["attempted"] > 0:
+            status = "in_progress"
+        else:
+            status = "not_started"
+
+        # Prioritize weak topics with evidence, then untouched topics.
+        priority = (
+            (100 - value) * 1.5
+            + (25 if status == "in_progress" else 10)
+            + (10 if stat["attempted"] == 0 else 0)
+        )
+        rows.append({
+            "topic": topic,
+            "status": status,
+            "mastery": value,
+            "attempted_problems": stat["attempted"],
+            "solved_problems": stat["solved"],
+            "acceptance_rate": round(
+                stat["accepted"] / stat["submissions"] * 100
+            ) if stat["submissions"] else 0,
+            "priority": round(priority, 2),
+        })
+
+    # Keep the roadmap focused: show the most actionable topics first,
+    # while retaining a few mastered topics as completed milestones.
+    active = sorted(
+        [row for row in rows if row["status"] != "mastered"],
+        key=lambda row: (-row["priority"], row["topic"]),
+    )[:6]
+    mastered = sorted(
+        [row for row in rows if row["status"] == "mastered"],
+        key=lambda row: (-row["mastery"], row["topic"]),
+    )[:2]
+
+    roadmap = mastered[::-1] + active
+    for index, row in enumerate(roadmap):
+        if row["status"] == "mastered":
+            row["position"] = "completed"
+        elif index == len(mastered):
+            row["position"] = "current"
+        else:
+            row["position"] = "up_next"
+
+    return {
+        "items": roadmap,
+        "current_topic": next(
+            (row["topic"] for row in roadmap if row["position"] == "current"),
+            None,
+        ),
+    }
+
 @router.get("/weak")
 def weak_topics(
     current_user: User = Depends(get_current_user),
