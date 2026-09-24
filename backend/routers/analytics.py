@@ -161,6 +161,14 @@ def analytics_summary(
             "mastery_confidence": round(evidence * 100),
         })
 
+    streak_calendar = [
+        {
+            "date": (local_now - timedelta(days=offset)).date().isoformat(),
+            "solved": (local_now - timedelta(days=offset)).date() in solved_days,
+        }
+        for offset in range(6, -1, -1)
+    ]
+
     daily = []
     for offset in range(6, -1, -1):
         day = (local_now - timedelta(days=offset)).date()
@@ -186,6 +194,7 @@ def analytics_summary(
         "solved_last_7_days": len(recent_solved),
         "active_days_last_7_days": len(recent_active_days),
         "current_streak": current_streak,
+        "streak_calendar": streak_calendar,
         "velocity_pace": round(len(recent_solved) / max(len(recent_active_days), 1), 1),
         "ai_hints": int(hint_count),
         "average_runtime_ms": round(sum(runtimes) / len(runtimes), 1) if runtimes else None,
