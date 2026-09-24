@@ -37,11 +37,13 @@ async function load(){
   if(!auth())return;
 
   const headers={headers:{Authorization:"Bearer "+token()}};
+  const browserTimezone=Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  const timezoneQuery="?timezone_name="+encodeURIComponent(browserTimezone);
 
   // Summary is the minimum viable analytics payload. Render it separately
   // so detailed history cannot prevent the main metrics from appearing.
   try{
-    const summaryRes=await fetch(API+"/analytics/summary",headers);
+    const summaryRes=await fetch(API+"/analytics/summary"+timezoneQuery,headers);
     if(summaryRes.status===401){
       localStorage.removeItem(KEY);
       location.replace("auth.html");
@@ -64,7 +66,7 @@ async function load(){
 
   // Detailed tables are useful, but should not block the summary/graphs.
   try{
-    const detailRes=await fetch(API+"/analytics/detail",headers);
+    const detailRes=await fetch(API+"/analytics/detail"+timezoneQuery,headers);
     if(detailRes.status===401){
       localStorage.removeItem(KEY);
       location.replace("auth.html");
