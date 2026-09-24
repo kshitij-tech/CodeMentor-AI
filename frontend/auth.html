@@ -303,7 +303,7 @@
 
         const profile = profileResponse.ok ? await profileResponse.json() : null;
         const destination = profile?.onboarding_completed
-          ? './dashboard.html'
+          ? './dashboard.html?v=20260924'
           : './onboarding.html?from=auth&v=20260921';
 
         window.location.replace(destination);
