@@ -23,6 +23,22 @@ jobs:
       - name: Build execution image
         run: docker build -t codementor-multi-runtime:ci -f docker/multi-runtime/Dockerfile docker/multi-runtime
 
+      - name: Smoke test Python stdin execution
+        run: |
+          python - <<'PY'
+          from unittest.mock import patch
+          from backend.execution import run_python_stdio_tests
+
+          source = "import sys\nprint(int(sys.stdin.read()) * 2)"
+          cases = [{"input": "21\\n", "expected_output": "42\\n"}]
+
+          with patch("backend.execution.EXECUTION_SANDBOX", "docker"):
+              with patch("backend.execution.EXECUTION_DOCKER_IMAGE", "codementor-multi-runtime:ci"):
+                  results = run_python_stdio_tests(source, cases, time_limit_seconds=1)
+
+          assert results[0].passed, results[0]
+          PY
+
       - name: Smoke test execution runtimes
         run: |
           docker run --rm --network none codementor-multi-runtime:ci bash -lc 'python --version && g++ --version && javac -version && node --version && tsc --version && go version && rustc --version'
