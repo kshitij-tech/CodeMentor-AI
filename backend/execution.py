@@ -525,7 +525,7 @@ def run_language_stdio_tests(
             docker_name=docker_name,
         ) + [
             EXECUTION_DOCKER_IMAGE,
-            "/bin/bash",
+            "/bin/sh",
             "/workspace/run_tests.sh",
         ]
 
