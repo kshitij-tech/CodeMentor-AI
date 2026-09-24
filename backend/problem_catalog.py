@@ -944,9 +944,338 @@ def infer_execution_mode(
     return "function"
 
 
-def ensure_user_io_starter_code(starter_code: Any = None) -> dict[str, str]:
-    """Return complete stdin/stdout programs; the user owns input parsing and output."""
-    return {language: USER_IO_STARTERS[language] for language in SUPPORTED_LANGUAGES}
+def _schema_input_code(language: str, schema: list[dict[str, Any]], indent: str = "    ") -> list[str]:
+    """Create problem-specific stdin parsing boilerplate without function parameters."""
+    if not schema:
+        if language == "Python":
+            return [
+                f"{indent}input_data = sys.stdin.read()",
+                f"{indent}# Parse input_data according to the problem statement.",
+            ]
+        if language == "C++":
+            return [
+                f"{indent}string input_data((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());",
+                f"{indent}// Parse input_data according to the problem statement.",
+            ]
+        if language == "Java":
+            return [
+                f"{indent}java.util.Scanner __cm_scanner = new java.util.Scanner(System.in);",
+                f"{indent}String input_data = __cm_scanner.useDelimiter(\"\\\\A\").hasNext() ? __cm_scanner.next() : \"\";",
+                f"{indent}// Parse input_data according to the problem statement.",
+            ]
+        if language in {"JavaScript", "TypeScript"}:
+            return [
+                f"{indent}const input = fs.readFileSync(0, 'utf8');",
+                f"{indent}// Parse input according to the problem statement.",
+            ]
+        if language == "Go":
+            return [
+                f"{indent}data, _ := io.ReadAll(os.Stdin)",
+                f"{indent}input := string(data)",
+                f"{indent}_ = input",
+                f"{indent}// Parse input according to the problem statement.",
+            ]
+        return [
+            f"{indent}let mut input = String::new();",
+            f"{indent}std::io::stdin().read_to_string(&mut input).unwrap();",
+            f"{indent}// Parse input according to the problem statement.",
+        ]
+
+    lines: list[str] = []
+
+    if language == "Python":
+        lines += [
+            f"{indent}__cm_tokens = sys.stdin.read().split()",
+            f"{indent}__cm_i = 0",
+            f"{indent}def __cm_take():",
+            f"{indent}    global __cm_i",
+            f"{indent}    if __cm_i >= len(__cm_tokens):",
+            f"{indent}        raise ValueError('Insufficient input for the problem schema.')",
+            f"{indent}    value = __cm_tokens[__cm_i]",
+            f"{indent}    __cm_i += 1",
+            f"{indent}    return value",
+        ]
+        for item in schema:
+            name, kind = item["name"], item["type"]
+            if kind == "int":
+                lines.append(f"{indent}{name} = int(__cm_take())")
+            elif kind == "float":
+                lines.append(f"{indent}{name} = float(__cm_take())")
+            elif kind == "string":
+                lines.append(f"{indent}{name} = __cm_take()")
+            elif kind == "raw_string":
+                lines.append(f"{indent}{name} = ' '.join(__cm_tokens)")
+            elif kind.endswith("_array") and item.get("length_from"):
+                parser = {"int_array": "int", "float_array": "float", "string_array": "str"}[kind]
+                lines.append(f"{indent}{name} = [{parser}(__cm_take()) for _ in range({item['length_from']})]")
+        return lines
+
+    if language == "C++":
+        for item in schema:
+            name, kind = item["name"], item["type"]
+            if kind == "int":
+                lines.append(f"{indent}long long {name}; cin >> {name};")
+            elif kind == "float":
+                lines.append(f"{indent}double {name}; cin >> {name};")
+            elif kind == "string":
+                lines.append(f"{indent}string {name}; cin >> {name};")
+            elif kind == "raw_string":
+                lines.append(f"{indent}string {name}((istreambuf_iterator<char>(cin)), istreambuf_iterator<char>());")
+            elif kind.endswith("_array") and item.get("length_from"):
+                typ = {"int_array": "long long", "float_array": "double", "string_array": "string"}[kind]
+                lines.append(
+                    f"{indent}vector<{typ}> {name}({item['length_from']}); "
+                    f"for (auto &v : {name}) cin >> v;"
+                )
+        return lines
+
+    if language == "Java":
+        lines.append(f"{indent}java.util.Scanner __cm_scanner = new java.util.Scanner(System.in);")
+        for item in schema:
+            name, kind = item["name"], item["type"]
+            if kind == "int":
+                lines.append(f"{indent}long {name} = __cm_scanner.nextLong();")
+            elif kind == "float":
+                lines.append(f"{indent}double {name} = __cm_scanner.nextDouble();")
+            elif kind == "string":
+                lines.append(f"{indent}String {name} = __cm_scanner.next();")
+            elif kind == "raw_string":
+                lines.append(f"{indent}String {name} = __cm_scanner.useDelimiter(\"\\\\A\").hasNext() ? __cm_scanner.next() : \"\";")
+            elif kind.endswith("_array") and item.get("length_from"):
+                if kind == "int_array":
+                    lines.append(
+                        f"{indent}long[] {name} = new long[(int){item['length_from']}]; "
+                        f"for (int i=0;i<{name}.length;i++) {name}[i]=__cm_scanner.nextLong();"
+                    )
+                elif kind == "float_array":
+                    lines.append(
+                        f"{indent}double[] {name} = new double[(int){item['length_from']}]; "
+                        f"for (int i=0;i<{name}.length;i++) {name}[i]=__cm_scanner.nextDouble();"
+                    )
+                elif kind == "string_array":
+                    lines.append(
+                        f"{indent}String[] {name} = new String[(int){item['length_from']}]; "
+                        f"for (int i=0;i<{name}.length;i++) {name}[i]=__cm_scanner.next();"
+                    )
+        return lines
+
+    if language in {"JavaScript", "TypeScript"}:
+        lines += [
+            f"{indent}const __cm_tokens = fs.readFileSync(0, 'utf8').trim().split(/\\s+/).filter(Boolean);",
+            f"{indent}let __cm_i = 0;",
+            f"{indent}const __cm_take = () => __cm_tokens[__cm_i++];",
+        ]
+        for item in schema:
+            name, kind = item["name"], item["type"]
+            if kind in {"int", "float"}:
+                lines.append(f"{indent}const {name} = Number(__cm_take());")
+            elif kind == "string":
+                lines.append(f"{indent}const {name} = __cm_take();")
+            elif kind == "raw_string":
+                lines.append(f"{indent}const {name} = fs.readFileSync(0, 'utf8');")
+            elif kind.endswith("_array") and item.get("length_from"):
+                if kind == "string_array":
+                    lines.append(f"{indent}const {name} = [...Array(Number({item['length_from']}))].map(() => __cm_take());")
+                else:
+                    lines.append(f"{indent}const {name} = [...Array(Number({item['length_from']}))].map(() => Number(__cm_take()));")
+        return lines
+
+    if language == "Go":
+        lines.append(f"{indent}in := bufio.NewReader(os.Stdin)")
+        for item in schema:
+            name, kind = item["name"], item["type"]
+            if kind == "int":
+                lines.append(f"{indent}var {name} int64; fmt.Fscan(in, &{name})")
+            elif kind == "float":
+                lines.append(f"{indent}var {name} float64; fmt.Fscan(in, &{name})")
+            elif kind == "string":
+                lines.append(f"{indent}var {name} string; fmt.Fscan(in, &{name})")
+            elif kind.endswith("_array") and item.get("length_from"):
+                typ = {"int_array": "int64", "float_array": "float64", "string_array": "string"}[kind]
+                lines.append(f"{indent}{name} := make([]{typ}, {item['length_from']})")
+                lines.append(f"{indent}for i := range {name} {{ fmt.Fscan(in, &{name}[i]) }}")
+        return lines
+
+    lines += [
+        f"{indent}let mut __cm_input = String::new();",
+        f"{indent}std::io::stdin().read_to_string(&mut __cm_input).unwrap();",
+        f"{indent}let mut __cm_it = __cm_input.split_whitespace();",
+    ]
+    for item in schema:
+        name, kind = item["name"], item["type"]
+        if kind == "int":
+            lines.append(f'{indent}let {name}: i64 = __cm_it.next().unwrap().parse().unwrap();')
+        elif kind == "float":
+            lines.append(f'{indent}let {name}: f64 = __cm_it.next().unwrap().parse().unwrap();')
+        elif kind == "string":
+            lines.append(f'{indent}let {name} = __cm_it.next().unwrap().to_string();')
+        elif kind.endswith("_array") and item.get("length_from"):
+            typ = {"int_array": "i64", "float_array": "f64", "string_array": "String"}[kind]
+            parse = {
+                "int_array": "parse::<i64>().unwrap()",
+                "float_array": "parse::<f64>().unwrap()",
+                "string_array": "to_string()",
+            }[kind]
+            lines.append(
+                f"{indent}let {name}: Vec<{typ}> = (0..{item['length_from']}).map(|_| __cm_it.next().unwrap().{parse}).collect();"
+            )
+    return lines
+
+
+def _replace_solve_signature(source: str, language: str) -> tuple[str, bool]:
+    """Remove solve(...) parameters while preserving the problem's boilerplate and body."""
+    if not isinstance(source, str):
+        return "", False
+
+    patterns = {
+        "Python": r"(?m)^(?P<indent>\s*)def\s+solve\s*\([^)]*\)\s*:",
+        "C++": r"(?m)(?P<prefix>\bsolve)\s*\([^)]*\)\s*\{",
+        "Java": r"(?m)(?P<prefix>\bsolve)\s*\([^)]*\)\s*\{",
+        "JavaScript": r"(?m)(?P<prefix>function\s+solve)\s*\([^)]*\)\s*\{",
+        "TypeScript": r"(?m)(?P<prefix>function\s+solve)\s*\([^)]*\)\s*\{",
+        "Go": r"(?m)(?P<prefix>\bfunc\s+solve)\s*\([^)]*\)(?P<return>[^\n{]*)\{",
+        "Rust": r"(?m)(?P<prefix>\bfn\s+solve)\s*\([^)]*\)(?P<return>[^\n{]*)\{",
+    }
+    pattern = patterns.get(language)
+    if not pattern:
+        return source, False
+
+    match = re.search(pattern, source)
+    if not match:
+        return source, False
+
+    if language == "Python":
+        start, end = match.span()
+        replacement = f"{match.group('indent')}def solve():"
+        return source[:start] + replacement + source[end:], True
+
+    replacement = re.sub(r"solve\s*\([^)]*\)", "solve()", match.group(0), count=1)
+    start, end = match.span()
+    return source[:start] + replacement + source[end:], True
+
+
+def _insert_after_solve_opening(source: str, language: str, schema: list[dict[str, Any]]) -> str:
+    if language == "Python":
+        match = re.search(r"(?m)^\s*def\s+solve\(\)\s*:", source)
+    else:
+        match = re.search(r"(?s)\bsolve\s*\(\)\s*\{", source)
+
+    if not match:
+        return source
+
+    pos = match.end()
+    code = "\n" + "\n".join(_schema_input_code(language, schema, "    ")) + "\n"
+    return source[:pos] + code + source[pos:]
+
+
+def _has_entrypoint(source: str, language: str) -> bool:
+    if language == "Python":
+        return bool(re.search(r"(?m)^\s*if\s+__name__\s*==\s*['\"]__main__['\"]", source))
+    if language == "C++":
+        return bool(re.search(r"(?m)\bint\s+main\s*\(", source))
+    if language == "Java":
+        return bool(re.search(r"(?m)public\s+static\s+void\s+main\s*\(", source))
+    if language in {"JavaScript", "TypeScript"}:
+        return bool(re.search(r"process\.stdout\.write|console\.log\s*\(", source))
+    if language == "Go":
+        return bool(re.search(r"(?m)\bfunc\s+main\s*\(", source))
+    return bool(re.search(r"(?m)\bfn\s+main\s*\(", source))
+
+
+def _append_user_io_entrypoint(source: str, language: str) -> str:
+    if language == "Python":
+        return source.rstrip() + "\n\nif __name__ == '__main__':\n    print(solve())\n"
+
+    if language == "C++":
+        is_void = bool(re.search(r"\bvoid\s+solve\s*\(\s*\)", source))
+        if is_void:
+            body = "    solve();"
+        else:
+            body = "    auto __cm_result = solve();\n    cout << __cm_result << '\\n';"
+        return (
+            source.rstrip()
+            + "\n\nint main() {\n"
+            + "    ios::sync_with_stdio(false);\n"
+            + "    cin.tie(nullptr);\n"
+            + body
+            + "\n    return 0;\n}\n"
+        )
+
+    if language == "Java":
+        # The original Solution class remains intact; Main is the JVM entrypoint.
+        if "public class Main" in source:
+            return source
+        is_void = bool(re.search(r"\bvoid\s+solve\s*\(\s*\)", source))
+        call = (
+            "new Solution().solve();"
+            if is_void
+            else "Object __cm_result = new Solution().solve();\n        System.out.println(__cm_result);"
+        )
+        return (
+            source.rstrip()
+            + "\n\npublic class Main {\n"
+            + "    public static void main(String[] args) {\n"
+            + "        "
+            + call.replace("\n", "\n        ")
+            + "\n    }\n"
+            + "}\n"
+        )
+
+    if language in {"JavaScript", "TypeScript"}:
+        return source.rstrip() + "\n\nprocess.stdout.write(String(solve()));\n"
+
+    if language == "Go":
+        return source.rstrip() + "\n\nfunc main() {\n    __cm_result := solve()\n    fmt.Println(__cm_result)\n}\n"
+
+    return source.rstrip() + '\n\nfn main() {\n    println!("{}", solve());\n}\n'
+
+
+def _ensure_go_imports(source: str) -> str:
+    required = ['"bufio"', '"fmt"', '"os"']
+    if all(item in source for item in required):
+        return source
+
+    if "import (" in source:
+        for item in required:
+            if item not in source:
+                source = source.replace("import (\n", f"import (\n    {item}\n", 1)
+        return source
+
+    return source.replace("package main\n", "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n", 1)
+
+
+def ensure_user_io_starter_code(
+    starter_code: Any = None,
+    editor_schema: Any = None,
+) -> dict[str, str]:
+    """Preserve the problem's boilerplate while making input/output stdin/stdout based."""
+    existing = starter_code if isinstance(starter_code, dict) else {}
+    schema = normalize_editor_input_schema(editor_schema)
+
+    result: dict[str, str] = {}
+    for language in SUPPORTED_LANGUAGES:
+        source = existing.get(language)
+        if not isinstance(source, str) or not source.strip():
+            result[language] = USER_IO_STARTERS[language]
+            continue
+
+        transformed, found = _replace_solve_signature(source, language)
+        if not found:
+            # Already a complete stdin/stdout program: keep all of it.
+            result[language] = source
+            continue
+
+        transformed = _insert_after_solve_opening(transformed, language, schema)
+
+        if language == "Go":
+            transformed = _ensure_go_imports(transformed)
+
+        if not _has_entrypoint(transformed, language):
+            transformed = _append_user_io_entrypoint(transformed, language)
+
+        result[language] = transformed
+
+    return result
 
 
 def ensure_starter_code(
