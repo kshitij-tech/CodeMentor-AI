@@ -195,10 +195,15 @@ def analytics_summary(
 
 @router.get("/detail")
 def analytics_detail(
+    timezone_name: str = "UTC",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    summary = analytics_summary(current_user=current_user, db=db)
+    summary = analytics_summary(
+        timezone_name=timezone_name,
+        current_user=current_user,
+        db=db,
+    )
 
     rows = (
         db.query(CodingAttempt, Problem)
