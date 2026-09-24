@@ -420,8 +420,10 @@ def _docker_language_script(
         ),
     }
 
+    # Keep this script POSIX-sh compatible. The image uses Ubuntu, but invoking
+    # /bin/sh avoids relying on shell-specific options such as "pipefail".
     lines = [
-        "set -o pipefail",
+        "#!/bin/sh",
         f"COMPILE_MARKER='__CODEMENTOR_{token}_COMPILE_OK__'",
     ]
 
@@ -439,18 +441,24 @@ def _docker_language_script(
             str(case.get("input", "")).encode("utf-8")
         ).decode("ascii")
         stdout_marker = f"__CODEMENTOR_{token}_TEST_{index}__"
+        input_path = f"/runner/input_{index}.txt"
+        output_path = f"/runner/output_{index}.txt"
         stderr_path = f"/runner/stderr_{index}.txt"
         lines.extend([
             f"INPUT_B64='{input_b64}'",
+            f"INPUT_PATH='{input_path}'",
+            f"OUTPUT_PATH='{output_path}'",
             f"STDERR_PATH='{stderr_path}'",
+            'printf "%s" "$INPUT_B64" | base64 -d > "$INPUT_PATH"',
+            ': > "$OUTPUT_PATH"',
             ': > "$STDERR_PATH"',
             (
-                f'OUTPUT_B64="$(printf "%s" "$INPUT_B64" | base64 -d | '
                 f'timeout --signal=KILL {limit} {run_command} '
-                f'2>"$STDERR_PATH" | base64 -w0)"'
+                f'<"$INPUT_PATH" >"$OUTPUT_PATH" 2>"$STDERR_PATH"'
             ),
             "RC=$?",
-            'ERROR_B64="$(base64 -w0 "$STDERR_PATH" 2>/dev/null || true)"',
+            'OUTPUT_B64="$(base64 -w 0 "$OUTPUT_PATH" 2>/dev/null || true)"',
+            'ERROR_B64="$(base64 -w 0 "$STDERR_PATH" 2>/dev/null || true)"',
             (
                 f'printf "%s|%s|%s|%s\\n" "{stdout_marker}" "$RC" "$OUTPUT_B64" "$ERROR_B64"'
             ),
