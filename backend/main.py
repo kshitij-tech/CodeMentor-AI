@@ -12,6 +12,7 @@ from backend.routers.execution import router as execution_router
 from backend.routers.mentor import router as mentor_router
 from backend.routers.analytics import router as analytics_router
 from backend.routers.recommendations import router as recommendations_router
+from backend.routers.workspace import router as workspace_router
 from backend.problem_seed import seed_problems
 
 
@@ -113,6 +114,7 @@ app.include_router(execution_router)
 app.include_router(mentor_router)
 app.include_router(analytics_router)
 app.include_router(recommendations_router)
+app.include_router(workspace_router)
 
 
 @app.get("/")
