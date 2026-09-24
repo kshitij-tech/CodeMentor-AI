@@ -585,6 +585,22 @@ function syncLanguageAvailability(){
   });
   select.title='Write a normal stdin/stdout program. You are responsible for reading the input and printing the result.';
 }
+function isGenericFunctionDraft(language,value){
+  if(typeof value!=='string'||!value.trim())return false;
+  const source=value.replace(/\r/g,'');
+  const compact=source.replace(/\s+/g,'');
+  const patterns={
+    Python:/defsolve\(\)[\s\S]*?(?:pass|return(?:0|None))/,
+    'C++':/(?:int|longlong|auto|bool|void)solve\(\)[\s\S]*?return0;/,
+    Java:/(?:public)?(?:static)?(?:int|long|boolean|double|Object|void)solve\(\)[\s\S]*?return(?:0|0L|null);/,
+    JavaScript:/functionsolve\(\)[\s\S]*?return(?:0|null|\'\');?/,
+    TypeScript:/functionsolve\(\)[\s\S]*?return(?:0|null|\'\');?/,
+    Go:/funcsolve\(\)[\s\S]*?return(?:int64\(0\)|0|nil)/,
+    Rust:/fnsolve\(\)[\s\S]*?(?:0i64|String::new\(\))/
+  };
+  return Boolean((patterns[language]||/a^/).test(compact));
+}
+
 function isLegacyFunctionStyleCode(language,value){
   if(typeof value!=='string'||!value.trim())return false;
   const source=value.replace(/\r/g,'');
@@ -638,8 +654,8 @@ function loadDraft(){
   const hasSaved=typeof saved==='string'&&saved.trim().length>0;
   const staleGeneric=isGenericFunctionDraft(language,saved);
   const staleStdio=isStdioBoilerplateDraft(language,saved);
-  const staleCallable=hasSaved && /\\b(?:def\\s+solve|function\\s+solve|func\\s+solve|fn\\s+solve|class\\s+Solution)\\b/.test(saved);
-  const stale=staleGeneric||staleStdio||staleCallable;
+  const staleLegacy=isLegacyFunctionStyleCode(language,saved);
+  const stale=staleGeneric||staleStdio||staleLegacy;
   const useSaved=hasSaved&&!stale;
   editor.setValue(useSaved?saved:starterCode(language));
   $('save-status').textContent=useSaved?'Local draft':'Starter';
@@ -666,10 +682,10 @@ async function loadWorkspace(language=$('language').value){
     if(request!==workspaceLoadRequest)return;
 
     if(typeof data.code==='string'&&data.code.trim()){
-      if(isLegacyFunctionStyleCode(language,data.code)){
+      if(isLegacyFunctionStyleCode(language,data.code)||isGenericFunctionDraft(language,data.code)||isStdioBoilerplateDraft(language,data.code)){
         editor.setValue(starterCode(language));
         localStorage.removeItem(draftKey());
-        $('save-status').textContent='Legacy template replaced';
+        $('save-status').textContent='Starter template refreshed';
         scheduleSyntaxValidation();
         void saveWorkspace();
         return;
