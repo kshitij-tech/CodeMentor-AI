@@ -1530,6 +1530,8 @@ def run_python_tests(
 
             with open(script_path, "w", encoding="utf-8") as script:
                 script.write(_runner_source(source, args))
+            if os.name != "nt":
+                os.chmod(script_path, 0o644)
 
             env = {
                 "PYTHONIOENCODING": "utf-8",
