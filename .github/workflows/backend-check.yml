@@ -30,7 +30,7 @@ jobs:
           from backend.execution import run_python_stdio_tests
 
           source = "import sys\nprint(int(sys.stdin.read()) * 2)"
-          cases = [{"input": "21\\n", "expected_output": "42\\n"}]
+          cases = [{"input": "21\n", "expected_output": "42\n"}]
 
           with patch("backend.execution.EXECUTION_SANDBOX", "docker"):
               with patch("backend.execution.EXECUTION_DOCKER_IMAGE", "codementor-multi-runtime:ci"):
