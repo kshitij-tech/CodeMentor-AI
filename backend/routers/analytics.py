@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -18,12 +19,28 @@ def _utc_now() -> datetime:
 def _naive_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=None) if value.tzinfo else value
 
+
+def _local_context(timezone_name: str):
+    """Resolve the browser timezone; fall back safely when it is invalid."""
+    try:
+        zone = ZoneInfo(timezone_name or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        zone = ZoneInfo("UTC")
+    return zone
+
+
+def _local_datetime(value: datetime, zone: ZoneInfo) -> datetime:
+    """Interpret stored naive timestamps as UTC, then convert to local time."""
+    aware = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    return aware.astimezone(zone)
+
 def _problem_matches_topic(problem: Problem, topic: str) -> bool:
     return topic in canonicalize_topics(problem.topics)
 
 
 @router.get("/summary")
 def analytics_summary(
+    timezone_name: str = "UTC",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -46,24 +63,38 @@ def analytics_summary(
         if isinstance(result, dict) and isinstance(result.get("runtime_ms"), (int, float))
     ]
 
+    zone = _local_context(timezone_name)
     now = _utc_now()
-    seven_days_ago = _naive_utc(now - timedelta(days=7))
-    recent = [attempt for attempt, _ in attempts if _naive_utc(attempt.created_at) >= seven_days_ago]
-    recent_solved = {attempt.problem_id for attempt in recent if attempt.mode == "submit" and attempt.status == "Accepted"}
+    local_now = now.astimezone(zone)
+    local_today = local_now.date()
+    seven_days_ago = local_now - timedelta(days=7)
+    recent = [
+        attempt for attempt, _ in attempts
+        if _local_datetime(attempt.created_at, zone) >= seven_days_ago
+    ]
+    recent_solved = {
+        attempt.problem_id
+        for attempt in recent
+        if attempt.mode == "submit" and attempt.status == "Accepted"
+    }
     recent_active_days = {
-        _naive_utc(attempt.created_at).date().isoformat()
+        _local_datetime(attempt.created_at, zone).date().isoformat()
         for attempt in recent
     }
 
-    # A streak is consecutive calendar days on which the user actually
-    # solved at least one problem. Running code, failed submissions, and
-    # multiple attempts on the same day do not extend the streak.
+    # A current streak may end yesterday; it should not reset to zero merely
+    # because the user has not submitted anything yet today. Only accepted
+    # submissions count, and multiple submissions on one calendar day count
+    # as a single streak day.
     solved_days = {
-        _naive_utc(attempt.created_at).date()
+        _local_datetime(attempt.created_at, zone).date()
         for attempt in accepted_submissions
     }
     current_streak = 0
-    streak_day = now.date()
+    if local_today not in solved_days:
+        streak_day = local_today - timedelta(days=1)
+    else:
+        streak_day = local_today
     while streak_day in solved_days:
         current_streak += 1
         streak_day -= timedelta(days=1)
@@ -132,10 +163,10 @@ def analytics_summary(
 
     daily = []
     for offset in range(6, -1, -1):
-        day = (now - timedelta(days=offset)).date()
+        day = (local_now - timedelta(days=offset)).date()
         day_attempts = [
             attempt for attempt, _ in attempts
-            if _naive_utc(attempt.created_at).date() == day
+            if _local_datetime(attempt.created_at, zone).date() == day
         ]
         daily.append({
             "date": day.isoformat(),
