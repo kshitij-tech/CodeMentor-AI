@@ -1182,6 +1182,29 @@ def _has_entrypoint(source: str, language: str) -> bool:
     return bool(re.search(r"(?m)\bfn\s+main\s*\(", source))
 
 
+def _ensure_language_imports(source: str, language: str) -> str:
+    if language == "Python":
+        return source if re.search(r"(?m)^\s*import\s+sys\b", source) else "import sys\n\n" + source
+
+    if language == "C++":
+        return source if "#include <bits/stdc++.h>" in source else "#include <bits/stdc++.h>\n" + source
+
+    if language in {"JavaScript", "TypeScript"}:
+        if "require('fs')" in source or 'require("fs")' in source:
+            return source
+        if language == "TypeScript":
+            return "declare const require: (name: string) => any;\nconst fs: any = require('fs');\n\n" + source
+        return "const fs = require('fs');\n\n" + source
+
+    if language == "Go":
+        return _ensure_go_imports(source)
+
+    if language == "Rust":
+        return source if "use std::io::Read;" in source else "use std::io::Read;\n" + source
+
+    return source
+
+
 def _append_user_io_entrypoint(source: str, language: str) -> str:
     if language == "Python":
         return source.rstrip() + "\n\nif __name__ == '__main__':\n    print(solve())\n"
@@ -1265,10 +1288,8 @@ def ensure_user_io_starter_code(
             result[language] = source
             continue
 
+        transformed = _ensure_language_imports(transformed, language)
         transformed = _insert_after_solve_opening(transformed, language, schema)
-
-        if language == "Go":
-            transformed = _ensure_go_imports(transformed)
 
         if not _has_entrypoint(transformed, language):
             transformed = _append_user_io_entrypoint(transformed, language)
