@@ -515,7 +515,9 @@ def run_language_stdio_tests(
             time_limit_seconds=time_limit_seconds,
             token=token,
         )
-        with open(script_path, "w", encoding="utf-8") as script_file:
+        # Docker executes this file in Linux. Force LF line endings so a
+        # Windows-hosted FastAPI process cannot generate a CRLF shell script.
+        with open(script_path, "w", encoding="utf-8", newline="\n") as script_file:
             script_file.write(script)
 
         docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
