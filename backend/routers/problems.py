@@ -157,7 +157,7 @@ def serialize(problem: Problem) -> dict:
     # The editor always uses direct stdin/stdout execution. The backend
     # never invokes solve(...) or injects function arguments into user code.
     editor_mode = "stdio"
-    user_io_starters = ensure_user_io_starter_code(problem.starter_code)
+    user_io_starters = ensure_user_io_starter_code(problem.starter_code, editor_schema)
 
     return {
         "id": problem.id,
