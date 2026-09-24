@@ -589,17 +589,30 @@ function isGenericFunctionDraft(language,value){
   if(typeof value!=='string'||!value.trim())return false;
   const source=value.replace(/\r/g,'');
   const compact=source.replace(/\s+/g,'');
-  const patterns={
-    Python:/defsolve\(\)[\s\S]*?(?:pass|return(?:0|None))/,
-    'C++':/(?:int|longlong|auto|bool|void)solve\(\)[\s\S]*?return0;/,
-    Java:/(?:public)?(?:static)?(?:int|long|boolean|double|Object|void)solve\(\)[\s\S]*?return(?:0|0L|null);/,
-    JavaScript:/functionsolve\(\)[\s\S]*?return(?:0|null|\'\');?/,
-    TypeScript:/functionsolve\(\)[\s\S]*?return(?:0|null|\'\');?/,
-    Go:/funcsolve\(\)[\s\S]*?return(?:int64\(0\)|0|nil)/,
-    Rust:/fnsolve\(\)[\s\S]*?(?:0i64|String::new\(\))/
-  };
-  return Boolean((patterns[language]||/a^/).test(compact));
+  const hasGenericBody={
+    Python:compact.includes('defsolve():')&&(compact.includes('#Implementtherequiredsolution.')||compact.includes('#Implementtherequiredsolution'))&&compact.endsWith('pass'),
+    'C++':compact.includes('solvex')?false:(/solve\(\)\{[\s\S]*?return0;\}/.test(compact)&&compact.includes('Implementtherequiredsolution')),
+    Java:/solve\(\)\{[\s\S]*?return(?:0|0L|null);\}/.test(compact)&&compact.includes('Implementtherequiredsolution'),
+    JavaScript:/functionsolve\(\)\{[\s\S]*?return(?:0|null|);?\}/.test(compact)&&compact.includes('Implementtherequiredsolution'),
+    TypeScript:/functionsolve\(\)[^\{]*\{[\s\S]*?return(?:0|null|);?\}/.test(compact)&&compact.includes('Implementtherequiredsolution'),
+    Go:/funcsolve\(\)[^\{]*\{[\s\S]*?return(?:int64\(0\)|0|nil)\}/.test(compact)&&compact.includes('Implementtherequiredsolution'),
+    Rust:/fnsolve\(\)(?:->[^\{]+)?\{[\s\S]*?(?:0i64|String::new\(\))\}/.test(compact)&&compact.includes('Implementtherequiredsolution')
+  }[language]||false;
+  if(!hasGenericBody)return false;
+
+  // A problem-specific starter has explicit input parsing and must never be discarded.
+  const hasInputCode={
+    Python:source.includes('input(')||source.includes('sys.stdin'),
+    'C++':source.includes('cin >>')||source.includes('getline('),
+    Java:source.includes('Scanner')||source.includes('nextLong(')||source.includes('next()'),
+    JavaScript:source.includes('readFileSync(0'),
+    TypeScript:source.includes('readFileSync(0'),
+    Go:source.includes('Fscan(')||source.includes('ReadAll(os.Stdin)'),
+    Rust:source.includes('split_whitespace()')||source.includes('read_to_string(')
+  }[language]||false;
+  return !hasInputCode;
 }
+
 
 function isLegacyFunctionStyleCode(language,value){
   if(typeof value!=='string'||!value.trim())return false;
@@ -633,20 +646,22 @@ function isLegacyFunctionStyleCode(language,value){
 
 
 function isStdioBoilerplateDraft(language,value){
-  if(typeof value!=='string')return false;
-  const compact=value.trim().replace(/\s+/g,'');
-  if(/solve\(stringinput_data\)/.test(compact)||/solvestringinput_data/.test(compact)) return true;
-  const signatures={
-    Python:['importsys','defsolve():','if__name__==\'__main__\':solve()'],
-    'C++':['intmain(){','return0;}'],
-    Java:['publicclassMain{','publicstaticvoidmain(String[]args)'],
-    JavaScript:['constfs=require(\'fs\')','process.stdout.write'],
-    TypeScript:['constfs:any=require(\'fs\')','process.stdout.write'],
-    Go:['funcmain(){','bufio.NewReader(os.Stdin)'],
-    Rust:['fnmain(){','io::stdin().read_to_string']
+  if(typeof value!=='string'||!value.trim())return false;
+  const source=value.replace(/\r/g,'');
+  // Only the old generic fallback template is stale. Real problem-specific
+  // stdin parsing must be preserved.
+  const markers={
+    Python:source.includes('# Read the complete test input from standard input.')&&source.includes('# Parse input_data according to the problem statement.'),
+    'C++':source.includes('// Read the test input from standard input.')&&source.includes('// Parse it according to the problem statement.'),
+    Java:source.includes('// Parse input according to the problem statement.')&&source.includes('BufferedReader br = new BufferedReader'),
+    JavaScript:source.includes('// Parse input according to the problem statement.')&&source.includes("const input = fs.readFileSync(0, 'utf8');"),
+    TypeScript:source.includes('// Parse input according to the problem statement.')&&source.includes('const input: string = fs.readFileSync(0, \'utf8\');'),
+    Go:source.includes('// Parse input according to the problem statement.')&&source.includes('io.ReadAll(os.Stdin)'),
+    Rust:source.includes('// Parse input according to the problem statement.')&&source.includes('read_to_string(&mut input)')
   };
-  return (signatures[language]||[]).filter(signature=>compact.includes(signature)).length>=2;
+  return Boolean(markers[language]);
 }
+
 function loadDraft(){
   if(!problem||!editor)return false;
   const language=$('language').value;
