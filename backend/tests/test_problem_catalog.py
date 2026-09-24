@@ -139,7 +139,7 @@ class ProblemCatalogTests(unittest.TestCase):
 
         self.assertIn("#include <vector>", starters["C++"])
         self.assertIn("int solve()", starters["C++"])
-        self.assertIn("int n; cin >> n;", starters["C++"])
+        self.assertIn("long long n; cin >> n;", starters["C++"])
         self.assertIn("vector<long long> nums(n);", starters["C++"])
         self.assertNotIn("solve(int n, vector<int> nums)", starters["C++"])
         self.assertIn("int main()", starters["C++"])
