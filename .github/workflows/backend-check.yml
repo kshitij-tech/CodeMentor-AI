@@ -25,5 +25,6 @@ jobs:
 
       - name: Smoke test execution runtimes
         run: |
-          docker run --rm --network none codementor-multi-runtime:ci             bash -lc 'python --version && g++ --version && javac -version && node --version && tsc --version && go version && rustc --version'
-          printf '21\n' | docker run --rm --network none codementor-multi-runtime:ci             python -c 'import sys; print(int(sys.stdin.read()) * 2)'
+          docker run --rm --network none codementor-multi-runtime:ci bash -lc 'python --version && g++ --version && javac -version && node --version && tsc --version && go version && rustc --version'
+          printf '21\n' | docker run --rm -i --network none codementor-multi-runtime:ci python -c 'import sys; print(int(sys.stdin.read()) * 2)'
+          docker run --rm --network none codementor-multi-runtime:ci sh -lc 'printf "#include <iostream>\\nint main(){int x; std::cin >> x; std::cout << x * 2 << \\"\\n\\";}" > /runner/smoke.cpp && g++ -std=c++20 /runner/smoke.cpp -o /runner/smoke && printf "21\\n" | /runner/smoke'
