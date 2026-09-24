@@ -186,6 +186,7 @@ body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
         <select id="language" class="bg-[#0b1020] border border-slate-700 rounded-lg px-2 py-1.5 text-[10px] mono">
           <option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option>
         </select>
+        <span class="hidden sm:inline mono text-[9px] text-slate-600">stdin → stdout</span>
         <span id="save-status" class="mono text-[9px] text-slate-500">Starter</span>
       </div>
       <button id="reset-btn" class="px-2.5 py-1.5 rounded-lg text-[10px] text-slate-400 hover:bg-slate-800">Reset</button>
@@ -584,19 +585,32 @@ function syncLanguageAvailability(){
   });
   select.title='Write a normal stdin/stdout program. You are responsible for reading the input and printing the result.';
 }
-function isGenericFunctionDraft(language,value){
-  if(typeof value!=='string')return false;
-  const compact=value.trim().replace(/\s+/g,'');
+function isLegacyFunctionStyleCode(language,value){
+  if(typeof value!=='string'||!value.trim())return false;
+  const source=value.replace(/\r/g,'');
+  const compact=source.replace(/\s+/g,'');
   const signatures={
-    Python:['defsolve(*args):','defsolve(**kwargs):'],
-    'C++':['intsolve(){','longlongsolve(){'],
-    Java:['intsolve(){','publicintsolve(){','longsolve(){','publiclongsolve(){'],
-    JavaScript:['functionsolve(...args){'],
-    TypeScript:['functionsolve(...args:any[]):any{'],
-    Go:['funcsolve(args...interface{})interface{}{'],
-    Rust:['fnsolve(args:&[String])->String{']
+    Python:[/\bdef\s+solve\s*\(/, /\bdef\s+solution\s*\(/],
+    'C++':[/\b(?:int|long|long\s+long|auto|bool|void)\s+solve\s*\(/],
+    Java:[/\bclass\s+Solution\b/, /\b(?:public\s+)?(?:static\s+)?(?:int|long|boolean|double|String|Object|void)\s+solve\s*\(/],
+    JavaScript:[/\bfunction\s+solve\s*\(/, /\b(?:const|let|var)\s+solve\s*=\s*(?:async\s*)?\(/],
+    TypeScript:[/\bfunction\s+solve\s*\(/, /\b(?:const|let|var)\s+solve\s*=\s*(?:async\s*)?\(/],
+    Go:[/\bfunc\s+solve\s*\(/],
+    Rust:[/\bfn\s+solve\s*\(/]
   };
-  return (signatures[language]||[]).some(signature=>compact.includes(signature));
+  if((signatures[language]||[]).some(pattern=>pattern.test(source)))return true;
+
+  // Catch the exact generic legacy starters even when formatting differs.
+  const legacySignatures={
+    Python:['defsolve('],
+    'C++':['solve('],
+    Java:['classsolution','solves('],
+    JavaScript:['functionsolve('],
+    TypeScript:['functionsolve('],
+    Go:['funcsolve('],
+    Rust:['fnsolve(']
+  };
+  return (legacySignatures[language]||[]).some(signature=>compact.includes(signature));
 }
 function functionDraftMatchesContract(language,value){
   const expected=(problem?.editor_input_schema||[])
@@ -672,6 +686,15 @@ async function loadWorkspace(language=$('language').value){
     if(request!==workspaceLoadRequest)return;
 
     if(typeof data.code==='string'&&data.code.trim()){
+      if(isLegacyFunctionStyleCode(language,data.code)){
+        editor.setValue(starterCode(language));
+        localStorage.removeItem(draftKey());
+        $('save-status').textContent='Legacy template replaced';
+        scheduleSyntaxValidation();
+        void saveWorkspace();
+        return;
+      }
+
       editor.setValue(data.code);
       localStorage.setItem(draftKey(),data.code);
       $('save-status').textContent='Saved remotely';
