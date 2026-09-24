@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.problem_catalog import CANONICAL_TOPICS, canonicalize_topics, normalize_difficulty
+from backend.problem_catalog import (
+    CANONICAL_TOPICS,
+    canonicalize_topics,
+    is_english_problem,
+    normalize_difficulty,
+)
 from backend.models import CodingAttempt, Problem, User, UserProfile
 from backend.routers.auth import get_current_user
 
@@ -173,7 +178,30 @@ def learning_roadmap(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Return an adaptive topic roadmap derived from the user's actual submissions."""
+    """Build a roadmap only from topics that have real questions in Practice."""
+    all_problems = db.query(Problem).order_by(Problem.id.asc()).all()
+
+    # Practice uses the same quality gate: English problems with a supported
+    # difficulty. A roadmap topic is eligible only when at least one such
+    # problem actually exists in the catalogue.
+    available_topic_counts = defaultdict(int)
+    available_problem_topics = {}
+    for problem in all_problems:
+        if not is_english_problem(problem.title, problem.description):
+            continue
+        if normalize_difficulty(problem.difficulty) not in _VALID_DIFFICULTIES:
+            continue
+
+        topics = canonicalize_topics(problem.topics)
+        available_problem_topics[problem.id] = topics
+        for topic in topics:
+            available_topic_counts[topic] += 1
+
+    available_topics = [
+        topic for topic in TOPICS
+        if available_topic_counts[topic] > 0
+    ]
+
     attempts = (
         db.query(CodingAttempt, Problem)
         .join(Problem, CodingAttempt.problem_id == Problem.id)
@@ -181,69 +209,84 @@ def learning_roadmap(
         .all()
     )
 
+    # Use distinct problem counts for learning evidence. Repeated submissions
+    # on the same problem should not make a topic look more advanced than it is.
     stats = defaultdict(lambda: {
-        "attempted": 0,
-        "solved": 0,
+        "problem_ids": set(),
+        "solved_problem_ids": set(),
         "submissions": 0,
         "accepted": 0,
     })
     for attempt, problem in attempts:
-        for topic in canonicalize_topics(problem.topics):
-            stats[topic]["attempted"] += 1
+        topics = available_problem_topics.get(problem.id)
+        if not topics:
+            continue
+        for topic in topics:
+            stats[topic]["problem_ids"].add(problem.id)
             if attempt.mode == "submit":
                 stats[topic]["submissions"] += 1
                 if attempt.status == "Accepted":
                     stats[topic]["accepted"] += 1
-                    stats[topic]["solved"] += 1
+                    stats[topic]["solved_problem_ids"].add(problem.id)
 
     def mastery(topic: str) -> float:
         stat = stats[topic]
-        if not stat["attempted"]:
+        attempted = len(stat["problem_ids"])
+        solved = len(stat["solved_problem_ids"])
+        if not attempted:
             return 0.0
-        distinct_signal = min(1.0, stat["attempted"] / 10.0)
-        solve_rate = stat["solved"] / max(stat["attempted"], 1)
+
+        evidence = min(1.0, attempted / 10.0)
+        solve_rate = solved / attempted
         acceptance = stat["accepted"] / max(stat["submissions"], 1)
-        return round((0.70 * solve_rate + 0.30 * acceptance) * distinct_signal * 100)
+        return round((0.70 * solve_rate + 0.30 * acceptance) * evidence * 100)
 
     rows = []
-    for topic in TOPICS:
+    for topic in available_topics:
         stat = stats[topic]
+        attempted = len(stat["problem_ids"])
+        solved = len(stat["solved_problem_ids"])
         value = mastery(topic)
-        if value >= 75 and stat["attempted"] >= 3:
+
+        if value >= 75 and attempted >= 3:
             status = "mastered"
-        elif stat["attempted"] > 0:
+        elif attempted > 0:
             status = "in_progress"
         else:
             status = "not_started"
 
-        # Prioritize weak topics with evidence, then untouched topics.
+        # Availability is part of the score, not an afterthought: untouched
+        # topics with zero questions are never eligible for the roadmap.
         priority = (
             (100 - value) * 1.5
-            + (25 if status == "in_progress" else 10)
-            + (10 if stat["attempted"] == 0 else 0)
+            + (25 if status == "in_progress" else 12)
+            + (8 if status == "not_started" else 0)
+            + min(10, available_topic_counts[topic] / 10)
         )
+
         rows.append({
             "topic": topic,
             "status": status,
             "mastery": value,
-            "attempted_problems": stat["attempted"],
-            "solved_problems": stat["solved"],
+            "attempted_problems": attempted,
+            "solved_problems": solved,
+            "available_problems": available_topic_counts[topic],
             "acceptance_rate": round(
                 stat["accepted"] / stat["submissions"] * 100
             ) if stat["submissions"] else 0,
             "priority": round(priority, 2),
         })
 
-    # Keep the roadmap focused: show the most actionable topics first,
-    # while retaining a few mastered topics as completed milestones.
-    active = sorted(
-        [row for row in rows if row["status"] != "mastered"],
-        key=lambda row: (-row["priority"], row["topic"]),
-    )[:6]
+    # Preserve a learning-shaped order: completed milestones first, then the
+    # evidence-driven current focus, then remaining available topics.
     mastered = sorted(
         [row for row in rows if row["status"] == "mastered"],
         key=lambda row: (-row["mastery"], row["topic"]),
-    )[:2]
+    )[:3]
+    active = sorted(
+        [row for row in rows if row["status"] != "mastered"],
+        key=lambda row: (-row["priority"], row["topic"]),
+    )[:7]
 
     roadmap = mastered[::-1] + active
     for index, row in enumerate(roadmap):
@@ -260,6 +303,7 @@ def learning_roadmap(
             (row["topic"] for row in roadmap if row["position"] == "current"),
             None,
         ),
+        "available_topic_count": len(available_topics),
     }
 
 @router.get("/weak")
