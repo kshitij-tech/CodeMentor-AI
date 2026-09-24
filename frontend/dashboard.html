@@ -141,7 +141,7 @@ tailwind.config = {
   <button data-action="problem" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold shadow-sm"><span class="material-symbols-outlined text-[18px]">bolt</span>Solve Today's Problem</button>
   <button data-action="weak" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-error text-[18px]">target</span>Review Weak Topics</button>
   <button data-action="mentor" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-secondary text-[18px]">smart_toy</span>Ask AI Mentor</button>
-  <button data-action="analytics" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">insights</span>View Detailed Analytics</button>
+  <button data-action="analytics" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">insights</span>View Detailed Analytics</button><button id="roadmap-jump" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/15 text-sm shadow-sm" type="button"><span class="material-symbols-outlined text-[18px]">route</span>Learning Roadmap</button>
 </section>
 
 <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
@@ -720,6 +720,7 @@ document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListene
   else navNotice((b.textContent||'Module').trim());
 }));
 document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
+document.getElementById('roadmap-jump')?.addEventListener('click',()=>document.getElementById('adaptive-roadmap')?.scrollIntoView({behavior:'smooth',block:'start'}));
 const dashboardMentorMessages=[];
 let dashboardMentorSessionId=null;
 function cleanDashboardMentorText(value){
