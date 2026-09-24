@@ -529,7 +529,7 @@ function renderLearningRoadmap(items,currentTopic){
     if(badge)badge.textContent='Awaiting practice';
     return;
   }
-  if(badge)badge.textContent=currentTopic?'Focus: '+currentTopic:'Roadmap ready';
+  if(badge)badge.textContent=currentTopic?'Focus: '+currentTopic:'Based on your Practice library';
   host.innerHTML=items.map((item,index)=>{
     const completed=item.position==='completed';
     const current=item.position==='current';
@@ -541,7 +541,7 @@ function renderLearningRoadmap(items,currentTopic){
       '<div class="w-9 h-9 rounded-full '+tone+' flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[18px]">'+icon+'</span></div>'+
       '<div class="min-w-0 flex-1">'+
         '<div class="flex flex-wrap items-center gap-2"><span class="text-sm font-semibold">'+esc(item.topic)+'</span><span class="text-[9px] font-semibold px-2 py-0.5 rounded-full '+(current?'bg-primary/10 text-primary':'bg-surface-container text-on-surface-variant')+'">'+statusText+'</span></div>'+
-        '<div class="mt-2 flex items-center gap-3 text-[9px] text-on-surface-variant"><span>'+esc(item.attempted_problems)+' practiced</span><span>'+esc(item.solved_problems)+' solved</span><span>'+esc(item.mastery)+'% mastery</span></div>'+
+        '<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] text-on-surface-variant"><span>'+esc(item.attempted_problems)+' practiced</span><span>'+esc(item.solved_problems)+' solved</span><span>'+esc(item.available_problems)+' available</span><span>'+esc(item.mastery)+'% mastery</span></div>'+
       '</div>'+
       '<div class="w-24 hidden sm:block"><div class="h-1.5 rounded-full bg-surface-container overflow-hidden"><div class="h-full rounded-full '+(current?'bg-primary':'bg-secondary')+'" style="width:'+Math.max(0,Math.min(100,Number(item.mastery)||0))+'%"></div></div></div>'+
       '<span class="material-symbols-outlined text-[17px] text-on-surface-variant">chevron_right</span>'+
