@@ -10,7 +10,7 @@ load_dotenv(PROJECT_ROOT / '.env')
 import os
 import sqlite3
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 
@@ -43,11 +43,25 @@ if configured_database_url.startswith("sqlite:///"):
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):
     connect_args["check_same_thread"] = False
+    # Give SQLite concurrent requests time to wait for a short-lived writer
+    # instead of immediately raising "database is locked".
+    connect_args["timeout"] = 30
 
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
 )
+
+if DATABASE_URL.startswith("sqlite"):
+    @event.listens_for(engine, "connect")
+    def _configure_sqlite_connection(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        try:
+            cursor.execute("PRAGMA busy_timeout = 30000")
+            cursor.execute("PRAGMA journal_mode = WAL")
+            cursor.execute("PRAGMA synchronous = NORMAL")
+        finally:
+            cursor.close()
 
 SessionLocal = sessionmaker(
     bind=engine,
