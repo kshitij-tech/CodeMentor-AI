@@ -423,11 +423,41 @@ Keep the answer concise, educational, and conversational.
             "messages": messages,
             "format": response_schema,
         }
-        payload = _request_ollama(
-            model=model,
-            body=request_body,
-            max_retries=1,
-        )
+        try:
+            payload = _request_ollama(
+                model=model,
+                body=request_body,
+                max_retries=1,
+            )
+        except AIProviderError as primary_error:
+            fallback_provider = _normalize_provider(
+                os.getenv("AI_FALLBACK_PROVIDER", "none")
+            ) if os.getenv("AI_FALLBACK_PROVIDER", "none").strip().lower() not in {"none", ""} else "none"
+            fallback_model = os.getenv("AI_FALLBACK_MODEL", "").strip()
+            fallback_key = os.getenv("MISTRAL_API_KEY", "").strip()
+
+            if (
+                fallback_provider == "mistral"
+                and fallback_model
+                and fallback_key
+            ):
+                try:
+                    payload = _request_mistral(
+                        model=fallback_model,
+                        api_key=fallback_key,
+                        body={
+                            "model": fallback_model,
+                            "messages": messages,
+                            "max_tokens": 600,
+                            "response_format": {"type": "json_object"},
+                        },
+                        max_retries=1,
+                    )
+                    provider = "mistral"
+                except AIProviderError:
+                    raise primary_error
+            else:
+                raise
     elif provider == "mistral":
         api_key = os.getenv("MISTRAL_API_KEY", "").strip()
         if not api_key:
