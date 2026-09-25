@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 import time
 import urllib.error
 import urllib.request
@@ -193,6 +194,20 @@ def _request_mistral(
                     retryable=retryable,
                     status_code=exc.code,
                 ) from exc
+
+            retry_after = exc.headers.get("Retry-After")
+            try:
+                wait_seconds = float(retry_after) if retry_after else 0.0
+            except (TypeError, ValueError):
+                wait_seconds = 0.0
+
+            if wait_seconds <= 0:
+                # Mistral recommends exponential backoff for transient 429/5xx
+                # responses. Add jitter so repeated mentor requests do not retry
+                # in lockstep.
+                wait_seconds = min(30.0, (2 ** attempt) + random.uniform(0.0, 1.0))
+
+            time.sleep(wait_seconds)
         except (urllib.error.URLError, TimeoutError) as exc:
             last_error = "Unable to reach the Mistral API."
             if attempt >= max_retries:
@@ -206,7 +221,8 @@ def _request_mistral(
                 status_code=None,
             ) from exc
 
-        time.sleep(min(8.0, 2 ** attempt))
+        # Network failures also use bounded exponential backoff.
+        time.sleep(min(8.0, (2 ** attempt) + random.uniform(0.0, 1.0)))
 
     raise AIProviderError(last_error or "Mistral API request failed after retries.")
 
@@ -333,7 +349,7 @@ Keep the answer concise, educational, and conversational.
             model=model,
             api_key=api_key,
             body=body,
-            max_retries=0,
+            max_retries=3,
         )
     except AIProviderError as primary_error:
         if not primary_error.retryable or fallback_model == model:
