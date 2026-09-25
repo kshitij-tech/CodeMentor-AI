@@ -229,7 +229,10 @@ def dashboard_chat(
         hint_level=1,
     )
     db.add(user_message)
-    db.flush()
+    # Do not keep a SQLite write transaction open while waiting for the
+    # local/cloud LLM. Persist the user message first so other requests can
+    # write to the database while the mentor is thinking.
+    db.commit()
 
     try:
         result = mentor_response(
@@ -300,7 +303,8 @@ def analyze(
         hint_level=request.hint_level,
     )
     db.add(user_message)
-    db.flush()
+    # Keep the LLM call outside the SQLite write transaction.
+    db.commit()
 
     try:
         result = mentor_response(
