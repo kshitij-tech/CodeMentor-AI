@@ -7,9 +7,9 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-GEMINI_GENERATE_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = "gemini-2.5-flash"
-DEFAULT_FALLBACK_MODEL = "gemini-2.5-flash-lite"
+MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
+DEFAULT_MODEL = "mistral-small-latest"
+DEFAULT_FALLBACK_MODEL = "mistral-large-latest"
 
 class AIProviderError(RuntimeError):
     def __init__(
@@ -23,17 +23,29 @@ class AIProviderError(RuntimeError):
         self.retryable = retryable
         self.status_code = status_code
 
-def _extract_text(payload: dict[str, Any]) -> str:
-    if isinstance(payload.get("output_text"), str) and payload["output_text"].strip():
-        return payload["output_text"].strip()
-    chunks: list[str] = []
-    for item in payload.get("output", []) or []:
-        for content in item.get("content", []) or []:
-            if content.get("type") in {"output_text", "text"} and content.get("text"):
-                chunks.append(content["text"])
-    text = "\n".join(chunks).strip()
+def _extract_mistral_text(payload: dict[str, Any]) -> str:
+    choices = payload.get("choices") or []
+    if not choices:
+        raise AIProviderError("Mistral returned no candidate response.")
+
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+
+    if isinstance(content, str):
+        text = content.strip()
+    elif isinstance(content, list):
+        chunks: list[str] = []
+        for item in content:
+            if isinstance(item, str):
+                chunks.append(item)
+            elif isinstance(item, dict) and isinstance(item.get("text"), str):
+                chunks.append(item["text"])
+        text = "\n".join(chunks).strip()
+    else:
+        text = ""
+
     if not text:
-        raise AIProviderError("The AI provider returned no text.")
+        raise AIProviderError("Mistral returned an empty response.")
     return text
 
 def _parse_mentor_response(raw: str) -> dict[str, Any]:
@@ -114,32 +126,36 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
     }
 def _normalize_model(model: str) -> str:
     model_aliases = {
-        "2.5 flash": "gemini-2.5-flash",
-        "gemini 2.5 flash": "gemini-2.5-flash",
-        "gemini-2.5-flash": "gemini-2.5-flash",
-        "gemini 2.5 flash lite": "gemini-2.5-flash-lite",
-        "2.5 flash lite": "gemini-2.5-flash-lite",
-        "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
-        "gemini 2.5 pro": "gemini-2.5-pro",
-        "2.5 pro": "gemini-2.5-pro",
-        "gemini-2.5-pro": "gemini-2.5-pro",
+        "mistral small": "mistral-small-latest",
+        "mistral-small": "mistral-small-latest",
+        "mistral-small-latest": "mistral-small-latest",
+        "mistral large": "mistral-large-latest",
+        "mistral-large": "mistral-large-latest",
+        "mistral-large-latest": "mistral-large-latest",
     }
     normalized = model.strip() or DEFAULT_MODEL
     normalized = model_aliases.get(normalized.lower(), normalized)
     if " " in normalized:
         raise AIProviderError(
-            "Invalid AI_MODEL value. Use a Gemini model id such as 'gemini-2.5-flash'."
+            "Invalid AI_MODEL value. Use a Mistral model id such as 'mistral-small-latest'."
         )
     return normalized
 
-def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retries: int) -> dict[str, Any]:
+def _request_mistral(
+    *,
+    model: str,
+    api_key: str,
+    body: dict[str, Any],
+    max_retries: int,
+) -> dict[str, Any]:
     last_error: str | None = None
+
     for attempt in range(max_retries + 1):
         request = urllib.request.Request(
-            GEMINI_GENERATE_URL.format(model=model),
+            MISTRAL_CHAT_URL,
             data=json.dumps(body).encode("utf-8"),
             headers={
-                "x-goog-api-key": api_key,
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             method="POST",
@@ -153,21 +169,21 @@ def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retri
 
             if exc.code in {401, 403}:
                 last_error = (
-                    "Gemini rejected the API key or project permissions "
-                    f"(HTTP {exc.code}). Check GEMINI_API_KEY and the Google AI Studio project."
+                    "Mistral rejected the API key or workspace permissions "
+                    f"(HTTP {exc.code}). Check MISTRAL_API_KEY and your Mistral workspace."
                 )
             elif exc.code == 404:
                 last_error = (
-                    f"Gemini model '{model}' was not found or is unavailable "
+                    f"Mistral model '{model}' was not found or is unavailable "
                     f"(HTTP 404)."
                 )
             elif exc.code == 400:
                 last_error = (
-                    "Gemini rejected the mentor request (HTTP 400). "
+                    "Mistral rejected the mentor request (HTTP 400). "
                     f"Provider detail: {detail}"
                 )
             else:
-                last_error = "AI provider request failed ({}): {}".format(
+                last_error = "Mistral API request failed ({}): {}".format(
                     exc.code, detail
                 )
 
@@ -178,7 +194,7 @@ def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retri
                     status_code=exc.code,
                 ) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
-            last_error = "Unable to reach the AI provider."
+            last_error = "Unable to reach the Mistral API."
             if attempt >= max_retries:
                 raise AIProviderError(
                     last_error,
@@ -186,16 +202,18 @@ def _request_gemini(*, model: str, api_key: str, body: dict[str, Any], max_retri
                 ) from exc
         except json.JSONDecodeError as exc:
             raise AIProviderError(
-                "Gemini returned an unreadable HTTP response.",
+                "Mistral returned an unreadable HTTP response.",
                 status_code=None,
             ) from exc
+
         time.sleep(min(8.0, 2 ** attempt))
-    raise AIProviderError(last_error or "AI provider request failed after retries.")
+
+    raise AIProviderError(last_error or "Mistral API request failed after retries.")
 
 def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
-    api_key = (os.getenv("GEMINI_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
+    api_key = (os.getenv("MISTRAL_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
     if not api_key:
-        raise AIProviderError("GEMINI_API_KEY is not configured. Set it in backend/.env (or the server environment) and restart FastAPI.")
+        raise AIProviderError("MISTRAL_API_KEY is not configured. Set it in backend/.env (or the server environment) and restart FastAPI.")
     model = _normalize_model(os.getenv("AI_MODEL", DEFAULT_MODEL))
     fallback_model = _normalize_model(os.getenv("AI_FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL))
 
@@ -302,93 +320,36 @@ Keep the answer concise, educational, and conversational.
 """.strip()
 
     body = {
-        "systemInstruction": {
-            "parts": [{"text": instructions}]
-        },
-        "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": context.strip()}],
-            }
+        "model": model,
+        "messages": [
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": context.strip()},
         ],
-        "generationConfig": {
-            "maxOutputTokens": 600,
-            "responseMimeType": "application/json",
-            "responseSchema": {
-                "type": "OBJECT",
-                "properties": {
-                    "answer": {
-                        "type": "STRING",
-                        "description": "The concise plain-text mentor response.",
-                    },
-                    "error_line": {
-                        "type": "INTEGER",
-                        "description": "Use 0 when no specific user-code line can be identified.",
-                    },
-                    "patch": {
-                        "type": "OBJECT",
-                        "description": "Return a minimal patch object. Use zero line numbers and an empty replacement when no patch is needed.",
-                        "properties": {
-                            "start_line": {"type": "INTEGER"},
-                            "end_line": {"type": "INTEGER"},
-                            "replacement": {"type": "STRING"},
-                        },
-                        "required": ["start_line", "end_line", "replacement"],
-                    },
-                },
-                "required": ["answer", "error_line", "patch"],
-            },
-        },
+        "max_tokens": 600,
     }
 
     try:
-        payload = _request_gemini(
+        payload = _request_mistral(
             model=model,
             api_key=api_key,
             body=body,
             max_retries=0,
         )
     except AIProviderError as primary_error:
-        # A 400 here is commonly caused by structured-output/schema compatibility.
-        # Retry once without responseSchema before falling back to another model.
-        if primary_error.status_code == 400:
-            json_only_body = {
-                **body,
-                "generationConfig": {
-                    **body.get("generationConfig", {}),
-                },
-            }
-            json_only_body["generationConfig"].pop("responseSchema", None)
-            try:
-                payload = _request_gemini(
-                    model=model,
-                    api_key=api_key,
-                    body=json_only_body,
-                    max_retries=0,
-                )
-            except AIProviderError:
-                raise primary_error
-        elif not primary_error.retryable or fallback_model == model:
+        if not primary_error.retryable or fallback_model == model:
             raise
-        else:
-            try:
-                payload = _request_gemini(
-                    model=fallback_model,
-                    api_key=api_key,
-                    body=body,
-                    max_retries=0,
-                )
-            except AIProviderError:
-                raise primary_error
+        try:
+            fallback_body = {**body, "model": fallback_model}
+            payload = _request_mistral(
+                model=fallback_model,
+                api_key=api_key,
+                body=fallback_body,
+                max_retries=0,
+            )
+        except AIProviderError:
+            raise primary_error
 
-    candidates = payload.get("candidates") or []
-    if not candidates:
-        raise AIProviderError("Gemini returned no candidate response.")
-    parts = (candidates[0].get("content") or {}).get("parts") or []
-    texts = [part.get("text", "") for part in parts if part.get("text")]
-    answer = "\n".join(texts).strip()
-    if not answer:
-        raise AIProviderError("Gemini returned an empty response.")
+    answer = _extract_mistral_text(payload)
     result = _parse_mentor_response(answer)
     if action != "modify":
         result["patch"] = None
