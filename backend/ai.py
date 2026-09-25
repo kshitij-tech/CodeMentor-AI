@@ -51,7 +51,7 @@ def _extract_mistral_text(payload: dict[str, Any]) -> str:
 def _parse_mentor_response(raw: str) -> dict[str, Any]:
     text = raw.strip()
 
-    # Gemini can occasionally wrap otherwise valid JSON in a Markdown fence.
+    # Mistral can occasionally wrap otherwise valid JSON in a Markdown fence.
     if text.startswith("```"):
         lines = text.splitlines()
         if lines and lines[0].strip().startswith("```"):
@@ -211,7 +211,7 @@ def _request_mistral(
     raise AIProviderError(last_error or "Mistral API request failed after retries.")
 
 def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
-    api_key = (os.getenv("MISTRAL_API_KEY") or os.getenv("AI_API_KEY") or "").strip()
+    api_key = os.getenv("MISTRAL_API_KEY", "").strip()
     if not api_key:
         raise AIProviderError("MISTRAL_API_KEY is not configured. Set it in backend/.env (or the server environment) and restart FastAPI.")
     model = _normalize_model(os.getenv("AI_MODEL", DEFAULT_MODEL))
