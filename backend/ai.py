@@ -8,9 +8,11 @@ import urllib.error
 import urllib.request
 from typing import Any
 
+OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
-DEFAULT_MODEL = "mistral-small-latest"
-DEFAULT_FALLBACK_MODEL = "mistral-large-latest"
+DEFAULT_PROVIDER = "ollama"
+DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_FALLBACK_MODEL = ""
 
 class AIProviderError(RuntimeError):
     def __init__(
@@ -24,12 +26,15 @@ class AIProviderError(RuntimeError):
         self.retryable = retryable
         self.status_code = status_code
 
-def _extract_mistral_text(payload: dict[str, Any]) -> str:
-    choices = payload.get("choices") or []
-    if not choices:
-        raise AIProviderError("Mistral returned no candidate response.")
+def _extract_message_text(payload: dict[str, Any], provider: str) -> str:
+    if provider == "ollama":
+        message = payload.get("message") or {}
+    else:
+        choices = payload.get("choices") or []
+        if not choices:
+            raise AIProviderError("Mistral returned no candidate response.")
+        message = choices[0].get("message") or {}
 
-    message = choices[0].get("message") or {}
     content = message.get("content")
 
     if isinstance(content, str):
@@ -46,7 +51,7 @@ def _extract_mistral_text(payload: dict[str, Any]) -> str:
         text = ""
 
     if not text:
-        raise AIProviderError("Mistral returned an empty response.")
+        raise AIProviderError(f"{provider.capitalize()} returned an empty response.")
     return text
 
 def _parse_mentor_response(raw: str) -> dict[str, Any]:
@@ -125,22 +130,91 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
         "error_line": error_line,
         "patch": patch,
     }
-def _normalize_model(model: str) -> str:
-    model_aliases = {
-        "mistral small": "mistral-small-latest",
-        "mistral-small": "mistral-small-latest",
-        "mistral-small-latest": "mistral-small-latest",
-        "mistral large": "mistral-large-latest",
-        "mistral-large": "mistral-large-latest",
-        "mistral-large-latest": "mistral-large-latest",
-    }
-    normalized = model.strip() or DEFAULT_MODEL
-    normalized = model_aliases.get(normalized.lower(), normalized)
-    if " " in normalized:
-        raise AIProviderError(
-            "Invalid AI_MODEL value. Use a Mistral model id such as 'mistral-small-latest'."
+def _normalize_provider(provider: str) -> str:
+    normalized = (provider or DEFAULT_PROVIDER).strip().lower()
+    if normalized in {"ollama", "local"}:
+        return "ollama"
+    if normalized == "mistral":
+        return "mistral"
+    raise AIProviderError("Invalid AI_PROVIDER value. Use 'ollama' or 'mistral'.")
+
+
+def _normalize_model(model: str, provider: str) -> str:
+    normalized = (model or "").strip()
+    if normalized:
+        return normalized
+    return DEFAULT_MODEL if provider == "ollama" else "mistral-small-latest"
+
+
+def _ollama_url() -> str:
+    base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").strip().rstrip("/")
+    if base.endswith("/api"):
+        return base + "/chat"
+    return base + "/api/chat"
+
+
+def _request_ollama(
+    *,
+    model: str,
+    body: dict[str, Any],
+    max_retries: int,
+) -> dict[str, Any]:
+    last_error: str | None = None
+    url = _ollama_url()
+
+    for attempt in range(max_retries + 1):
+        request_body = {
+            "model": model,
+            "messages": body["messages"],
+            "stream": False,
+            "options": {
+                "temperature": 0.2,
+                "num_predict": 600,
+            },
+        }
+        if body.get("format") is not None:
+            request_body["format"] = body["format"]
+
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(request_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
-    return normalized
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:1200]
+            retryable = exc.code in {429, 500, 502, 503, 504}
+            if exc.code == 404:
+                raise AIProviderError(
+                    f"Ollama model '{model}' was not found. Run: ollama pull {model}",
+                    status_code=404,
+                ) from exc
+
+            last_error = f"Ollama request failed (HTTP {exc.code}): {detail}"
+            if not retryable or attempt >= max_retries:
+                raise AIProviderError(
+                    last_error,
+                    retryable=retryable,
+                    status_code=exc.code,
+                ) from exc
+
+            time.sleep(min(8.0, (2 ** attempt) + random.uniform(0.0, 1.0)))
+        except (urllib.error.URLError, TimeoutError) as exc:
+            last_error = (
+                f"Cannot reach Ollama at {url}. "
+                "Make sure Ollama is installed and running."
+            )
+            if attempt >= max_retries:
+                raise AIProviderError(last_error, retryable=True) from exc
+            time.sleep(min(8.0, (2 ** attempt) + random.uniform(0.0, 1.0)))
+        except json.JSONDecodeError as exc:
+            raise AIProviderError("Ollama returned an unreadable HTTP response.") from exc
+
+    raise AIProviderError(last_error or "Ollama request failed after retries.")
+
 
 def _request_mistral(
     *,
@@ -174,19 +248,14 @@ def _request_mistral(
                     f"(HTTP {exc.code}). Check MISTRAL_API_KEY and your Mistral workspace."
                 )
             elif exc.code == 404:
-                last_error = (
-                    f"Mistral model '{model}' was not found or is unavailable "
-                    f"(HTTP 404)."
-                )
+                last_error = f"Mistral model '{model}' was not found or is unavailable (HTTP 404)."
             elif exc.code == 400:
                 last_error = (
                     "Mistral rejected the mentor request (HTTP 400). "
                     f"Provider detail: {detail}"
                 )
             else:
-                last_error = "Mistral API request failed ({}): {}".format(
-                    exc.code, detail
-                )
+                last_error = f"Mistral API request failed ({exc.code}): {detail}"
 
             if not retryable or attempt >= max_retries:
                 raise AIProviderError(
@@ -200,38 +269,24 @@ def _request_mistral(
                 wait_seconds = float(retry_after) if retry_after else 0.0
             except (TypeError, ValueError):
                 wait_seconds = 0.0
-
             if wait_seconds <= 0:
-                # Mistral recommends exponential backoff for transient 429/5xx
-                # responses. Add jitter so repeated mentor requests do not retry
-                # in lockstep.
                 wait_seconds = min(30.0, (2 ** attempt) + random.uniform(0.0, 1.0))
-
             time.sleep(wait_seconds)
         except (urllib.error.URLError, TimeoutError) as exc:
             last_error = "Unable to reach the Mistral API."
             if attempt >= max_retries:
-                raise AIProviderError(
-                    last_error,
-                    retryable=True,
-                ) from exc
+                raise AIProviderError(last_error, retryable=True) from exc
+            time.sleep(min(8.0, (2 ** attempt) + random.uniform(0.0, 1.0)))
         except json.JSONDecodeError as exc:
-            raise AIProviderError(
-                "Mistral returned an unreadable HTTP response.",
-                status_code=None,
-            ) from exc
-
-        # Network failures also use bounded exponential backoff.
-        time.sleep(min(8.0, (2 ** attempt) + random.uniform(0.0, 1.0)))
+            raise AIProviderError("Mistral returned an unreadable HTTP response.") from exc
 
     raise AIProviderError(last_error or "Mistral API request failed after retries.")
 
+
+
 def mentor_response(*, problem: dict[str, Any], language: str, code: str, execution: dict[str, Any] | None, action: str, question: str | None, hint_level: int, history: list[dict[str, str]] | None = None) -> dict[str, Any]:
-    api_key = os.getenv("MISTRAL_API_KEY", "").strip()
-    if not api_key:
-        raise AIProviderError("MISTRAL_API_KEY is not configured. Set it in backend/.env (or the server environment) and restart FastAPI.")
-    model = _normalize_model(os.getenv("AI_MODEL", DEFAULT_MODEL))
-    fallback_model = _normalize_model(os.getenv("AI_FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL))
+    provider = _normalize_provider(os.getenv("AI_PROVIDER", DEFAULT_PROVIDER))
+    model = _normalize_model(os.getenv("AI_MODEL", DEFAULT_MODEL), provider)
 
     constraints = "\n".join("- " + str(x) for x in (problem.get("constraints") or []))
     description = str(problem.get("description") or "")
@@ -335,37 +390,65 @@ Never silently rewrite the user code. The UI will require explicit user action b
 Keep the answer concise, educational, and conversational.
 """.strip()
 
-    body = {
-        "model": model,
-        "messages": [
-            {"role": "system", "content": instructions},
-            {"role": "user", "content": context.strip()},
-        ],
-        "max_tokens": 600,
+    response_schema = {
+        "type": "object",
+        "properties": {
+            "answer": {"type": "string"},
+            "error_line": {"anyOf": [{"type": "integer"}, {"type": "null"}]},
+            "patch": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "start_line": {"type": "integer"},
+                            "end_line": {"type": "integer"},
+                            "replacement": {"type": "string"},
+                        },
+                        "required": ["start_line", "end_line", "replacement"],
+                    },
+                    {"type": "null"},
+                ],
+            },
+        },
+        "required": ["answer", "error_line", "patch"],
     }
 
-    try:
+    messages = [
+        {"role": "system", "content": instructions},
+        {"role": "user", "content": context.strip()},
+    ]
+
+    if provider == "ollama":
+        request_body = {
+            "messages": messages,
+            "format": response_schema,
+        }
+        payload = _request_ollama(
+            model=model,
+            body=request_body,
+            max_retries=1,
+        )
+    elif provider == "mistral":
+        api_key = os.getenv("MISTRAL_API_KEY", "").strip()
+        if not api_key:
+            raise AIProviderError(
+                "MISTRAL_API_KEY is not configured. Set it in backend/.env "
+                "or switch AI_PROVIDER to 'ollama'."
+            )
+        request_body = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": 600,
+            "response_format": {"type": "json_object"},
+        }
         payload = _request_mistral(
             model=model,
             api_key=api_key,
-            body=body,
-            max_retries=3,
+            body=request_body,
+            max_retries=1,
         )
-    except AIProviderError as primary_error:
-        if not primary_error.retryable or fallback_model == model:
-            raise
-        try:
-            fallback_body = {**body, "model": fallback_model}
-            payload = _request_mistral(
-                model=fallback_model,
-                api_key=api_key,
-                body=fallback_body,
-                max_retries=0,
-            )
-        except AIProviderError:
-            raise primary_error
 
-    answer = _extract_mistral_text(payload)
+    answer = _extract_message_text(payload, provider)
     result = _parse_mentor_response(answer)
     if action != "modify":
         result["patch"] = None
