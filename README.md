@@ -31,7 +31,7 @@ CodeMentor AI uses Ollama locally by default, so the AI Mentor does not depend o
 
 Install Ollama, then pull the default mentor model:
 
-    ollama pull qwen3:8b
+    ollama pull qwen3:4b
 
 Verify Ollama is running:
 
@@ -41,7 +41,7 @@ Create `backend/.env`:
 
     AI_PROVIDER=ollama
     OLLAMA_BASE_URL=http://localhost:11434
-    AI_MODEL=qwen3:8b
+    AI_MODEL=qwen3:4b
     AI_FALLBACK_PROVIDER=none
     AI_FALLBACK_MODEL=
     MISTRAL_API_KEY=
