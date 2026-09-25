@@ -27,11 +27,11 @@ The repository is being built incrementally. Each stage is manually tested befor
 
 ## Local AI Mentor setup
 
-Create `backend/.env` and set your Gemini API key:
+Create `backend/.env` and set your Mistral API key:
 
-    GEMINI_API_KEY=your-gemini-api-key
-    AI_MODEL=gemini-2.5-flash
-    AI_FALLBACK_MODEL=gemini-2.5-flash-lite
+    MISTRAL_API_KEY=your-mistral-api-key
+    AI_MODEL=mistral-small-latest
+    AI_FALLBACK_MODEL=mistral-large-latest
 
 The backend loads `backend/.env` from the repository path, so the API key is available even when Uvicorn is started from the project root. Restart the FastAPI server after changing the key.
 
