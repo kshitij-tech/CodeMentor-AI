@@ -11,7 +11,7 @@ from typing import Any
 OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 DEFAULT_PROVIDER = "ollama"
-DEFAULT_MODEL = "qwen3:8b"
+DEFAULT_MODEL = "qwen3:4b"
 DEFAULT_FALLBACK_MODEL = ""
 
 class AIProviderError(RuntimeError):
@@ -167,6 +167,7 @@ def _request_ollama(
             "model": model,
             "messages": body["messages"],
             "stream": False,
+            "think": False,
             "options": {
                 "temperature": 0.2,
                 "num_predict": 600,
