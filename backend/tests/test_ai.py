@@ -44,7 +44,7 @@ class AIProviderConfigurationTests(unittest.TestCase):
         self.assertEqual(_normalize_model("mistral-small-latest", "mistral"), "mistral-small-latest")
 
     def test_ollama_default_model(self):
-        self.assertEqual(_normalize_model("", "ollama"), "qwen3:8b")
+        self.assertEqual(_normalize_model("", "ollama"), "qwen3:4b")
 
     def test_invalid_provider_is_rejected(self):
         with self.assertRaises(AIProviderError):
