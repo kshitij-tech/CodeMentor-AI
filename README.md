@@ -27,13 +27,32 @@ The repository is being built incrementally. Each stage is manually tested befor
 
 ## Local AI Mentor setup
 
-Create `backend/.env` and set your Mistral API key:
+CodeMentor AI uses Ollama locally by default, so the AI Mentor does not depend on a hosted API quota.
 
+Install Ollama, then pull the default mentor model:
+
+    ollama pull qwen3:8b
+
+Verify Ollama is running:
+
+    ollama list
+
+Create `backend/.env`:
+
+    AI_PROVIDER=ollama
+    OLLAMA_BASE_URL=http://localhost:11434
+    AI_MODEL=qwen3:8b
+    AI_FALLBACK_PROVIDER=none
+    AI_FALLBACK_MODEL=
+    MISTRAL_API_KEY=
+
+For an optional cloud fallback, set:
+
+    AI_FALLBACK_PROVIDER=mistral
+    AI_FALLBACK_MODEL=mistral-small-latest
     MISTRAL_API_KEY=your-mistral-api-key
-    AI_MODEL=mistral-small-latest
-    AI_FALLBACK_MODEL=mistral-large-latest
 
-The backend loads `backend/.env` from the repository path, so the API key is available even when Uvicorn is started from the project root. Restart the FastAPI server after changing the key.
+The backend loads `backend/.env` from the repository path. Restart FastAPI after changing the provider or model.
 
 
 ## Problem catalogue quality
