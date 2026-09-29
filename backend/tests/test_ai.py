@@ -6,6 +6,7 @@ from backend.ai import (
     _normalize_model,
     _normalize_provider,
     _parse_mentor_response,
+    _strip_visible_thinking,
 )
 
 
@@ -56,6 +57,26 @@ class AIProviderConfigurationTests(unittest.TestCase):
             "ollama",
         )
         self.assertIn('"answer":"ok"', result)
+
+    def test_strips_visible_thinking_block(self):
+        result = _strip_visible_thinking(
+            "<think>internal reasoning that must not be shown</think>"
+            '{"answer":"ok","error_line":null,"patch":null}'
+        )
+        self.assertEqual(result, '{"answer":"ok","error_line":null,"patch":null}')
+
+    def test_ollama_thinking_field_is_not_exposed(self):
+        result = _extract_message_text(
+            {
+                "message": {
+                    "role": "assistant",
+                    "thinking": "long internal reasoning",
+                    "content": '{"answer":"ok","error_line":null,"patch":null}',
+                }
+            },
+            "ollama",
+        )
+        self.assertEqual(result, '{"answer":"ok","error_line":null,"patch":null}')
 
 if __name__ == "__main__":
     unittest.main()
