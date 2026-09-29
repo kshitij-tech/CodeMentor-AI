@@ -26,6 +26,25 @@ class AIProviderError(RuntimeError):
         self.retryable = retryable
         self.status_code = status_code
 
+def _strip_visible_thinking(text: str) -> str:
+    """Remove reasoning blocks some local models may include in message content."""
+    cleaned = text.strip()
+
+    while True:
+        lower = cleaned.lower()
+        start = lower.find("<think>")
+        if start < 0:
+            break
+        end = lower.find("</think>", start + len("<think>"))
+        if end < 0:
+            # Do not leak an unclosed reasoning block into the UI.
+            cleaned = cleaned[:start].rstrip()
+            break
+        cleaned = (cleaned[:start] + cleaned[end + len("</think>"):]).strip()
+
+    return cleaned
+
+
 def _extract_message_text(payload: dict[str, Any], provider: str) -> str:
     if provider == "ollama":
         message = payload.get("message") or {}
@@ -35,6 +54,8 @@ def _extract_message_text(payload: dict[str, Any], provider: str) -> str:
             raise AIProviderError("Mistral returned no candidate response.")
         message = choices[0].get("message") or {}
 
+    # Ollama may return reasoning in a separate thinking field.
+    # Only content is shown to the user.
     content = message.get("content")
 
     if isinstance(content, str):
@@ -50,6 +71,7 @@ def _extract_message_text(payload: dict[str, Any], provider: str) -> str:
     else:
         text = ""
 
+    text = _strip_visible_thinking(text)
     if not text:
         raise AIProviderError(f"{provider.capitalize()} returned an empty response.")
     return text
@@ -170,7 +192,10 @@ def _request_ollama(
             "think": False,
             "options": {
                 "temperature": 0.2,
-                "num_predict": 600,
+                "num_predict": max(
+                    128,
+                    int(os.getenv("OLLAMA_NUM_PREDICT", "400")),
+                ),
             },
         }
         if body.get("format") is not None:
@@ -183,7 +208,11 @@ def _request_ollama(
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=120) as response:
+            timeout_seconds = max(
+                15,
+                float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "60")),
+            )
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:1200]
@@ -428,7 +457,7 @@ Keep the answer concise, educational, and conversational.
             payload = _request_ollama(
                 model=model,
                 body=request_body,
-                max_retries=1,
+                max_retries=0,
             )
         except AIProviderError as primary_error:
             fallback_provider = _normalize_provider(
