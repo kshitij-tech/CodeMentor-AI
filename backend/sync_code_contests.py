@@ -12,6 +12,7 @@ from backend.problem_catalog import (
     canonicalize_topics,
     ensure_starter_code,
     extract_constraints,
+    invalid_topic_names,
     normalize_problem_record,
     quality_flags,
 )
@@ -213,6 +214,8 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         )
 
     tags = row.get("cf_tags") or []
+    if invalid_topic_names(tags):
+        return None
     topics = canonicalize_topics(tags)
     editor_input_schema = infer_editor_input_schema(description, samples)
 
@@ -315,6 +318,16 @@ def bulk_import(
                     Problem.external_id == problem["external_id"],
                 )
             ).scalar_one_or_none()
+
+            content_duplicate = db.execute(
+                select(Problem).where(
+                    Problem.title == problem["title"],
+                    Problem.description == problem["description"],
+                )
+            ).scalar_one_or_none()
+            if content_duplicate is not None and (existing is None or content_duplicate.id != existing.id):
+                skipped += 1
+                continue
 
             if existing is None:
                 db.add(Problem(**problem))
