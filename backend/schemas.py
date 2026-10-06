@@ -127,6 +127,15 @@ class UserProfileUpsert(BaseModel):
             )
         return value
 
+    @field_validator("preferred_language")
+    @classmethod
+    def validate_preferred_language(cls, value):
+        if value is not None and value not in SUPPORTED_LANGUAGES:
+            raise ValueError(
+                "Unsupported programming language: " + value
+            )
+        return value
+
     @field_validator("experience_level")
     @classmethod
     def validate_experience(cls, value):
