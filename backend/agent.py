@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from backend.agent_memory import audit_tool_call, memory_snapshot, save_memory, summarize_learning_state
-from backend.agent_models import AgentPlan, AgentResult, AgentToolCall
+from backend.agent_memory import audit_tool_call, load_memory, memory_snapshot, save_memory, summarize_learning_state
+from backend.agent_models import AgentPlan, AgentResult, AgentToolCall, LearningState
 from backend.agent_tools import (
     AgentSafetyError,
     AgentToolError,
@@ -219,17 +219,21 @@ def run_agent(db, user: User, request: AgentRequest) -> AgentResult:
     planner = AgentPlanner()
     plan = planner.plan(request)
 
-    learning_state = summarize_learning_state(db, user)
-    learning = memory_snapshot(learning_state)
-
     if "prompt_injection" in plan.safety_flags:
         return AgentResult(
             answer="I can help with the coding task, but I will not follow requests to reveal hidden instructions or override the agent's safety rules.",
             plan=plan,
             tool_results={},
-            learning_state=learning_state,
+            learning_state=LearningState(),
             approval_required=plan.approval_required,
         )
+
+    learning_state = summarize_learning_state(db, user)
+    learning = memory_snapshot(learning_state)
+    stored_memory = load_memory(db, user)
+    if stored_memory:
+        learning["prior_objectives"] = list(stored_memory.get("learning_objectives") or [])[:4]
+        learning["prior_recurring_mistakes"] = list(stored_memory.get("recurring_mistakes") or [])[:4]
 
     registry = AgentToolRegistry()
     tool_results: dict[str, Any] = {}
