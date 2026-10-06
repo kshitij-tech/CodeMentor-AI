@@ -8,7 +8,11 @@ from backend.database import AUTO_CREATE_SCHEMA, SessionLocal, Base, engine
 =======
 from backend.database import SessionLocal
 from backend.database import Base, engine
+<<<<<<< HEAD
 >>>>>>> origin/feature/auth-security
+=======
+from backend.observability import install_observability
+>>>>>>> origin/feature/observability
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
 from backend.routers.problems import router as problems_router, prime_problem_catalog
@@ -149,6 +153,7 @@ app.add_middleware(
 >>>>>>> origin/feature/devops-deployment
 )
 
+<<<<<<< HEAD
 
 @app.middleware("http")
 async def security_headers(request, call_next):
@@ -171,6 +176,11 @@ async def security_headers(request, call_next):
 
     return response
 
+=======
+# Observability is installed centrally so feature routers do not need
+# cross-workstream instrumentation changes.
+install_observability(app)
+>>>>>>> origin/feature/observability
 
 app.include_router(auth_router)
 app.include_router(profile_router)
