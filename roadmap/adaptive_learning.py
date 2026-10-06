@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from math import exp, sqrt
+from math import sqrt
 from statistics import mean
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -512,11 +512,14 @@ def _topic_mastered(metric: SkillMetric | None) -> bool:
 
 def weak_topics(state: LearningState, limit: int = 5) -> list[SkillMetric]:
     metrics = list(state.topics.values())
+    # Evidence-backed weaknesses come before untouched topics. Untouched topics
+    # remain useful in the tail of the list as foundational gaps.
     metrics.sort(
         key=lambda item: (
+            1 if item.status == STATUS_UNPRACTICED else 0,
             -item.gap,
+            -item.recent_failures,
             item.confidence,
-            item.attempted_problems,
             item.key,
         )
     )
