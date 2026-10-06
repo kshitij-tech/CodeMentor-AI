@@ -6,125 +6,192 @@
 <title>CodeMentor AI — Practice</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:FILL@0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:FILL@0..1&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-tailwind.config={theme:{extend:{colors:{
-  primary:'#2a14b4','primary-container':'#4338ca',surface:'#f8f9ff',
-  'surface-container-low':'#eff4ff','surface-container':'#e5eeff',
-  'surface-container-high':'#dce9ff','on-surface':'#0b1c30',
-  'on-surface-variant':'#464554'
-},fontFamily:{sans:['Plus Jakarta Sans'],mono:['JetBrains Mono']}}}};
+tailwind.config={theme:{extend:{fontFamily:{
+  sans:['Plus Jakarta Sans','sans-serif'],
+  mono:['JetBrains Mono','monospace']
+},colors:{brand:'#4f46e5',ink:'#0f172a',paper:'#f8fafc'}}}};
 </script>
 <style>
-html,body{margin:0;min-height:100%;background:#f8f9ff}
-body{font-family:"Plus Jakarta Sans",sans-serif}
+:root{
+  --brand:#4f46e5;
+  --ink:#0f172a;
+  --muted:#64748b;
+  --line:#e2e8f0;
+  --paper:#f8fafc;
+}
+html,body{margin:0;min-height:100%;background:var(--paper)}
+body{font-family:"Plus Jakarta Sans",sans-serif;color:var(--ink)}
 .mono{font-family:"JetBrains Mono",monospace}
-.scroll-panel{scrollbar-width:thin;scrollbar-color:#94a3b8 transparent}
-.topic-btn.active{background:#4338ca;color:white}
-.topic-btn.active .count{background:rgba(255,255,255,.15);color:white}
-.difficulty-btn.active{background:#4338ca;color:white}
-.problem-card{transition:transform .15s,box-shadow .15s,border-color .15s}
-.problem-card:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(15,23,42,.08);border-color:#c7d2fe}
+.scroll{scrollbar-width:thin;scrollbar-color:#94a3b8 transparent}
+.topic-chip,.problem-card,.filter-btn{transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background-color .16s ease}
+.problem-card:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(15,23,42,.08);border-color:#c7d2fe}
+.problem-card:focus-visible,.filter-btn:focus-visible,.topic-chip:focus-visible{outline:3px solid rgba(99,102,241,.2);outline-offset:2px}
+.filter-btn.active{background:#312e81;color:#fff;border-color:#312e81}
+.filter-btn.active .count{background:rgba(255,255,255,.14);color:#fff}
+.skeleton{background:linear-gradient(90deg,#eef2f7 25%,#f8fafc 50%,#eef2f7 75%);background-size:200% 100%;animation:skeleton 1.25s infinite}
+@keyframes skeleton{to{background-position:-200% 0}}
+.mobile-sheet{transform:translateY(110%);transition:transform .22s ease}
+.mobile-sheet.open{transform:translateY(0)}
+.mobile-overlay{opacity:0;pointer-events:none;transition:opacity .2s ease}
+.mobile-overlay.open{opacity:1;pointer-events:auto}
+@media (max-width:767px){
+  .desktop-filters{display:none}
+}
 </style>
-  <link rel="stylesheet" href="ui.css">
-  <script src="ui.js" defer></script>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js" defer></script>
 </head>
-<body class="text-on-surface">
-<header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200/80">
-  <div class="max-w-[1500px] mx-auto h-16 px-5 lg:px-8 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <a href="dashboard.html?v=20260924"" class="flex items-center gap-3 shrink-0" aria-label="CodeMentor AI dashboard">
-        <div class="w-8 h-8 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
-        <span class="font-bold tracking-tight">CodeMentor <span class="text-primary">AI</span></span>
+<body>
+<header class="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-slate-200">
+  <div class="max-w-[1500px] mx-auto h-16 px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3 min-w-0">
+      <a href="dashboard.html" class="shrink-0 flex items-center gap-2.5 font-extrabold tracking-tight" aria-label="CodeMentor AI dashboard">
+        <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white grid place-items-center shadow-sm"><span class="material-symbols-outlined text-[18px]">terminal</span></span>
+        <span>CodeMentor <span class="text-indigo-600">AI</span></span>
       </a>
       <span class="text-slate-300">/</span>
-      <span class="text-sm font-semibold text-slate-700">Practice</span>
+      <span class="text-sm font-semibold text-slate-600">Practice</span>
     </div>
     <div class="flex items-center gap-2">
-      <a href="analytics.html" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100">
-        <span class="material-symbols-outlined text-[17px]">monitoring</span>Analytics
+      <a href="analytics.html" class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">
+        <span class="material-symbols-outlined text-[16px]">monitoring</span>Analytics
       </a>
-      <div class="relative">
-        <button id="account-btn" class="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center">
-          <span class="material-symbols-outlined text-[18px]">person</span>
-        </button>
-        <div id="account-menu" class="hidden absolute right-0 top-11 w-56 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden">
-          <div class="px-4 py-3 border-b border-slate-100">
-            <div id="account-name" class="font-semibold text-sm truncate">CodeMentor User</div>
-            <div id="account-email" class="text-xs text-slate-500 truncate">Signed in</div>
-          </div>
-          <a href="dashboard.html?v=20260924"" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Dashboard</a>
-          <a href="preferences.html?v=20260921" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Preferences</a>
-          <a href="settings.html" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Settings</a>
-          <button id="logout-btn" class="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50" type="button">Log out</button>
+      <button id="account-btn" type="button" class="w-9 h-9 rounded-full bg-indigo-600 text-white grid place-items-center" aria-expanded="false" aria-controls="account-menu" title="Account">
+        <span class="material-symbols-outlined text-[18px]">person</span>
+      </button>
+      <div id="account-menu" class="hidden absolute right-4 top-14 w-60 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-100">
+          <div id="account-name" class="font-semibold text-sm truncate">CodeMentor User</div>
+          <div id="account-email" class="text-xs text-slate-500 truncate mt-0.5">Signed in</div>
         </div>
+        <a href="dashboard.html" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Dashboard</a>
+        <a href="settings.html" class="block px-4 py-2.5 text-sm hover:bg-slate-50">Settings</a>
+        <button id="logout-btn" type="button" class="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50">Log out</button>
       </div>
     </div>
   </div>
 </header>
 
-<main class="max-w-[1500px] mx-auto px-5 lg:px-8 py-7">
-  <section class="mb-7">
-    <div class="mono text-[10px] uppercase tracking-[.18em] text-primary font-semibold">Practice library</div>
-    <div class="mt-2 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-      <div>
-        <h1 class="text-3xl sm:text-4xl font-bold tracking-tight">Practice by topic.</h1>
-        <p class="mt-2 text-sm text-slate-500 max-w-3xl">Browse your problem library like a coding platform: filter by difficulty, choose a topic, search, and open a problem in its own workspace.</p>
+<main class="max-w-[1500px] mx-auto px-4 sm:px-6 lg:px-8 py-7 sm:py-9">
+  <section class="mb-7 sm:mb-8">
+    <div class="mono text-[10px] uppercase tracking-[.18em] text-indigo-600 font-bold">Practice workspace</div>
+    <div class="mt-2 flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5">
+      <div class="min-w-0">
+        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">Choose a problem. Start coding.</h1>
+        <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-500">A focused coding library with fast filtering, clear problem statements, persistent workspaces, execution feedback, submission history, and an AI mentor when you need guidance.</p>
       </div>
-      <div class="rounded-xl bg-white border border-slate-200 px-4 py-3 min-w-[170px]">
-        <div class="mono text-[10px] uppercase tracking-wider text-slate-400">Problem library</div>
-        <div id="library-total" class="text-2xl font-bold mt-1">—</div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:min-w-[360px]">
+        <div class="bg-white border border-slate-200 rounded-2xl px-4 py-3">
+          <div class="mono text-[9px] uppercase tracking-wider text-slate-400">Problems</div>
+          <div id="library-total" class="text-2xl font-extrabold mt-1">—</div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-2xl px-4 py-3">
+          <div class="mono text-[9px] uppercase tracking-wider text-slate-400">Visible</div>
+          <div id="visible-total" class="text-2xl font-extrabold mt-1">—</div>
+        </div>
+        <button id="mobile-filter-open" type="button" class="sm:hidden bg-indigo-600 text-white rounded-2xl px-4 py-3 text-left">
+          <div class="mono text-[9px] uppercase tracking-wider text-indigo-200">Filters</div>
+          <div id="mobile-filter-summary" class="text-sm font-bold mt-1">All problems</div>
+        </button>
       </div>
     </div>
   </section>
 
-  <div id="error" class="hidden mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
+  <div id="page-error" class="hidden mb-5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-3" role="alert">
+    <span class="material-symbols-outlined text-[20px] mt-0.5">error</span>
+    <div class="min-w-0">
+      <div id="page-error-title" class="font-semibold">Something went wrong</div>
+      <div id="page-error-message" class="mt-0.5 text-rose-600"></div>
+    </div>
+    <button id="page-error-retry" type="button" class="ml-auto shrink-0 px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-xs font-semibold hover:bg-rose-100">Retry</button>
+  </div>
 
-  <div class="grid lg:grid-cols-[250px_minmax(0,1fr)] gap-5">
-    <aside class="bg-white border border-slate-200 rounded-2xl p-4 h-fit lg:sticky lg:top-24">
-      <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Difficulty</div>
-      <div id="difficulty-filters" class="space-y-1"></div>
-
-      <div class="border-t border-slate-100 my-5"></div>
-
+  <div class="grid lg:grid-cols-[260px_minmax(0,1fr)] gap-5 items-start">
+    <aside class="desktop-filters bg-white border border-slate-200 rounded-3xl p-4 lg:sticky lg:top-24 shadow-sm">
       <div class="flex items-center justify-between mb-3">
-        <div class="text-xs font-bold uppercase tracking-wider text-slate-400">Topics</div>
-        <button id="clear-topic" type="button" class="text-[10px] font-semibold text-primary hover:underline">Clear</button>
+        <div class="text-[10px] mono uppercase tracking-wider text-slate-400 font-bold">Difficulty</div>
       </div>
-      <div id="topic-filters" class="max-h-[55vh] overflow-y-auto scroll-panel space-y-1 pr-1"></div>
+      <div id="difficulty-filters" class="space-y-1.5"></div>
+      <div class="border-t border-slate-100 my-5"></div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-[10px] mono uppercase tracking-wider text-slate-400 font-bold">Topics</div>
+        <button id="clear-topic" type="button" class="text-[10px] text-indigo-600 font-semibold hover:underline">Clear</button>
+      </div>
+      <div id="topic-filters" class="max-h-[60vh] overflow-y-auto scroll space-y-1.5 pr-1"></div>
     </aside>
 
     <section class="min-w-0">
-      <div class="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 mb-4">
-        <div class="flex flex-col lg:flex-row lg:items-center gap-3">
-          <div class="relative flex-1 min-w-0">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[19px] text-slate-400">search</span>
-          <input id="search" type="search" placeholder="Search problems by title..." class="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-300 outline-none text-sm">
+      <div class="bg-white border border-slate-200 rounded-3xl p-3 sm:p-4 shadow-sm">
+        <div class="flex flex-col lg:flex-row gap-3">
+          <label class="relative flex-1 min-w-0">
+            <span class="sr-only">Search problems</span>
+            <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[19px] text-slate-400">search</span>
+            <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search by problem title…" class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-slate-50 border border-transparent focus:bg-white focus:border-indigo-300 outline-none text-sm" />
+          </label>
+          <div class="flex gap-2">
+            <button id="reset-filters" type="button" class="flex-1 lg:flex-none px-4 py-3.5 rounded-2xl border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-50">Reset</button>
+            <button id="refresh-btn" type="button" class="w-12 rounded-2xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 grid place-items-center" title="Refresh problem library" aria-label="Refresh problem library">
+              <span class="material-symbols-outlined text-[19px]">refresh</span>
+            </button>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-between gap-3">
+          <div class="min-w-0">
+            <div id="result-count" class="text-sm font-bold">Loading problems…</div>
+            <div id="active-filter" class="text-[11px] text-slate-400 mt-1 truncate">All problems</div>
+          </div>
+          <div id="keyboard-tip" class="hidden sm:block text-[10px] text-slate-400"><span class="mono px-1.5 py-1 rounded bg-slate-100">/</span> focus search</div>
         </div>
       </div>
 
-      <div class="flex items-center justify-between gap-3 mb-3">
-        <div>
-          <div id="result-count" class="text-sm font-semibold">Loading problems…</div>
-          <div id="active-filter" class="text-[11px] text-slate-400 mt-0.5">All problems</div>
-        </div>
-        <button id="reset-filters" type="button" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-500 hover:bg-white hover:border-slate-200 border border-transparent">Reset</button>
+      <div id="problem-skeleton" class="grid md:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
+        <div class="bg-white border border-slate-200 rounded-3xl p-4 h-44"><div class="skeleton h-3 w-20 rounded"></div><div class="skeleton h-5 w-4/5 rounded mt-4"></div><div class="skeleton h-3 w-2/3 rounded mt-2"></div><div class="skeleton h-6 w-28 rounded-full mt-5"></div></div>
+        <div class="bg-white border border-slate-200 rounded-3xl p-4 h-44"><div class="skeleton h-3 w-16 rounded"></div><div class="skeleton h-5 w-full rounded mt-4"></div><div class="skeleton h-3 w-1/2 rounded mt-2"></div><div class="skeleton h-6 w-24 rounded-full mt-5"></div></div>
+        <div class="bg-white border border-slate-200 rounded-3xl p-4 h-44"><div class="skeleton h-3 w-24 rounded"></div><div class="skeleton h-5 w-3/4 rounded mt-4"></div><div class="skeleton h-3 w-3/5 rounded mt-2"></div><div class="skeleton h-6 w-20 rounded-full mt-5"></div></div>
       </div>
 
-      <div id="problem-grid" class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+      <div id="problem-grid" class="hidden grid md:grid-cols-2 xl:grid-cols-3 gap-3 mt-4"></div>
 
-      <div id="empty" class="hidden bg-white border border-slate-200 rounded-2xl py-16 text-center">
-        <span class="material-symbols-outlined text-4xl text-slate-300">search_off</span>
-        <div class="font-semibold mt-3">No problems found</div>
-        <div class="text-xs text-slate-400 mt-1">Try another search or remove a filter.</div>
+      <div id="empty" class="hidden mt-4 bg-white border border-dashed border-slate-300 rounded-3xl py-16 text-center px-6">
+        <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 grid place-items-center mx-auto"><span class="material-symbols-outlined text-2xl">search_off</span></div>
+        <div class="font-bold mt-4">No matching problems</div>
+        <div class="text-xs text-slate-400 mt-1">Try a different title, topic, or difficulty.</div>
+        <button id="empty-reset" type="button" class="mt-5 px-4 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold">Reset filters</button>
       </div>
 
       <div class="mt-5 flex items-center justify-center">
-        <button id="load-more-btn" type="button" class="hidden px-5 py-3 rounded-xl bg-primary-container text-white text-xs font-semibold disabled:opacity-50">Load more problems</button>
-      </div>   </section>
+        <button id="load-more-btn" type="button" class="hidden px-5 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 disabled:opacity-50">Load more problems</button>
+      </div>
+    </section>
   </div>
 </main>
+
+<div id="mobile-overlay" class="mobile-overlay fixed inset-0 z-[70] bg-slate-950/45 backdrop-blur-[2px]"></div>
+<section id="mobile-sheet" class="mobile-sheet fixed inset-x-0 bottom-0 z-[80] max-h-[82vh] bg-white rounded-t-[2rem] shadow-[0_-20px_70px_rgba(15,23,42,.24)] flex flex-col">
+  <div class="px-5 pt-4 pb-3 border-b border-slate-100 flex items-center justify-between">
+    <div>
+      <div class="text-lg font-extrabold">Filters</div>
+      <div id="mobile-sheet-subtitle" class="text-xs text-slate-400 mt-0.5">All problems</div>
+    </div>
+    <button id="mobile-filter-close" type="button" class="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 grid place-items-center" title="Close filters"><span class="material-symbols-outlined text-[18px]">close</span></button>
+  </div>
+  <div class="flex-1 overflow-y-auto scroll px-5 py-5">
+    <div class="text-[10px] mono uppercase tracking-wider text-slate-400 font-bold mb-3">Difficulty</div>
+    <div id="mobile-difficulty-filters" class="grid grid-cols-2 gap-2"></div>
+    <div class="border-t border-slate-100 my-6"></div>
+    <div class="text-[10px] mono uppercase tracking-wider text-slate-400 font-bold mb-3">Topics</div>
+    <div id="mobile-topic-filters" class="space-y-2"></div>
+  </div>
+  <div class="p-5 border-t border-slate-100 flex gap-2">
+    <button id="mobile-filter-reset" type="button" class="flex-1 px-4 py-3 rounded-2xl border border-slate-200 text-xs font-semibold text-slate-600">Reset</button>
+    <button id="mobile-filter-apply" type="button" class="flex-1 px-4 py-3 rounded-2xl bg-indigo-600 text-white text-xs font-semibold">View problems</button>
+  </div>
+</section>
+
+<div id="toast" class="hidden fixed left-1/2 -translate-x-1/2 bottom-5 z-[100] px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold shadow-2xl"></div>
 
 <script>
 const API='http://127.0.0.1:8000';
@@ -133,78 +200,105 @@ const PAGE_SIZE=100;
 let topic='';
 let difficulty='';
 let search='';
-let page=0;
 let total=0;
-let difficultyFacets=[];
-let topicFacets=[];
-let requestId=0;
 let loadedItems=[];
 let hasMore=false;
+let topicFacets=[];
+let difficultyFacets=[];
+let requestId=0;
+let searchTimer=null;
 
 const $=id=>document.getElementById(id);
-function token(){return localStorage.getItem(TOKEN_KEY)}
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function requireAuth(){if(!token()){location.replace('auth.html');return false}return true}
-function difficultyClass(v){
-  if(v==='Easy')return 'bg-emerald-100 text-emerald-800';
-  if(v==='Medium')return 'bg-amber-100 text-amber-900';
-  if(v==='Hard')return 'bg-rose-100 text-rose-800';
-  return 'bg-slate-100 text-slate-600';
+const token=()=>localStorage.getItem(TOKEN_KEY);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const difficultyClass=v=>v==='Easy'?'bg-emerald-100 text-emerald-800':v==='Medium'?'bg-amber-100 text-amber-900':v==='Hard'?'bg-rose-100 text-rose-800':'bg-slate-100 text-slate-600';
+
+function toast(message){
+  const host=$('toast');
+  host.textContent=message;
+  host.classList.remove('hidden');
+  clearTimeout(window.__practiceToast);
+  window.__practiceToast=setTimeout(()=>host.classList.add('hidden'),2200);
 }
-function renderDifficultyFilters(){
+function requireAuth(){
+  if(token())return true;
+  location.replace('auth.html');
+  return false;
+}
+function setError(title,message){
+  $('page-error-title').textContent=title;
+  $('page-error-message').textContent=message;
+  $('page-error').classList.remove('hidden');
+}
+function clearError(){$('page-error').classList.add('hidden')}
+function filterLabel(){
+  const values=[];
+  if(difficulty)values.push(difficulty);
+  if(topic)values.push(topic);
+  if(search)values.push('“'+search+'”');
+  return values.length?values.join(' · '):'All problems';
+}
+function renderDifficulty(targetId){
+  const target=$(targetId);
+  if(!target)return;
   const counts=Object.fromEntries(difficultyFacets.map(x=>[x.name,Number(x.count)||0]));
   const all=Object.values(counts).reduce((a,b)=>a+b,0);
   const values=[['','All',all],['Easy','Easy',counts.Easy||0],['Medium','Medium',counts.Medium||0],['Hard','Hard',counts.Hard||0]];
-  $('difficulty-filters').innerHTML=values.map(([value,label,count])=>'<button data-difficulty="'+esc(value)+'" type="button" class="difficulty-btn '+(difficulty===value?'active ':'')+'w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-xs font-semibold hover:bg-slate-100"><span>'+label+'</span><span class="mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">'+count+'</span></button>').join('');
-  document.querySelectorAll('[data-difficulty]').forEach(btn=>btn.addEventListener('click',()=>{difficulty=btn.dataset.difficulty;page=0;renderDifficultyFilters();loadProblems()}));
+  target.innerHTML=values.map(([value,label,count])=>
+    '<button data-difficulty="'+esc(value)+'" type="button" class="filter-btn '+(difficulty===value?'active ':'')+'w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-transparent text-xs font-semibold text-slate-600 hover:bg-slate-100">'+
+      '<span>'+label+'</span><span class="count mono text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">'+count+'</span>'+
+    '</button>'
+  ).join('');
 }
-function renderTopicFilters(){
-  $('topic-filters').innerHTML=topicFacets.map(item=>'<button data-topic="'+esc(item.name)+'" type="button" class="topic-btn '+(topic===item.name?'active ':'')+'w-full flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg text-xs text-slate-600 hover:bg-slate-100"><span class="truncate text-left">'+esc(item.name)+'</span><span class="count mono text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">'+item.count+'</span></button>').join('');
-  document.querySelectorAll('[data-topic]').forEach(btn=>btn.addEventListener('click',()=>{topic=btn.dataset.topic;page=0;renderTopicFilters();loadProblems()}));
+function renderTopics(targetId){
+  const target=$(targetId);
+  if(!target)return;
+  target.innerHTML=topicFacets.map(item=>
+    '<button data-topic="'+esc(item.name)+'" type="button" class="filter-btn '+(topic===item.name?'active ':'')+'w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border border-transparent text-xs font-medium text-slate-600 hover:bg-slate-100">'+
+      '<span class="truncate text-left">'+esc(item.name)+'</span><span class="count mono text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 shrink-0">'+Number(item.count||0)+'</span>'+
+    '</button>'
+  ).join('');
 }
-function renderProblems(items=loadedItems){
+function renderFilters(){
+  renderDifficulty('difficulty-filters');
+  renderDifficulty('mobile-difficulty-filters');
+  renderTopics('topic-filters');
+  renderTopics('mobile-topic-filters');
+  const label=filterLabel();
+  $('active-filter').textContent=label;
+  $('mobile-filter-summary').textContent=label;
+  $('mobile-sheet-subtitle').textContent=label;
+}
+function renderProblems(items){
+  $('visible-total').textContent=items.length.toLocaleString();
   $('library-total').textContent=total.toLocaleString();
-  $('result-count').textContent=items.length
-    ? 'Showing '+items.length+' of '+total.toLocaleString()
-    : '0 problems';
-  const filters=[];
-  if(difficulty)filters.push(difficulty);
-  if(topic)filters.push(topic);
-  if(search)filters.push('“'+search+'”');
-  $('active-filter').textContent=filters.length?filters.join(' · '):'All problems';
-
-  $('problem-grid').innerHTML=items.map(p=>'<a class="problem-card block bg-white border border-slate-200 rounded-2xl p-4" href="problem.html?problem='+encodeURIComponent(p.slug)+'">'+
-    '<div class="flex items-start justify-between gap-3">'+
-      '<div class="min-w-0"><div class="mono text-[9px] uppercase tracking-wider text-slate-400 mb-1">'+esc(p.source||'catalog')+'</div><h3 class="font-semibold leading-5 text-slate-800">'+esc(p.title)+'</h3></div>'+
-      '<span class="text-[9px] px-2 py-1 rounded font-semibold shrink-0 '+difficultyClass(p.difficulty)+'">'+esc(p.difficulty)+'</span>'+
-    '</div>'+
-    '<div class="flex flex-wrap gap-1.5 mt-3">'+(p.topics||[]).slice(0,5).map(t=>'<span class="text-[9px] px-2 py-1 rounded-full bg-slate-100 text-slate-500">'+esc(t)+'</span>').join('')+'</div>'+
-    '<div class="mt-4 flex items-center justify-between text-[10px] text-slate-400"><span>Open coding workspace</span><span class="material-symbols-outlined text-[16px]">arrow_forward</span></div>'+
-  '</a>').join('');
-
+  $('result-count').textContent=items.length?'Showing '+items.length.toLocaleString()+' of '+total.toLocaleString():'0 problems';
+  $('problem-grid').innerHTML=items.map(p=>
+    '<a href="problem.html?problem='+encodeURIComponent(p.slug)+'" class="problem-card block bg-white border border-slate-200 rounded-3xl p-4 focus:outline-none">'+
+      '<div class="flex items-start justify-between gap-3">'+
+        '<div class="min-w-0">'+
+          '<div class="mono text-[9px] uppercase tracking-wider text-slate-400 mb-1">'+esc(p.source||'catalog')+'</div>'+
+          '<h2 class="font-bold leading-5 text-slate-800">'+esc(p.title)+'</h2>'+
+        '</div>'+
+        '<span class="text-[9px] px-2 py-1 rounded-full font-bold shrink-0 '+difficultyClass(p.difficulty)+'">'+esc(p.difficulty||'Unknown')+'</span>'+
+      '</div>'+
+      '<div class="flex flex-wrap gap-1.5 mt-4">'+(p.topics||[]).slice(0,4).map(t=>'<span class="topic-chip px-2 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px]">'+esc(t)+'</span>').join('')+'</div>'+
+      '<div class="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400"><span>Open workspace</span><span class="material-symbols-outlined text-[16px] text-slate-400">arrow_forward</span></div>'+
+    '</a>'
+  ).join('');
   const empty=items.length===0;
-  $('empty').classList.toggle('hidden',!empty);
   $('problem-grid').classList.toggle('hidden',empty);
-
-  const more=$('load-more-btn');
-  if(more){
-    more.classList.toggle('hidden',!hasMore);
-    more.disabled=false;
-    more.textContent=hasMore?'Load more problems':'';
-  }
+  $('empty').classList.toggle('hidden',!empty);
 }
-
 async function loadFacets(){
   const res=await fetch(API+'/problems/topics',{headers:{Authorization:'Bearer '+token()}});
-  if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
-  if(!res.ok)throw new Error('Unable to load problem filters (HTTP '+res.status+').');
+  if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return;}
+  if(!res.ok)throw new Error('Problem filters returned HTTP '+res.status+'.');
   const data=await res.json();
-  difficultyFacets=data.difficulties||[];
-  topicFacets=data.topics||[];
   total=Number(data.total)||0;
-  renderDifficultyFilters();
-  renderTopicFilters();
-  $('library-total').textContent=total.toLocaleString();
+  topicFacets=Array.isArray(data.topics)?data.topics:[];
+  difficultyFacets=Array.isArray(data.difficulties)?data.difficulties:[];
+  renderFilters();
 }
 async function loadProblems({reset=true}={}){
   const id=++requestId;
@@ -213,91 +307,123 @@ async function loadProblems({reset=true}={}){
   if(topic)params.set('topic',topic);
   if(difficulty)params.set('difficulty',difficulty);
   if(search)params.set('search',search);
-
   try{
     const res=await fetch(API+'/problems?'+params.toString(),{headers:{Authorization:'Bearer '+token()}});
-    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return}
-    if(!res.ok)throw new Error('Unable to load problems (HTTP '+res.status+').');
+    if(id!==requestId)return;
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return;}
+    if(!res.ok)throw new Error('Problem catalogue returned HTTP '+res.status+'.');
     const data=await res.json();
     if(id!==requestId)return;
-    total=Number(data.total)||0;
     if(reset)loadedItems=[];
-    loadedItems=loadedItems.concat(data.items||[]);
+    loadedItems=loadedItems.concat(Array.isArray(data.items)?data.items:[]);
+    total=Number(data.total)||0;
     hasMore=Boolean(data.has_more);
-    renderProblems();
+    renderProblems(loadedItems);
+    $('load-more-btn').classList.toggle('hidden',!hasMore);
+    $('load-more-btn').disabled=false;
+    $('load-more-btn').textContent=hasMore?'Load more problems':'';
+    clearError();
   }catch(err){
     if(id!==requestId)return;
-    $('error').textContent=err.message||'Unable to load problems.';
-    $('error').classList.remove('hidden');
+    setError('Unable to load problems',err.message||'The problem catalogue could not be loaded.');
+    $('problem-grid').classList.remove('hidden');
+    $('problem-skeleton').classList.add('hidden');
+  }finally{
+    if(id===requestId)$('problem-skeleton').classList.add('hidden');
   }
 }
-
-async function load(){
-  if(!requireAuth())return;
-
-  const params=new URLSearchParams(location.search);
-  topic=params.get('topic')||'';
-  difficulty=params.get('difficulty')||'';
-  search=params.get('search')||'';
-  $('search').value=search;
-
-  // Problem data and filters do not depend on the profile request, so start
-  // them together instead of making the problem catalogue wait for identity.
-  const profilePromise=Promise.all([
-    fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
-    fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
-  ]);
-  const facetsPromise=loadFacets();
-  const problemsPromise=loadProblems();
-
+async function loadProfile(){
   try{
-    const [profileRes,userRes]=await profilePromise;
+    const [profileRes,userRes]=await Promise.all([
+      fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),
+      fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})
+    ]);
     if(profileRes.status===401||userRes.status===401){
-      localStorage.removeItem(TOKEN_KEY);
-      location.replace('auth.html');
-      return;
+      localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return;
     }
     const profile=profileRes.ok?await profileRes.json():{};
     const user=userRes.ok?await userRes.json():{};
     $('account-name').textContent=profile.full_name||'CodeMentor User';
     $('account-email').textContent=user.email||'Signed in';
-  }catch(err){
-    console.warn('Practice identity load failed:',err);
-  }
-
-  try{
-    await Promise.all([facetsPromise,problemsPromise]);
-  }catch(err){
-    const message=err instanceof TypeError && /fetch/i.test(err.message)
-      ? 'Cannot reach the CodeMentor API at '+API+'. Start or restart the FastAPI backend, then refresh this page.'
-      : (err.message||'Unable to load Practice.');
-    $('error').textContent=message;
-    $('error').classList.remove('hidden');
-  }
+  }catch(err){console.warn('Practice identity load failed:',err)}
 }
-let searchTimer=null;
+function resetFilters(){
+  topic='';difficulty='';search='';$('search').value='';
+  renderFilters();loadProblems({reset:true});
+}
+function openMobileFilters(){
+  $('mobile-overlay').classList.add('open');
+  $('mobile-sheet').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeMobileFilters(){
+  $('mobile-overlay').classList.remove('open');
+  $('mobile-sheet').classList.remove('open');
+  document.body.style.overflow='';
+}
+document.addEventListener('click',event=>{
+  const difficultyBtn=event.target.closest('[data-difficulty]');
+  const topicBtn=event.target.closest('[data-topic]');
+  if(difficultyBtn){
+    difficulty=difficultyBtn.dataset.difficulty;
+    renderFilters();
+    loadProblems({reset:true});
+    return;
+  }
+  if(topicBtn){
+    topic=topicBtn.dataset.topic;
+    renderFilters();
+    loadProblems({reset:true});
+  }
+});
 $('search').addEventListener('input',()=>{
   search=$('search').value.trim();
   clearTimeout(searchTimer);
-  searchTimer=setTimeout(()=>loadProblems({reset:true}),250);
+  searchTimer=setTimeout(()=>loadProblems({reset:true}),220);
 });
-$('clear-topic').addEventListener('click',()=>{topic='';renderTopicFilters();loadProblems({reset:true})});
-$('reset-filters').addEventListener('click',()=>{
-  topic='';difficulty='';search='';$('search').value='';
-  renderDifficultyFilters();renderTopicFilters();loadProblems({reset:true});
+$('clear-topic').addEventListener('click',()=>{topic='';renderFilters();loadProblems({reset:true})});
+$('reset-filters').addEventListener('click',resetFilters);
+$('empty-reset').addEventListener('click',resetFilters);
+$('refresh-btn').addEventListener('click',async()=>{
+  $('refresh-btn').disabled=true;
+  try{await Promise.all([loadFacets(),loadProblems({reset:true})])}catch(err){setError('Refresh failed',err.message||'Unable to refresh the practice library.')}finally{$('refresh-btn').disabled=false}
 });
-$('load-more-btn').addEventListener('click',async()=>{
-  const button=$('load-more-btn');
-  button.disabled=true;
-  button.textContent='Loading…';
-  await loadProblems({reset:false});
+$('load-more-btn').addEventListener('click',()=>loadProblems({reset:false}));
+$('page-error-retry').addEventListener('click',()=>Promise.all([loadFacets(),loadProblems({reset:true})]).catch(err=>setError('Retry failed',err.message||'Unable to load the practice library.')));
+$('mobile-filter-open').addEventListener('click',openMobileFilters);
+$('mobile-filter-close').addEventListener('click',closeMobileFilters);
+$('mobile-overlay').addEventListener('click',closeMobileFilters);
+$('mobile-filter-apply').addEventListener('click',closeMobileFilters);
+$('mobile-filter-reset').addEventListener('click',()=>{resetFilters();closeMobileFilters()});
+$('account-btn').addEventListener('click',event=>{
+  event.stopPropagation();
+  const menu=$('account-menu');
+  const open=!menu.classList.contains('hidden');
+  menu.classList.toggle('hidden',open);
+  $('account-btn').setAttribute('aria-expanded',String(!open));
 });
-
-document.querySelectorAll('[data-home-link]').forEach(el=>el.addEventListener('click',()=>location.href='dashboard.html?v=20260924'));
-$('account-btn').addEventListener('click',e=>{e.stopPropagation();const menu=$('account-menu');const open=!menu.classList.contains('hidden');menu.classList.toggle('hidden',open);$('account-btn').setAttribute('aria-expanded',String(!open))});
-document.addEventListener('click',e=>{const menu=$('account-menu');if(menu&&!menu.contains(e.target)){menu.classList.add('hidden');$('account-btn').setAttribute('aria-expanded','false')}});
+document.addEventListener('click',event=>{
+  const menu=$('account-menu');
+  if(menu&&!menu.contains(event.target)&&event.target!==$('account-btn')){menu.classList.add('hidden');$('account-btn').setAttribute('aria-expanded','false')}
+});
 $('logout-btn').addEventListener('click',()=>{localStorage.removeItem(TOKEN_KEY);location.replace('auth.html')});
-load();
+document.addEventListener('keydown',event=>{
+  if(event.key==='/'&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){
+    event.preventDefault();$('search').focus();
+  }
+  if(event.key==='Escape')closeMobileFilters();
+});
+async function boot(){
+  if(!requireAuth())return;
+  const params=new URLSearchParams(location.search);
+  topic=params.get('topic')||'';
+  difficulty=params.get('difficulty')||'';
+  search=params.get('search')||'';
+  $('search').value=search;
+  renderFilters();
+  await Promise.all([loadProfile(),loadFacets(),loadProblems({reset:true})]).catch(err=>setError('Practice is unavailable',err.message||'Start the FastAPI backend and refresh the page.'));
+}
+boot();
 </script>
 </body>
 </html>
