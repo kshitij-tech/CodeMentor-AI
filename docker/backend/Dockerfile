@@ -16,6 +16,7 @@ RUN apt-get update \
 
 WORKDIR /app
 
+COPY backend/requirements.txt /tmp/requirements.txt
 COPY backend/requirements-production.txt /tmp/requirements-production.txt
 RUN python -m pip install -r /tmp/requirements-production.txt
 
