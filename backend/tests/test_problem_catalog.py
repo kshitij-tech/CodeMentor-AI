@@ -163,6 +163,18 @@ func solve() int { return 0 }
                 failures.append((item.get("slug"), flags))
         self.assertEqual(failures, [])
 
+    def test_editor_schema_sanitizes_reserved_identifiers(self):
+        from backend.problem_catalog import _canonicalize_editor_schema
+
+        schema = [
+            {"name": "and", "type": "int"},
+            {"name": "from", "type": "int"},
+            {"name": "values", "type": "int_array", "length_from": "and"},
+        ]
+        sanitized = _canonicalize_editor_schema(schema)
+        self.assertEqual([item["name"] for item in sanitized], ["and_", "from_", "values"])
+        self.assertEqual(sanitized[2]["length_from"], "and_")
+
     def test_health_report_contains_catalogue_distributions(self):
         problem = {
             "slug": "health-problem",
