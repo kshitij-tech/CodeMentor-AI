@@ -6,17 +6,23 @@ from pathlib import Path
 
 from backend.database import SessionLocal
 from backend.models import Problem
-from backend.problem_catalog import normalize_problem_record, quality_flags
+from backend.problem_catalog import audit_problems, invalid_topic_names, normalize_problem_record, quality_flags
 
 REQUIRED = {
     "slug", "title", "difficulty", "topics", "description",
-    "constraints", "examples", "starter_code",
+    "constraints", "examples", "test_cases", "starter_code",
 }
 
 def validate(item: dict, index: int) -> dict:
     missing = REQUIRED - set(item)
     if missing:
         raise ValueError(f"Problem {index} is missing: {', '.join(sorted(missing))}")
+
+    bad_topics = invalid_topic_names(item.get("topics"))
+    if bad_topics:
+        raise ValueError(
+            f"Problem {index} has invalid topic names: {', '.join(bad_topics)}"
+        )
 
     normalized = normalize_problem_record(item)
 
@@ -48,13 +54,15 @@ def import_catalog(path: Path) -> tuple[int, int]:
     if not isinstance(items, list):
         raise ValueError("Catalog JSON must be a list or an object with a 'problems' list.")
 
-    created = 0
-    updated = 0
+    validated_items = []
+    created_count = 0
+    updated_count = 0
     with SessionLocal() as db:
         for index, item in enumerate(items, start=1):
             if not isinstance(item, dict):
                 raise ValueError(f"Problem {index} must be an object.")
             item = validate(item, index)
+            validated_items.append(item)
 
             source = item["source"]
             external_id = item.get("external_id")
@@ -82,16 +90,30 @@ def import_catalog(path: Path) -> tuple[int, int]:
                 "source": source,
                 "external_id": str(external_id) if external_id is not None else None,
                 "external_url": item.get("external_url"),
+                "execution_mode": item.get("execution_mode", "function"),
+                "time_limit_ms": item.get("time_limit_ms", 2000),
+                "memory_limit_mb": item.get("memory_limit_mb"),
+                "validation": item.get("validation", "default"),
+                "package_metadata": item.get("package_metadata") or {},
             }
             if problem is None:
                 db.add(Problem(**values))
-                created += 1
+                created_count += 1
             else:
                 for key, value in values.items():
                     setattr(problem, key, value)
-                updated += 1
+                updated_count += 1
+        duplicate_report = audit_problems(validated_items)
+        duplicate_groups = sum(
+            len(groups) for groups in duplicate_report["duplicates"].values()
+        )
+        if duplicate_groups:
+            raise ValueError(
+                "Catalog contains duplicate problem groups: "
+                + json.dumps(duplicate_report["duplicates"], ensure_ascii=False)
+            )
         db.commit()
-    return created, updated
+    return created_count, updated_count
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import an authorized CodeMentor problem catalog JSON file.")
