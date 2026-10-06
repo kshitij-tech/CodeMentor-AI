@@ -635,7 +635,8 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         raise ProblemPackageError(
             "Problem package failed catalogue quality checks: "
             + ", ".join(flags)
-            + f"; mode={normalized.get('execution_mode')!r}; cases={case_debug[:3]!r}"
+            + f"; mode={normalized.get('execution_mode')!r}; cases={case_debug[:3]!r}; "
+            + f"starters={[(k, str(v)[:90]) for k, v in normalized.get('starter_code', {}).items()]!r}"
         )
     return normalized
 
