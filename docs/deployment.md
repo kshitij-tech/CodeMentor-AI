@@ -117,3 +117,5 @@ Never assume a database downgrade is safe. Use the migration's explicit downgrad
 This branch does not modify files owned by authentication/security, database engine configuration, problem catalogue, code execution implementation/runtime, AI Mentor, adaptive learning, profile/preferences, dashboard/analytics, practice UI, career, or observability instrumentation.
 
 The shared `backend/main.py` change is limited to production-safe startup initialization, environment-driven CORS, `APP_VERSION`, and health-router wiring.
+
+CI is PR-gated from `main`; feature branches are validated when a pull request is opened or updated.
