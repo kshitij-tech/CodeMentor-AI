@@ -50,6 +50,19 @@ class AnalyticsCalculationTests(unittest.TestCase):
         }
         self.assertEqual(calculate_streaks(days, date(2026, 10, 6)), (2, 2))
 
+    def test_repeated_acceptance_does_not_extend_streak(self):
+        now = datetime(2026, 10, 6, 12, tzinfo=timezone.utc)
+        rows = [
+            (attempt(1, 1, now - timedelta(days=2), status="Accepted"), problem(1)),
+            # Same problem accepted again the next day: it is not a new solve.
+            (attempt(2, 1, now - timedelta(days=1), status="Accepted"), problem(1)),
+            (attempt(3, 2, now, status="Accepted"), problem(2)),
+        ]
+        payload = build_analytics(rows, now=now)
+        self.assertEqual(payload["total_solved"], 2)
+        self.assertEqual(payload["current_streak"], 1)
+        self.assertEqual(payload["longest_streak"], 1)
+
     def test_failed_and_run_attempts_never_count_as_solved(self):
         now = datetime(2026, 10, 6, 12, tzinfo=timezone.utc)
         rows = [
