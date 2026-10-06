@@ -1,33 +1,25 @@
 import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
-<<<<<<< HEAD
 from backend.database import AUTO_CREATE_SCHEMA, SessionLocal, Base, engine
-=======
-from backend.database import SessionLocal
-from backend.database import Base, engine
-<<<<<<< HEAD
->>>>>>> origin/feature/auth-security
-=======
 from backend.observability import install_observability
->>>>>>> origin/feature/observability
-from backend.routers.auth import router as auth_router
-from backend.routers.profile import router as profile_router
-from backend.routers.problems import router as problems_router, prime_problem_catalog
-from backend.routers.execution import router as execution_router
-from backend.routers.mentor import router as mentor_router
+from backend.problem_seed import seed_problems
 from backend.routers.analytics import router as analytics_router
+from backend.routers.auth import router as auth_router
+from backend.routers.execution import router as execution_router
+from backend.routers.health import router as health_router
+from backend.routers.mentor import router as mentor_router
+from backend.routers.agent import router as agent_router
+from backend.routers.problems import (
+    prime_problem_catalog,
+    router as problems_router,
+)
+from backend.routers.profile import router as profile_router
 from backend.routers.recommendations import router as recommendations_router
 from backend.routers.workspace import router as workspace_router
-<<<<<<< HEAD
-from backend.routers.career import router as career_router
-=======
-from backend.routers.health import router as health_router
-from backend.runtime_config import cors_options
->>>>>>> origin/feature/devops-deployment
-from backend.problem_seed import seed_problems
 from backend.security import (
     APP_ENV,
     get_cors_origins,
@@ -39,19 +31,12 @@ from backend.security import (
 # configuration is invalid.
 validate_security_configuration()
 
-APP_ENV = os.getenv('APP_ENV', 'development').strip().lower()
-PRODUCTION_ENVS = {'prod', 'production'}
-
 
 def initialize_database() -> None:
-<<<<<<< HEAD
     # SQLite development keeps the historical zero-configuration behavior.
     # Production/PostgreSQL is migration-managed and must run Alembic before
     # the application starts.
     if not AUTO_CREATE_SCHEMA:
-=======
-    if APP_ENV in PRODUCTION_ENVS:
->>>>>>> origin/feature/devops-deployment
         return
 
     Base.metadata.create_all(bind=engine)
@@ -61,45 +46,49 @@ def initialize_database() -> None:
         return
 
     inspector = inspect(engine)
+
     if inspector.has_table("user_profiles"):
-        columns = {column["name"] for column in inspector.get_columns("user_profiles")}
-        new_profile_columns = {
+        columns = {
+            column["name"]
+            for column in inspector.get_columns("user_profiles")
+        }
+
+        new_columns = {
             "bio": "VARCHAR(180)",
             "target_companies": "JSON",
             "preparation_timeline": "VARCHAR(100)",
-            "dsa_familiarity": "JSON",
-            "preferred_languages": "JSON",
-            "target_categories": "JSON",
-            "daily_practice_target": "INTEGER NOT NULL DEFAULT 3",
-            "learning_preferences": "JSON",
             "onboarding_completed": "BOOLEAN NOT NULL DEFAULT 0",
         }
-        added_profile_preference_columns = False
 
         with engine.begin() as connection:
-            for column_name, column_type in new_profile_columns.items():
+            for column_name, column_type in new_columns.items():
                 if column_name not in columns:
                     connection.execute(
                         text(
                             f'ALTER TABLE user_profiles ADD COLUMN "{column_name}" {column_type}'
                         )
                     )
-                    if column_name not in {"bio", "target_companies", "preparation_timeline", "onboarding_completed"}:
-                        added_profile_preference_columns = True
 
-            # Existing users were onboarded against the older, smaller profile
-            # contract. Force one fresh onboarding pass after the expanded
-            # preference fields are introduced instead of silently pretending
-            # those fields were collected.
-            if added_profile_preference_columns:
+            if "onboarding_completed" not in columns:
                 connection.execute(
                     text(
-                        "UPDATE user_profiles SET onboarding_completed = 0"
+                        """
+                        UPDATE user_profiles
+                        SET onboarding_completed = 1
+                        WHERE TRIM(COALESCE(full_name, '')) <> ''
+                          AND TRIM(COALESCE(preferred_language, '')) <> ''
+                          AND TRIM(COALESCE(experience_level, '')) <> ''
+                          AND TRIM(COALESCE(target_role, '')) <> ''
+                        """
                     )
                 )
 
     if inspector.has_table("problems"):
-        problem_columns = {column["name"] for column in inspector.get_columns("problems")}
+        problem_columns = {
+            column["name"]
+            for column in inspector.get_columns("problems")
+        }
+
         problem_migrations = {
             "test_cases": "JSON",
             "source": "VARCHAR(40) NOT NULL DEFAULT 'local'",
@@ -111,6 +100,7 @@ def initialize_database() -> None:
             "validation": "VARCHAR(30) NOT NULL DEFAULT 'default'",
             "package_metadata": "JSON",
         }
+
         with engine.begin() as connection:
             for column_name, column_type in problem_migrations.items():
                 if column_name not in problem_columns:
@@ -121,12 +111,15 @@ def initialize_database() -> None:
                     )
 
 
-
 initialize_database()
 
 with SessionLocal() as db:
-    if APP_ENV not in PRODUCTION_ENVS:
+    # Production/PostgreSQL is migration-managed and should not seed data
+    # during application startup. Local SQLite retains the historical seeding
+    # behavior.
+    if AUTO_CREATE_SCHEMA:
         seed_problems(db)
+
     # Warm the problem catalogue once at startup so the first Practice request
     # does not have to scan and normalize the full problem dataset.
     prime_problem_catalog(db)
@@ -141,19 +134,27 @@ app = FastAPI(
     openapi_url="/openapi.json" if APP_ENV != "production" else None,
 )
 
+
 app.add_middleware(
     CORSMiddleware,
-<<<<<<< HEAD
     allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Accept", "Authorization", "Content-Type", "Origin"],
-=======
-    **cors_options(),
->>>>>>> origin/feature/devops-deployment
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
+    allow_headers=[
+        "Accept",
+        "Authorization",
+        "Content-Type",
+        "Origin",
+    ],
 )
 
-<<<<<<< HEAD
 
 @app.middleware("http")
 async def security_headers(request, call_next):
@@ -176,11 +177,6 @@ async def security_headers(request, call_next):
 
     return response
 
-=======
-# Observability is installed centrally so feature routers do not need
-# cross-workstream instrumentation changes.
-install_observability(app)
->>>>>>> origin/feature/observability
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -190,11 +186,13 @@ app.include_router(mentor_router)
 app.include_router(analytics_router)
 app.include_router(recommendations_router)
 app.include_router(workspace_router)
-<<<<<<< HEAD
-app.include_router(career_router)
-=======
+
+
+# DevOps health endpoints.
 app.include_router(health_router)
->>>>>>> origin/feature/devops-deployment
+app.include_router(agent_router)
+# Central observability middleware, metrics, request IDs, and diagnostics.
+install_observability(app)
 
 
 @app.get("/")
@@ -203,7 +201,8 @@ def root() -> dict[str, str]:
         "message": "CodeMentor AI API is running.",
         "health": "/health",
     }
+
     if APP_ENV != "production":
         payload["docs"] = "/docs"
-    return payload
 
+    return payload
