@@ -820,6 +820,26 @@ def _starter_syntax_valid(language: str, source: Any, execution_mode: str = "fun
     return False
 
 
+def _canonicalize_editor_schema(schema: Any) -> list[dict[str, Any]]:
+    normalized = normalize_editor_input_schema(schema)
+    if not normalized:
+        return []
+
+    original_names = [str(item.get("name") or "") for item in normalized]
+    safe_names = _safe_function_parameter_names(original_names)
+    name_map = dict(zip(original_names, safe_names))
+
+    result = []
+    for item, original_name in zip(normalized, original_names):
+        updated = dict(item)
+        updated["name"] = name_map.get(original_name, original_name)
+        length_from = updated.get("length_from")
+        if length_from in name_map:
+            updated["length_from"] = name_map[length_from]
+        result.append(updated)
+    return result
+
+
 def _supported_languages(problem: dict[str, Any]) -> list[str]:
     metadata = problem.get("package_metadata") or {}
     value = problem.get("supported_languages")
@@ -836,6 +856,10 @@ def _valid_editor_schema(value: Any) -> bool:
         return False
     normalized = normalize_editor_input_schema(raw)
     if len(normalized) != len(raw):
+        return False
+    names = [str(item.get("name") or "") for item in normalized]
+    safe_names = _safe_function_parameter_names(names)
+    if names != safe_names:
         return False
     return all(
         not item.get("length_from")
@@ -1498,7 +1522,7 @@ def ensure_starter_code(
         examples=examples,
     )
 
-    schema = normalize_editor_input_schema(editor_schema)
+    schema = _canonicalize_editor_schema(editor_schema)
     if mode == "stdio" and not schema:
         generated = STDIO_STARTERS
         preserve_existing = True
@@ -1570,6 +1594,7 @@ def normalize_problem_record(problem: dict[str, Any]) -> dict[str, Any]:
             explicit_schema=metadata.get("editor_input_schema"),
         )
     )
+    schema = _canonicalize_editor_schema(schema)
     normalized["editor_input_schema"] = schema
     metadata["editor_input_schema"] = schema
     normalized["starter_code"] = ensure_starter_code(
