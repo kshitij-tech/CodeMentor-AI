@@ -11,9 +11,15 @@ from typing import Any
 import yaml
 
 from backend.problem_catalog import (
+    CATALOG_FORMAT_VERSION,
+    SUPPORTED_LANGUAGES,
     canonicalize_topics,
     ensure_starter_code,
+    extract_constraints,
+    invalid_topic_names,
     normalize_difficulty,
+    normalize_problem_record,
+    quality_flags,
 )
 from backend.stdio_adapter import infer_editor_input_schema
 
@@ -98,7 +104,7 @@ def _extract_statement_title(statement: str) -> str | None:
 def _read_time_limit(files: dict[str, bytes], limits: dict[str, Any]) -> float:
     value = limits.get("time_limit")
     if value is None and ".timelimit" in files:
-        raw = files[".timelimit"].decode("utf-8", errors="replace").strip()
+        raw = files[".timelimit"].decode("utf-8").strip()
         value = raw.splitlines()[0].strip() if raw else None
     try:
         return float(value) if value is not None else 2.0
@@ -127,7 +133,7 @@ def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
     )
 
     for path in candidates:
-        raw = files[path].decode("utf-8", errors="replace")
+        raw = files[path].decode("utf-8")
         if path.endswith(".html"):
             raw = _strip_html(raw)
         elif path.endswith(".tex"):
@@ -139,7 +145,7 @@ def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
 
         # CodeMentor AI currently imports English-only problem statements.
         # CJK-heavy statements are skipped rather than translated.
-        if _contains_cjk(raw):
+        if not is_english_problem("", raw):
             continue
 
         return raw, path
@@ -149,7 +155,7 @@ def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
     for candidate in ("problem.html", "problem.md", "problem.txt"):
         if candidate not in files:
             continue
-        raw = files[candidate].decode("utf-8", errors="replace")
+        raw = files[candidate].decode("utf-8")
         raw = _strip_html(raw) if candidate.endswith(".html") else raw.strip()
         if raw and not _contains_cjk(raw):
             return raw, candidate
@@ -244,7 +250,7 @@ def _group_config(files: dict[str, bytes], input_path: str) -> dict[str, Any]:
             if raw is None:
                 continue
             try:
-                config = yaml.safe_load(raw.decode("utf-8", errors="replace")) or {}
+                config = yaml.safe_load(raw.decode("utf-8")) or {}
             except yaml.YAMLError as exc:
                 raise ProblemPackageError(f"Invalid YAML in {config_path}: {exc}") from exc
             if not isinstance(config, dict):
@@ -333,8 +339,8 @@ def _extract_test_cases(
         test_cases.append(
             PackageTestCase(
                 name=path[5:-3],
-                input_data=data.decode("utf-8", errors="replace"),
-                expected_output=files[answer_path].decode("utf-8", errors="replace"),
+                input_data=data.decode("utf-8"),
+                expected_output=files[answer_path].decode("utf-8"),
                 visibility=relative.parts[1],
                 validator_name=validator_name,
                 validator_flags=validator_flags,
@@ -367,7 +373,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
     files = _find_rooted_files(raw_files)
 
     try:
-        metadata = yaml.safe_load(files["problem.yaml"].decode("utf-8", errors="replace")) or {}
+        metadata = yaml.safe_load(files["problem.yaml"].decode("utf-8")) or {}
     except yaml.YAMLError as exc:
         raise ProblemPackageError(f"Invalid problem.yaml: {exc}") from exc
 
@@ -381,6 +387,11 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         keywords = oj_metadata.get("tags") or []
     if isinstance(keywords, str):
         keywords = [keywords]
+    invalid_keywords = invalid_topic_names(keywords)
+    if invalid_keywords:
+        raise ProblemPackageError(
+            "Problem package contains invalid topic names: " + ", ".join(invalid_keywords)
+        )
     topics = canonicalize_topics(keywords)
 
     statement, statement_file = _statement_from_files(files)
@@ -446,6 +457,15 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         for case in test_cases
         if case.visibility == "sample"
     ][:8]
+    if not samples:
+        raise ProblemPackageError("Problem package must contain at least one sample test case.")
+
+    constraints = extract_constraints(
+        statement,
+        {**metadata, "constraints": metadata.get("constraints") or oj_metadata.get("constraints")},
+    )
+    if not constraints:
+        raise ProblemPackageError("Problem package does not provide usable constraints.")
 
     editor_input_schema = infer_editor_input_schema(
         statement,
@@ -512,7 +532,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
 
     if "domjudge-problem.ini" in files:
         package_metadata["domjudge"] = _parse_domjudge_ini(
-            files["domjudge-problem.ini"].decode("utf-8", errors="replace")
+            files["domjudge-problem.ini"].decode("utf-8")
         )
 
     pass_fail = "pass-fail" in type_values
@@ -549,13 +569,13 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
     if not topics:
         raise ProblemPackageError("Problem package does not provide any usable topics.")
 
-    return {
+    candidate = {
         "slug": slug,
         "title": title[:180],
         "difficulty": difficulty_value,
         "topics": topics,
         "description": statement,
-        "constraints": [],
+        "constraints": constraints,
         "examples": samples,
         "test_cases": [
             {
@@ -573,10 +593,7 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
             _starter_code(),
             "stdio",
             test_cases=[
-                {
-                    "input": case.input_data,
-                    "expected_output": case.expected_output,
-                }
+                {"input": case.input_data, "expected_output": case.expected_output}
                 for case in test_cases
             ],
             examples=samples,
@@ -589,9 +606,27 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
         "time_limit_ms": time_limit_ms,
         "memory_limit_mb": memory_limit_mb,
         "validation": validation_text[:30],
-        "package_metadata": package_metadata,
+        "package_metadata": {
+            **package_metadata,
+            "catalog_format_version": CATALOG_FORMAT_VERSION,
+            "supported_languages": list(SUPPORTED_LANGUAGES),
+            **(
+                {"input_format": str(metadata["input_format"])}
+                if metadata.get("input_format") else {}
+            ),
+            **(
+                {"output_format": str(metadata["output_format"])}
+                if metadata.get("output_format") else {}
+            ),
+        },
     }
-
+    normalized = normalize_problem_record(candidate)
+    flags = quality_flags(normalized)
+    if flags:
+        raise ProblemPackageError(
+            "Problem package failed catalogue quality checks: " + ", ".join(flags)
+        )
+    return normalized
 
 def load_problem_package(path: str) -> dict[str, Any]:
     from pathlib import Path
