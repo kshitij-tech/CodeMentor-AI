@@ -25,9 +25,43 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertEqual(normalize_topic("binary_search"), "Binary Search")
         self.assertEqual(normalize_topic("DP"), "Dynamic Programming")
         self.assertEqual(
-            canonicalize_topics(["array", "Arrays & Strings", "binary_search"]),
-            ["Arrays & Strings", "Binary Search"],
+            canonicalize_topics(["array", "Arrays & Strings", "binary_search", "stack", "queue"]),
+            ["Arrays", "Strings", "Binary Search", "Stack", "Queue"],
         )
+
+    def test_invalid_topic_names_are_flagged(self):
+        problem = {
+            "slug": "two-sum",
+            "title": "Two Sum",
+            "description": "Given an array of integers and a target, return the indices of two values that sum to the target.",
+            "difficulty": "Easy",
+            "topics": ["array", "Made Up Topic"],
+            "source": "fixture",
+            "constraints": ["2 <= len(nums) <= 100000"],
+            "examples": [{"input": "nums = [2,7], target = 9", "output": "[0,1]"}],
+            "test_cases": [{"args": [[2,7], 9], "expected": [0,1]}],
+            "starter_code": {
+                "Python": "def solve(nums, target):
+    return []
+",
+                "C++": "int solve(vector<int> nums, int target) { return 0; }
+",
+                "Java": "class Solution { int solve(int[] nums, int target) { return 0; } }
+",
+                "JavaScript": "function solve(nums, target) { return []; }
+",
+                "TypeScript": "function solve(nums: any[], target: number): any[] { return []; }
+",
+                "Go": "package main
+func solve(nums []int, target int) []int { return nil }
+",
+                "Rust": "fn solve(nums: &[i32], target: i32) -> Vec<i32> { vec![] }
+",
+            },
+            "execution_mode": "function",
+            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
+        }
+        self.assertIn("invalid_topic_names", quality_flags(problem))
 
     def test_quality_flags(self):
         problem = {
@@ -72,9 +106,72 @@ class ProblemCatalogTests(unittest.TestCase):
         second = {**base, "slug": "two-sum-b", "external_id": None}
         report = audit_problems([first, second])
         self.assertEqual(report["total"], 2)
-        self.assertEqual(report["clean"], 2)
+        self.assertEqual(report["clean"], 0)
         self.assertEqual(len(report["duplicates"]["same_content"]), 1)
+        self.assertTrue(all("duplicate_content" in item["flags"] for item in report["problem_reports"]))
 
+
+    def test_canonical_topic_catalog_contains_required_topics(self):
+        required = {"Arrays", "Strings", "Hashing", "Stack", "Queue", "Trees", "BST", "Graphs", "DFS", "BFS", "Recursion"}
+        self.assertTrue(required.issubset(set(CANONICAL_TOPICS)))
+
+    def test_quality_detects_broken_starter_and_io_schema(self):
+        problem = {
+            "slug": "valid-catalog-problem",
+            "title": "Valid Catalog Problem",
+            "description": "Given an integer array, return the maximum value after scanning every element exactly once.",
+            "difficulty": "Medium",
+            "topics": ["Arrays"],
+            "source": "fixture",
+            "constraints": ["1 <= n <= 1000"],
+            "examples": [{"input": "nums = [1,4,2]", "output": "4"}],
+            "test_cases": [{"args": [[1,4,2]], "expected": 4}],
+            "execution_mode": "function",
+            "starter_code": {
+                "Python": "def solve(nums)\n    return 0\n",
+                "C++": "int solve(vector<int> nums) { return 0; }",
+                "Java": "class Solution { int solve(int[] nums) { return 0; } }",
+                "JavaScript": "function solve(nums) { return 0; }",
+                "TypeScript": "function solve(nums: any[]): any { return 0; }",
+                "Go": "package main\nfunc solve(nums []int) int { return 0 }",
+                "Rust": "fn solve(nums: &[i32]) -> i32 { 0 }",
+            },
+            "package_metadata": {
+                "supported_languages": list(SUPPORTED_LANGUAGES),
+                "editor_input_schema": [{"name": "input", "type": "not-a-real-type"}],
+            },
+        }
+        flags = quality_flags(problem)
+        self.assertIn("broken_starter_code", flags)
+        self.assertIn("invalid_io_definition", flags)
+
+    def test_health_report_contains_catalogue_distributions(self):
+        problem = {
+            "slug": "health-problem",
+            "title": "Health Problem",
+            "difficulty": "Easy",
+            "topics": ["Arrays"],
+            "description": "Given an integer array, return the maximum value after scanning every element exactly once.",
+            "source": "fixture",
+            "constraints": ["1 <= n <= 1000"],
+            "examples": [{"input": "nums = [1,4,2]", "output": "4"}],
+            "test_cases": [{"args": [[1,4,2]], "expected": 4}],
+            "starter_code": {
+                "Python": "def solve(nums):\n    return 0\n",
+                "C++": "int solve(vector<int> nums) { return 0; }",
+                "Java": "class Solution { int solve(int[] nums) { return 0; } }",
+                "JavaScript": "function solve(nums) { return 0; }",
+                "TypeScript": "function solve(nums: any[]): any { return 0; }",
+                "Go": "package main\nfunc solve(nums []int) int { return 0 }",
+                "Rust": "fn solve(nums: &[i32]) -> i32 { 0 }",
+            },
+            "execution_mode": "function",
+            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
+        }
+        report = audit_problems([problem])
+        self.assertEqual(report["health"]["difficulty_distribution"], {"Easy": 1})
+        self.assertEqual(report["health"]["topic_distribution"], {"Arrays": 1})
+        self.assertEqual(report["health"]["language_distribution"]["Python"], 1)
 
     def test_strip_duplicated_examples(self):
         description = (
