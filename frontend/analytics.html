@@ -1,99 +1,146 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CodeMentor AI — Analytics</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script><script>tailwind.config={theme:{extend:{colors:{primary:"#2a14b4","primary-container":"#4338ca",surface:"#f8f9ff","surface-container-low":"#eff4ff", "surface-container":"#e5eeff","surface-container-high":"#dce9ff","on-surface":"#0b1c30","on-surface-variant":"#464554",error:"#ba1a1a",tertiary:"#00442d"}}}}</script>
-<style>body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mono",monospace}.scrollbar{scrollbar-width:thin}.bar{transition:width .25s ease}.status-Accepted{color:#166534;background:#dcfce7}.status-Wrong{color:#9a3412;background:#ffedd5}.status-Runtime,.status-TLE,.status-Rejected{color:#991b1b;background:#fee2e2}.status-default{color:#475569;background:#e2e8f0}</style>
-  <link rel="stylesheet" href="ui.css">
-  <script src="ui.js" defer></script>
-</head><body class="min-h-screen bg-surface text-on-surface">
-<header class="fixed top-0 inset-x-0 z-50 h-16 bg-white/90 backdrop-blur-xl shadow-sm"><div class="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
-<a href="dashboard.html?v=20260924"" class="flex items-center gap-3"><div class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div><span class="font-bold">CodeMentor <span class="text-primary">AI</span></span></a>
-<nav class="flex items-center gap-1 p-1 bg-surface-container-low rounded-xl"><a href="dashboard.html?v=20260924"" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Dashboard</a><a href="practice.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Practice</a><a href="analytics.html" class="px-3 py-2 rounded-lg bg-primary-container text-white text-sm font-medium">Analytics</a></nav>
-<button id="logout" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container" type="button"><span class="material-symbols-outlined align-middle text-[18px] mr-1">logout</span>Log out</button>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config={theme:{extend:{colors:{surface:"#f8f9ff","surface-container-lowest":"#fff","surface-container-low":"#eff4ff","surface-container":"#e5eeff","surface-container-high":"#dce9ff","on-surface":"#0b1c30","on-surface-variant":"#464554",primary:"#2a14b4","primary-container":"#4338ca","error:"#ba1a1a","tertiary:"#00442d"},fontFamily:{body:["Plus Jakarta Sans"],mono:["JetBrains Mono"]}}}};</script>
+<style>
+body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mono",monospace}
+.card{background:#fff;border-radius:18px;box-shadow:0 1px 2px rgba(11,28,48,.06)}
+.heatmap{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);grid-auto-columns:12px;gap:3px;overflow-x:auto}
+.cell{width:12px;height:12px;border-radius:3px;background:#e5eeff}.h1{background:#cbd5ff}.h2{background:#9aa5ff}.h3{background:#656fea}.h4{background:#4338ca}
+.gridline line{stroke:#e2e8f0;stroke-width:1}.line{fill:none;stroke:#4338ca;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.dot{fill:#4338ca}
+.badge{font-size:10px;font-weight:700;border-radius:999px;padding:4px 8px;display:inline-flex}.ok{color:#166534;background:#dcfce7}.bad{color:#9a3412;background:#ffedd5}.err{color:#991b1b;background:#fee2e2}
+.table-scroll{overflow:auto;scrollbar-width:thin}
+</style>
+<link rel="stylesheet" href="ui.css"><script src="ui.js" defer></script>
+</head>
+<body class="min-h-screen bg-surface text-on-surface">
+<header class="fixed top-0 inset-x-0 h-16 z-50 bg-white/90 backdrop-blur-xl shadow-sm">
+<div class="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
+<a href="dashboard.html" class="flex items-center gap-3"><div class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div><span class="font-bold">CodeMentor <span class="text-primary">AI</span></span></a>
+<nav class="hidden md:flex items-center gap-1 p-1 bg-surface-container-low rounded-xl">
+<a href="dashboard.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Dashboard</a>
+<a href="practice.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Practice</a>
+<a href="analytics.html" class="px-3 py-2 rounded-lg bg-primary-container text-white text-sm font-medium">Analytics</a>
+<a href="mentor.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">AI Mentor</a>
+</nav>
+<div class="flex items-center gap-3"><span id="tz" class="hidden lg:inline mono text-[10px] text-on-surface-variant"></span><button id="logout" type="button" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Log out</button></div>
 </div></header>
-<main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8"><div class="max-w-7xl mx-auto space-y-6">
-<section class="bg-white rounded-2xl shadow-sm p-6 sm:p-8"><div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4"><div><div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Performance telemetry</div><h1 class="text-3xl font-bold mt-1">Coding Analytics</h1><p id="subtitle" class="text-sm text-on-surface-variant mt-2">Your practice history, topic mastery, and recent execution performance.</p></div><div id="loaded-at" class="mono text-[10px] text-on-surface-variant"></div></div></section>
-<section class="grid grid-cols-2 lg:grid-cols-4 gap-4"><div class="bg-white rounded-xl p-5 shadow-sm"><span class="mono text-[10px] uppercase text-on-surface-variant">Problems solved</span><p id="solved" class="text-2xl font-bold mt-2">0</p></div><div class="bg-white rounded-xl p-5 shadow-sm"><span class="mono text-[10px] uppercase text-on-surface-variant">Acceptance rate</span><p id="acceptance" class="text-2xl font-bold mt-2">0%</p></div><div class="bg-white rounded-xl p-5 shadow-sm"><span class="mono text-[10px] uppercase text-on-surface-variant">Attempts</span><p id="attempts" class="text-2xl font-bold mt-2">0</p></div><div class="bg-white rounded-xl p-5 shadow-sm"><span class="mono text-[10px] uppercase text-on-surface-variant">Avg runtime</span><p id="runtime" class="text-2xl font-bold mt-2">—</p></div></section>
-<section class="grid grid-cols-1 xl:grid-cols-2 gap-6"><div class="bg-white rounded-2xl shadow-sm p-6"><div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">7-day activity</h2><p class="text-xs text-on-surface-variant mt-1">Attempts and accepted solutions.</p></div><span class="material-symbols-outlined text-primary">monitoring</span></div><div id="daily" class="mt-6 grid grid-cols-7 gap-3 items-end h-52"></div></div>
-<div class="bg-white rounded-2xl shadow-sm p-6"><div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Topic mastery</h2><p class="text-xs text-on-surface-variant mt-1">Based on distinct solved problems in each topic.</p></div><span class="material-symbols-outlined text-primary">account_tree</span></div><div id="topics" class="mt-5 space-y-4"></div></div></section>
-<section class="bg-white rounded-2xl shadow-sm p-6"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h2 class="text-lg font-bold">Problem performance</h2><p class="text-xs text-on-surface-variant mt-1">One row per problem you have attempted.</p></div><a href="practice.html" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold">Keep practicing</a></div><div class="mt-5 overflow-x-auto scrollbar"><table class="w-full text-sm"><thead><tr class="text-left border-b border-slate-200"><th class="py-3 pr-4">Problem</th><th class="py-3 pr-4">Difficulty</th><th class="py-3 pr-4">Attempts</th><th class="py-3 pr-4">Acceptance</th><th class="py-3 pr-4">Last status</th><th class="py-3">Latest activity</th></tr></thead><tbody id="problems"></tbody></table></div></section>
-<section class="bg-white rounded-2xl shadow-sm p-6"><div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Recent attempt history</h2><p class="text-xs text-on-surface-variant mt-1">Your latest 100 execution events.</p></div><span id="history-count" class="mono text-[10px] px-2 py-1 rounded bg-surface-container-low"></span></div><div class="mt-5 overflow-x-auto scrollbar"><table class="w-full text-sm"><thead><tr class="text-left border-b border-slate-200"><th class="py-3 pr-4">Time</th><th class="py-3 pr-4">Problem</th><th class="py-3 pr-4">Mode</th><th class="py-3 pr-4">Language</th><th class="py-3 pr-4">Status</th><th class="py-3">Runtime</th></tr></thead><tbody id="history"></tbody></table></div></section>
+
+<main class="pt-24 pb-14 px-4 sm:px-6 lg:px-8"><div class="max-w-7xl mx-auto space-y-6">
+<section class="card p-6 sm:p-8"><div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4"><div><div class="mono text-[10px] uppercase tracking-[.18em] text-primary font-semibold">Performance telemetry</div><h1 class="text-3xl sm:text-4xl font-bold mt-1">Coding Analytics</h1><p id="intro" class="text-sm text-on-surface-variant mt-2">One analytics contract powers every metric, chart and table.</p></div><a href="practice.html" class="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold">Practice</a></div></section>
+
+<section class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+<div class="card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Solved</div><div id="solved" class="text-2xl font-bold mt-2">0</div><div class="text-[10px] text-on-surface-variant mt-1">unique accepted problems</div></div>
+<div class="card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Acceptance</div><div id="acceptance" class="text-2xl font-bold mt-2">0%</div><div id="accepted" class="text-[10px] text-on-surface-variant mt-1">0 accepted</div></div>
+<div class="card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Submissions</div><div id="submissions" class="text-2xl font-bold mt-2">0</div><div id="events" class="text-[10px] text-on-surface-variant mt-1">0 total events</div></div>
+<div class="card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Current streak</div><div id="streak" class="text-2xl font-bold mt-2">0 days</div><div class="text-[10px] text-on-surface-variant mt-1">first-time solve days</div></div>
+<div class="card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Longest streak</div><div id="longest" class="text-2xl font-bold mt-2">0 days</div><div class="text-[10px] text-on-surface-variant mt-1">all time</div></div>
+<div class="card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Avg solve time</div><div id="solve-time" class="text-2xl font-bold mt-2">—</div><div class="text-[10px] text-on-surface-variant mt-1">first submit → first accepted</div></div>
+</section>
+
+<section class="card p-6"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h2 class="text-lg font-bold">365-day activity</h2><p class="text-xs text-on-surface-variant mt-1">Heat intensity represents coding events; solved days use first accepted solutions only.</p></div><div class="flex items-center gap-2 text-[10px] text-on-surface-variant"><span>Less</span><span class="cell"></span><span class="cell h1"></span><span class="cell h2"></span><span class="cell h3"></span><span class="cell h4"></span><span>More</span></div></div><div id="heatmap" class="heatmap mt-5"></div><div id="activity-summary" class="text-xs text-on-surface-variant mt-3"></div></section>
+
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<div class="card p-6"><div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Progress over time</h2><p class="text-xs text-on-surface-variant mt-1">Cumulative unique solves.</p></div><span class="mono text-[10px] text-on-surface-variant">180 days</span></div><svg id="progress" viewBox="0 0 800 240" class="w-full h-56 mt-4"></svg></div>
+<div class="card p-6"><div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Runtime trends</h2><p class="text-xs text-on-surface-variant mt-1">Average runtime from recorded judge results.</p></div><span class="mono text-[10px] text-on-surface-variant">30 days</span></div><svg id="runtime" viewBox="0 0 800 240" class="w-full h-56 mt-4"></svg></div>
+</section>
+
+<section class="card p-6"><div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Difficulty-wise performance</h2><p class="text-xs text-on-surface-variant mt-1">A problem is solved once the first accepted submission exists.</p></div></div><div id="difficulty" class="table-scroll mt-5"></div></section>
+
+<section class="card p-6"><div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3"><div><h2 class="text-lg font-bold">Topic-wise performance</h2><p class="text-xs text-on-surface-variant mt-1">Canonical topic names come from the problem catalogue.</p></div><div class="text-[10px] text-on-surface-variant">Strongest and weakest rankings ignore unattempted topics.</div></div><div id="topics" class="table-scroll mt-5"></div></section>
+
+<section class="card p-6"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"><div><h2 class="text-lg font-bold">Weekly / monthly statistics</h2><p class="text-xs text-on-surface-variant mt-1">Period boundaries are evaluated in your selected browser timezone.</p></div><div class="flex p-1 rounded-lg bg-surface-container-low w-fit"><button id="wb" class="px-3 py-1.5 rounded-md bg-primary-container text-white text-xs font-semibold" type="button">Weekly</button><button id="mb" class="px-3 py-1.5 rounded-md text-xs text-on-surface-variant" type="button">Monthly</button></div></div><div id="periods" class="table-scroll mt-5"></div></section>
+
+<section class="card p-6"><div><h2 class="text-lg font-bold">Problem performance</h2><p class="text-xs text-on-surface-variant mt-1">Submission attempts per problem, solve time and runtime are shown only where measurable.</p></div><div id="problems" class="table-scroll mt-5"></div></section>
+
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<div class="card p-6"><h2 class="text-lg font-bold">Recent submission history</h2><p class="text-xs text-on-surface-variant mt-1">Latest 100 submit events.</p><div id="history" class="mt-5 space-y-2"></div></div>
+<div class="card p-6"><h2 class="text-lg font-bold">Recent mistakes</h2><p class="text-xs text-on-surface-variant mt-1">Failed submissions; accepted submissions are intentionally excluded.</p><div id="mistakes" class="mt-5 space-y-2"></div></div>
+</section>
+
 <div id="error" class="hidden fixed bottom-5 right-5 max-w-md px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm shadow-lg"></div>
 </div></main>
+
 <script>
-const API="http://127.0.0.1:8000";const KEY="codementor_access_token";
-function token(){return localStorage.getItem(KEY)}function auth(){if(!token()){location.replace("auth.html");return false}return true}
+const API="http://127.0.0.1:8000",TOKEN_KEY="codementor_access_token";
+let data=null,periodMode="weekly";
+function token(){return localStorage.getItem(TOKEN_KEY)}
 function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
-function showError(message){const e=document.getElementById("error");e.textContent=message;e.classList.remove("hidden")}
-function fmtDate(value){if(!value)return "—";const d=new Date(value.endsWith("Z")?value:value+"Z");return Number.isNaN(d.getTime())?"—":d.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}
-function statusClass(status){if(status==="Accepted")return "status-Accepted";if(status==="Wrong Answer")return "status-Wrong";if(status==="Runtime Error")return "status-Runtime";if(status==="Time Limit Exceeded")return "status-TLE";if(status==="Rejected")return "status-Rejected";return "status-default"}
-function renderDaily(points){const host=document.getElementById("daily");if(!points.length){host.innerHTML='<div class="col-span-7 flex items-center justify-center text-xs text-on-surface-variant">No practice activity yet.</div>';return}const max=Math.max(1,...points.map(p=>Number(p.attempts)||0));host.innerHTML=points.map(p=>{const h=p.attempts?Math.max(10,Math.round(p.attempts/max*180)):4;return '<div class="h-full flex flex-col items-center justify-end gap-2"><div class="w-full max-w-12 rounded-t-lg bg-primary" style="height:'+h+'px" title="'+esc(p.attempts)+' attempts"></div><span class="mono text-[9px] text-on-surface-variant">'+esc(p.date.slice(5))+'</span></div>'}).join("")}
-function renderTopics(items){const host=document.getElementById("topics");if(!items.length){host.innerHTML='<div class="text-xs text-on-surface-variant">No topic telemetry yet.</div>';return}host.innerHTML=items.map(item=>'<div><div class="flex items-center justify-between text-sm mb-1"><span class="font-medium">'+esc(item.topic)+'</span><span class="mono text-[10px] text-on-surface-variant">'+item.mastery+'% • '+item.solved_problems+' solved</span></div><div class="h-2 rounded-full bg-slate-200 overflow-hidden"><div class="bar h-full bg-primary rounded-full" style="width:'+Math.max(0,Math.min(100,Number(item.mastery)||0))+'%"></div></div><div class="text-[10px] text-on-surface-variant mt-1">'+item.submissions+' submissions • '+item.acceptance_rate+'% acceptance</div></div>').join("")}
-function renderProblems(items){const host=document.getElementById("problems");if(!items.length){host.innerHTML='<tr><td colspan="6" class="py-8 text-center text-xs text-on-surface-variant">No attempted problems yet.</td></tr>';return}host.innerHTML=items.map(p=>'<tr class="border-b border-slate-100"><td class="py-3 pr-4"><a href="problem.html?problem='+encodeURIComponent(p.slug)+'" class="font-semibold text-primary hover:underline">'+esc(p.title)+'</a><div class="mono text-[9px] text-on-surface-variant">'+esc((p.topics||[]).join(" • "))+'</div></td><td class="py-3 pr-4">'+esc(p.difficulty)+'</td><td class="py-3 pr-4">'+p.attempts+'</td><td class="py-3 pr-4">'+p.acceptance_rate+'%</td><td class="py-3 pr-4"><span class="px-2 py-1 rounded-full text-[10px] font-semibold '+statusClass(p.last_status)+'">'+esc(p.last_status)+'</span></td><td class="py-3 text-xs text-on-surface-variant">'+esc(fmtDate(p.latest_attempt_at))+'</td></tr>').join("")}
-function renderHistory(items){const host=document.getElementById("history");document.getElementById("history-count").textContent=items.length+" events";if(!items.length){host.innerHTML='<tr><td colspan="6" class="py-8 text-center text-xs text-on-surface-variant">No attempts yet.</td></tr>';return}host.innerHTML=items.map(a=>'<tr class="border-b border-slate-100"><td class="py-3 pr-4 text-xs text-on-surface-variant whitespace-nowrap">'+esc(fmtDate(a.created_at))+'</td><td class="py-3 pr-4"><a href="problem.html?problem='+encodeURIComponent(a.problem_slug)+'" class="font-medium text-primary hover:underline">'+esc(a.problem_title)+'</a></td><td class="py-3 pr-4 capitalize">'+esc(a.mode)+'</td><td class="py-3 pr-4">'+esc(a.language)+'</td><td class="py-3 pr-4"><span class="px-2 py-1 rounded-full text-[10px] font-semibold '+statusClass(a.status)+'">'+esc(a.status)+'</span></td><td class="py-3 text-xs text-on-surface-variant">'+(a.runtime_ms==null?"—":esc(a.runtime_ms+" ms"))+'</td></tr>').join("")}
-async function load(){
-  if(!auth())return;
-
-  const headers={headers:{Authorization:"Bearer "+token()}};
-  const browserTimezone=Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-  const timezoneQuery="?timezone_name="+encodeURIComponent(browserTimezone);
-
-  // Summary is the minimum viable analytics payload. Render it separately
-  // so detailed history cannot prevent the main metrics from appearing.
-  try{
-    const summaryRes=await fetch(API+"/analytics/summary"+timezoneQuery,headers);
-    if(summaryRes.status===401){
-      localStorage.removeItem(KEY);
-      location.replace("auth.html");
-      return;
-    }
-    const summary=await summaryRes.json().catch(()=>({}));
-    if(!summaryRes.ok)throw new Error(summary.detail||"Analytics summary request failed.");
-
-    document.getElementById("solved").textContent=summary.total_solved||0;
-    document.getElementById("acceptance").textContent=(summary.acceptance_rate||0)+"%";
-    document.getElementById("attempts").textContent=summary.total_attempts||0;
-    document.getElementById("runtime").textContent=summary.average_runtime_ms==null?"—":summary.average_runtime_ms+" ms";
-    document.getElementById("loaded-at").textContent="Updated "+new Date().toLocaleTimeString();
-
-    renderDaily(summary.daily||[]);
-    renderTopics(summary.topics||[]);
-  }catch(e){
-    showError(e.message||"Unable to load analytics summary.");
-  }
-
-  // Detailed tables are useful, but should not block the summary/graphs.
-  try{
-    const detailRes=await fetch(API+"/analytics/detail"+timezoneQuery,headers);
-    if(detailRes.status===401){
-      localStorage.removeItem(KEY);
-      location.replace("auth.html");
-      return;
-    }
-    const detail=await detailRes.json().catch(()=>({}));
-    if(!detailRes.ok)throw new Error(detail.detail||"Analytics detail request failed.");
-
-    document.getElementById("solved").textContent=detail.total_solved||0;
-    document.getElementById("acceptance").textContent=(detail.acceptance_rate||0)+"%";
-    document.getElementById("attempts").textContent=detail.total_attempts||0;
-    document.getElementById("runtime").textContent=detail.average_runtime_ms==null?"—":detail.average_runtime_ms+" ms";
-    document.getElementById("loaded-at").textContent="Updated "+new Date().toLocaleTimeString();
-
-    renderDaily(detail.daily||[]);
-    renderTopics(detail.topics||[]);
-    renderProblems(detail.problems||[]);
-    renderHistory(detail.history||[]);
-  }catch(e){
-    console.warn("Analytics detail load failed:",e);
-    // Keep summary metrics visible even when tables/history are unavailable.
-    const problems=document.getElementById("problems");
-    const history=document.getElementById("history");
-    if(problems)problems.innerHTML='<tr><td colspan="6" class="py-8 text-center text-xs text-on-surface-variant">Detailed problem history is unavailable right now.</td></tr>';
-    if(history)history.innerHTML='<tr><td colspan="6" class="py-8 text-center text-xs text-on-surface-variant">Detailed attempt history is unavailable right now.</td></tr>';
-    if(!document.getElementById("error").textContent)showError(e.message||"Detailed analytics are unavailable.");
-  }
+function duration(s){if(s==null||!Number.isFinite(Number(s)))return"—";s=Math.round(Number(s));if(s<60)return s+"s";const m=Math.floor(s/60);if(m<60)return m+"m "+s%60+"s";const h=Math.floor(m/60);return h+"h "+m%60+"m"}
+function runtime(ms){if(ms==null)return"—";ms=Number(ms);return ms>=1000?(ms/1000).toFixed(2)+" s":Math.round(ms)+" ms"}
+function status(status){if(status==="Accepted")return"ok";if(["Runtime Error","Time Limit Exceeded","Compile Error","Judge Error"].includes(status))return"err";return"bad"}
+function lineChart(id,items,key){
+  const svg=document.getElementById(id);
+  if(!items.some(i=>i[key]!=null)){svg.innerHTML='<text x="400" y="125" text-anchor="middle" fill="#64748b" font-size="13">No telemetry for this period.</text>';return}
+  const vals=items.map(i=>i[key]==null?0:Number(i[key])||0),W=800,H=240,L=40,R=18,T=16,B=28,max=Math.max(1,...vals),min=Math.min(0,...vals),span=Math.max(1,max-min);
+  const pts=vals.map((v,i)=>[L+i*(W-L-R)/Math.max(1,vals.length-1),T+(H-T-B)-(v-min)/span*(H-T-B)]);
+  const points=pts.map(p=>p.join(",")).join(" ");
+  svg.innerHTML='<g class="gridline"><line x1="40" x2="782" y1="30" y2="30"/><line x1="40" x2="782" y1="120" y2="120"/><line x1="40" x2="782" y1="210" y2="210"/></g><polyline class="line" points="'+points+'"/><circle class="dot" cx="'+pts.at(-1)[0]+'" cy="'+pts.at(-1)[1]+'" r="4"/><text x="40" y="232" fill="#64748b" font-size="11">'+items[0].date.slice(5)+'</text><text x="782" y="232" text-anchor="end" fill="#64748b" font-size="11">'+items.at(-1).date.slice(5)+'</text>';
 }
-document.getElementById("logout").addEventListener("click",()=>{localStorage.removeItem(KEY);location.replace("auth.html")});load();
+function renderHeatmap(){
+  const host=document.getElementById("heatmap");host.innerHTML="";
+  const items=data.activity||[];if(!items.length){host.textContent="No activity yet.";return}
+  const first=new Date(items[0].date+"T12:00:00"),offset=(first.getDay()+6)%7,max=Math.max(1,...items.map(x=>Number(x.attempts)||0));
+  for(let i=0;i<offset;i++){const b=document.createElement("div");b.className="cell opacity-0";host.appendChild(b)}
+  let active=0,totalEvents=0,solved=0;
+  items.forEach(x=>{const n=Number(x.attempts)||0,l=n? n/max>=.75?4:n/max>=.5?3:n/max>=.25?2:1:0,c=document.createElement("div");c.className="cell "+(l?"h"+l:"");c.title=x.date+" • "+n+" events • "+x.solved+" solved";host.appendChild(c);if(n)active++;totalEvents+=n;solved+=Number(x.solved)||0});
+  document.getElementById("activity-summary").textContent=active+" active days • "+totalEvents+" coding events • "+solved+" first-time solves.";
+}
+function renderMetrics(){
+  document.getElementById("solved").textContent=data.total_solved||0;
+  document.getElementById("acceptance").textContent=(data.acceptance_rate||0)+"%";
+  document.getElementById("accepted").textContent=(data.accepted_submissions||0)+" accepted";
+  document.getElementById("submissions").textContent=data.total_submissions||0;
+  document.getElementById("events").textContent=(data.total_attempts||0)+" total events";
+  document.getElementById("streak").textContent=(data.current_streak||0)+" days";
+  document.getElementById("longest").textContent=(data.longest_streak||0)+" days";
+  document.getElementById("solve-time").textContent=duration(data.average_time_to_solve_seconds);
+  document.getElementById("tz").textContent="Timezone: "+data.timezone;
+  document.getElementById("intro").textContent=data.total_attempts?"Generated "+new Date(data.generated_at).toLocaleString()+" • "+data.active_days+" active days":"No coding telemetry yet. Start practicing to populate the dashboard.";
+}
+function renderDifficulty(){
+  const rows=data.difficulty.map(x=>'<tr class="border-b border-slate-100"><td class="py-3 pr-5 font-semibold">'+esc(x.difficulty)+'</td><td class="py-3 pr-5">'+x.attempted_problems+'</td><td class="py-3 pr-5">'+x.solved_problems+'</td><td class="py-3 pr-5">'+x.submissions+'</td><td class="py-3 pr-5">'+x.acceptance_rate+'%</td><td class="py-3 pr-5">'+(x.average_attempts_per_problem??"—")+'</td><td class="py-3">'+duration(x.average_time_to_solve_seconds)+'</td></tr>').join("");
+  document.getElementById("difficulty").innerHTML='<table class="w-full text-xs"><thead><tr class="text-left text-on-surface-variant border-b border-slate-200"><th class="py-2 pr-5">Difficulty</th><th class="py-2 pr-5">Attempted</th><th class="py-2 pr-5">Solved</th><th class="py-2 pr-5">Submissions</th><th class="py-2 pr-5">Acceptance</th><th class="py-2 pr-5">Avg attempts/problem</th><th class="py-2">Avg solve time</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function renderTopics(){
+  const rows=data.topics.filter(x=>x.attempted_problems>0).map(x=>'<tr class="border-b border-slate-100"><td class="py-2.5 pr-5 font-semibold">'+esc(x.topic)+'</td><td class="py-2.5 pr-5">'+x.attempted_problems+'</td><td class="py-2.5 pr-5">'+x.solved_problems+'</td><td class="py-2.5 pr-5"><div class="flex items-center gap-2 min-w-[180px]"><div class="h-2 flex-1 bg-surface-container rounded-full overflow-hidden"><div class="h-full bg-primary" style="width:'+x.mastery+'%"></div></div><span class="mono text-[10px]">'+x.mastery+'%</span></div></td><td class="py-2.5 pr-5">'+x.acceptance_rate+'%</td><td class="py-2.5 pr-5">'+(x.average_attempts_per_problem??"—")+'</td><td class="py-2.5">'+duration(x.average_time_to_solve_seconds)+'</td></tr>').join("");
+  document.getElementById("topics").innerHTML=rows?'<table class="w-full text-xs"><thead><tr class="text-left text-on-surface-variant border-b border-slate-200"><th class="py-2 pr-5">Topic</th><th class="py-2 pr-5">Attempted</th><th class="py-2 pr-5">Solved</th><th class="py-2 pr-5">Mastery</th><th class="py-2 pr-5">Acceptance</th><th class="py-2 pr-5">Avg attempts</th><th class="py-2">Avg solve time</th></tr></thead><tbody>'+rows+'</tbody></table>':'<div class="py-8 text-center text-xs text-on-surface-variant">No topic telemetry yet.</div>';
+}
+function renderPeriods(){
+  const items=data[periodMode]||[],rows=items.map(x=>'<tr class="border-b border-slate-100"><td class="py-2.5 pr-5 mono text-[10px]">'+x.start_date+' → '+x.end_date+'</td><td class="py-2.5 pr-5">'+x.solved+'</td><td class="py-2.5 pr-5">'+x.submissions+'</td><td class="py-2.5 pr-5">'+x.acceptance_rate+'%</td><td class="py-2.5 pr-5">'+x.active_days+'</td><td class="py-2.5">'+runtime(x.average_runtime_ms)+'</td></tr>').join("");
+  document.getElementById("periods").innerHTML='<table class="w-full text-xs"><thead><tr class="text-left text-on-surface-variant border-b border-slate-200"><th class="py-2 pr-5">Period</th><th class="py-2 pr-5">Solved</th><th class="py-2 pr-5">Submissions</th><th class="py-2 pr-5">Acceptance</th><th class="py-2 pr-5">Active days</th><th class="py-2">Runtime</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function renderProblems(){
+  const items=data.problems||[];
+  if(!items.length){document.getElementById("problems").innerHTML='<div class="py-8 text-center text-xs text-on-surface-variant">No attempted problems yet.</div>';return}
+  const rows=items.map(p=>'<tr class="border-b border-slate-100"><td class="py-2.5 pr-5"><a href="problem.html?problem='+encodeURIComponent(p.slug)+'" class="font-semibold text-primary hover:underline">'+esc(p.title)+'</a><div class="mono text-[9px] text-on-surface-variant">'+esc((p.topics||[]).join(" • "))+'</div></td><td class="py-2.5 pr-5">'+esc(p.difficulty)+'</td><td class="py-2.5 pr-5">'+p.attempts+'</td><td class="py-2.5 pr-5">'+(p.solved?"Yes":"No")+'</td><td class="py-2.5 pr-5">'+p.acceptance_rate+'%</td><td class="py-2.5 pr-5">'+duration(p.time_to_solve_seconds)+'</td><td class="py-2.5">'+runtime(p.average_runtime_ms)+'</td></tr>').join("");
+  document.getElementById("problems").innerHTML='<table class="w-full text-xs"><thead><tr class="text-left text-on-surface-variant border-b border-slate-200"><th class="py-2 pr-5">Problem</th><th class="py-2 pr-5">Difficulty</th><th class="py-2 pr-5">Submissions</th><th class="py-2 pr-5">Solved</th><th class="py-2 pr-5">Acceptance</th><th class="py-2 pr-5">Solve time</th><th class="py-2">Runtime</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function renderHistory(){
+  const host=document.getElementById("history"),items=data.recent_submissions||[];
+  host.innerHTML=items.length?items.map(x=>'<div class="flex items-center justify-between gap-3 p-3 rounded-lg bg-surface-container-low"><div class="min-w-0"><a href="problem.html?problem='+encodeURIComponent(x.problem_slug)+'" class="font-semibold text-xs text-primary hover:underline">'+esc(x.problem_title)+'</a><div class="text-[10px] text-on-surface-variant mt-1">'+esc(x.difficulty)+' • '+esc(x.language)+' • '+esc(new Date(x.created_at_local).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}))+'</div></div><span class="badge '+status(x.status)+'">'+esc(x.status)+'</span></div>').join(""):'<div class="py-8 text-center text-xs text-on-surface-variant">No submissions yet.</div>';
+}
+function renderMistakes(){
+  const host=document.getElementById("mistakes"),items=data.recent_mistakes||[];
+  host.innerHTML=items.length?items.map(x=>'<div class="p-3 rounded-lg bg-surface-container-low"><div class="flex items-center justify-between gap-3"><div class="min-w-0"><div class="font-semibold text-xs truncate">'+esc(x.problem_title)+'</div><div class="text-[10px] text-on-surface-variant mt-1">'+esc(x.status)+' • '+esc(x.language)+' • '+esc(new Date(x.created_at_local).toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}))+'</div></div><span class="badge '+status(x.status)+'">'+esc(x.status)+'</span></div><div class="text-[10px] text-on-surface-variant mt-2">'+esc(x.summary||"No judge summary")+'</div></div>').join(""):'<div class="py-8 text-center text-xs text-on-surface-variant">No failed submissions yet.</div>';
+}
+async function load(){
+  if(!token()){location.replace("auth.html");return}
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
+  try{
+    const res=await fetch(API+"/analytics/detail?timezone_name="+encodeURIComponent(tz),{headers:{Authorization:"Bearer "+token()}});
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace("auth.html");return}
+    data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.detail||"Analytics request failed.");
+    renderMetrics();renderHeatmap();lineChart("progress",data.progress_over_time||[],"cumulative_solved");lineChart("runtime",data.runtime_trend||[],"average_runtime_ms");renderDifficulty();renderTopics();renderPeriods();renderProblems();renderHistory();renderMistakes();
+  }catch(e){const el=document.getElementById("error");el.textContent=e.message||"Unable to load analytics.";el.classList.remove("hidden")}
+}
+document.getElementById("wb").addEventListener("click",()=>{periodMode="weekly";document.getElementById("wb").className="px-3 py-1.5 rounded-md bg-primary-container text-white text-xs font-semibold";document.getElementById("mb").className="px-3 py-1.5 rounded-md text-xs text-on-surface-variant";renderPeriods()});
+document.getElementById("mb").addEventListener("click",()=>{periodMode="monthly";document.getElementById("mb").className="px-3 py-1.5 rounded-md bg-primary-container text-white text-xs font-semibold";document.getElementById("wb").className="px-3 py-1.5 rounded-md text-xs text-on-surface-variant";renderPeriods()});
+document.getElementById("logout").addEventListener("click",()=>{localStorage.removeItem(TOKEN_KEY);location.replace("auth.html")});
+load();
 </script></body></html>
