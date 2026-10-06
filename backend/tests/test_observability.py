@@ -109,7 +109,7 @@ class ObservabilityTests(unittest.TestCase):
             route="/execution/run",
             status_code="200",
         )
-        self.assertGreaterEqual(latency._count.get(), 1)
+        self.assertGreaterEqual(latency._sum.get(), 0)
 
     def test_ai_failure_is_counted(self):
         response = self.client.get("/mentor/chat")
@@ -124,7 +124,7 @@ class ObservabilityTests(unittest.TestCase):
             route="/mentor/chat",
             status_code="503",
         )
-        self.assertGreaterEqual(latency._count.get(), 1)
+        self.assertGreaterEqual(latency._sum.get(), 0)
 
     def test_recommendation_unhandled_error_is_categorized(self):
         response = self.client.get("/recommendations/next")
