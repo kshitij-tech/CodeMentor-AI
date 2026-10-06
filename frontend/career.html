@@ -235,7 +235,7 @@ async function loadQuestions() {
   }).join('') || '<div class="text-sm text-slate-500">No questions match the selected filters.</div>';
 }
 
-function renderMock(session) {
+function renderMock(session, latestFeedback) {
   activeMock = session;
   const panel = document.getElementById('mockPanel');
   if (session.current_question) {
@@ -257,9 +257,11 @@ async function submitMockAnswer() {
       body: JSON.stringify({ question_id: activeMock.current_question.id, answer: answer })
     });
     const feedback = data.response.feedback;
-    document.getElementById('lastFeedback').innerHTML = '<div class="rounded-xl border border-slate-200 p-4"><div class="flex justify-between gap-2"><div class="font-semibold">Feedback</div><span class="font-bold text-primary">' + feedback.score + '/100</span></div><p class="text-sm mt-2 text-slate-700">' + escapeHtml(feedback.feedback) + '</p><div class="grid sm:grid-cols-2 gap-3 mt-3"><div><div class="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">Strengths</div><div class="text-xs mt-1">' + (feedback.strengths || []).map(escapeHtml).join('<br>') + '</div></div><div><div class="text-[10px] uppercase tracking-wider text-rose-600 font-semibold">Improve</div><div class="text-xs mt-1">' + (feedback.improvements || []).map(escapeHtml).join('<br>') + '</div></div></div><div class="text-[10px] text-slate-400 mt-3">Feedback source: ' + escapeHtml(feedback.source || 'ai') + '</div></div>';
+    const feedbackHtml = '<div class="rounded-xl border border-slate-200 p-4"><div class="flex justify-between gap-2"><div class="font-semibold">Feedback</div><span class="font-bold text-primary">' + feedback.score + '/100</span></div><p class="text-sm mt-2 text-slate-700">' + escapeHtml(feedback.feedback) + '</p><div class="grid sm:grid-cols-2 gap-3 mt-3"><div><div class="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">Strengths</div><div class="text-xs mt-1">' + (feedback.strengths || []).map(escapeHtml).join('<br>') + '</div></div><div><div class="text-[10px] uppercase tracking-wider text-rose-600 font-semibold">Improve</div><div class="text-xs mt-1">' + (feedback.improvements || []).map(escapeHtml).join('<br>') + '</div></div></div><div class="text-[10px] text-slate-400 mt-3">Feedback source: ' + escapeHtml(feedback.source || 'ai') + '</div></div>';
     const next = await api('/career/mock-interviews/' + activeMock.id);
-    renderMock(next);
+    renderMock(next, feedbackHtml);
+    const feedbackNode = document.getElementById('lastFeedback');
+    if (feedbackNode) feedbackNode.innerHTML = feedbackHtml;
     if (data.status === 'ready_to_complete') {
       document.getElementById('mockPanel').insertAdjacentHTML('beforeend', '<div class="mt-3 flex justify-end"><button id="completeMock" class="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Complete interview</button></div>');
       document.getElementById('completeMock').addEventListener('click', async function(){
