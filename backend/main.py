@@ -5,6 +5,7 @@ from sqlalchemy import inspect, text
 from backend.database import SessionLocal
 
 from backend.database import Base, engine
+from backend.observability import install_observability
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
 from backend.routers.problems import router as problems_router, prime_problem_catalog
@@ -106,6 +107,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Observability is installed centrally so feature routers do not need
+# cross-workstream instrumentation changes.
+install_observability(app)
 
 app.include_router(auth_router)
 app.include_router(profile_router)
