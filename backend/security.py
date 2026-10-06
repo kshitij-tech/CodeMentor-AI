@@ -5,6 +5,7 @@ import time
 from collections import deque
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 import jwt
@@ -22,6 +23,7 @@ ALGORITHM = "HS256"
 DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES = 15
 DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS = 7
 MIN_SECRET_BYTES = 32
+ALLOWED_APP_ENVS = {"development", "testing", "production"}
 
 _INSECURE_SECRET_MARKERS = {
     "",
@@ -33,8 +35,10 @@ _INSECURE_SECRET_MARKERS = {
 
 def _configured_secret() -> str:
     configured = os.getenv("JWT_SECRET_KEY", "").strip()
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+
     if configured in _INSECURE_SECRET_MARKERS:
-        if os.getenv("APP_ENV", "development").strip().lower() == "production":
+        if app_env == "production":
             raise RuntimeError(
                 "JWT_SECRET_KEY must be set to a unique random value of at least 32 bytes in production."
             )
@@ -276,13 +280,28 @@ def get_cors_origins() -> list[str]:
         raise RuntimeError("CORS_ORIGINS must contain at least one origin.")
     if any(origin in {"*", "null"} or "*" in origin for origin in origins):
         raise RuntimeError("CORS_ORIGINS must not contain wildcard or null origins.")
+
+    for origin in origins:
+        parsed = urlsplit(origin)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise RuntimeError(
+                "Each CORS origin must be an absolute http(s) origin."
+            )
+        if parsed.path or parsed.query or parsed.fragment:
+            raise RuntimeError(
+                "CORS origins must not contain paths, query strings, or fragments."
+            )
     return origins
 
 
 def validate_security_configuration() -> None:
     app_env = os.getenv("APP_ENV", "development").strip().lower() or "development"
-    configured_secret = os.getenv("JWT_SECRET_KEY", "").strip()
+    if app_env not in ALLOWED_APP_ENVS:
+        raise RuntimeError(
+            f"APP_ENV must be one of: {', '.join(sorted(ALLOWED_APP_ENVS))}."
+        )
 
+    configured_secret = os.getenv("JWT_SECRET_KEY", "").strip()
     if app_env == "production":
         if not configured_secret or configured_secret.lower() in _INSECURE_SECRET_MARKERS:
             raise RuntimeError(
@@ -295,17 +314,25 @@ def validate_security_configuration() -> None:
 
     get_cors_origins()
 
-    _parse_positive_int(
+    access_minutes = _parse_positive_int(
         os.getenv(
             "ACCESS_TOKEN_EXPIRE_MINUTES",
             str(DEFAULT_ACCESS_TOKEN_EXPIRE_MINUTES),
         ),
         "ACCESS_TOKEN_EXPIRE_MINUTES",
     )
-    _parse_positive_int(
+    refresh_days = _parse_positive_int(
         os.getenv(
             "REFRESH_TOKEN_EXPIRE_DAYS",
             str(DEFAULT_REFRESH_TOKEN_EXPIRE_DAYS),
         ),
         "REFRESH_TOKEN_EXPIRE_DAYS",
     )
+    if access_minutes < 5 or access_minutes > 120:
+        raise RuntimeError(
+            "ACCESS_TOKEN_EXPIRE_MINUTES must be between 5 and 120."
+        )
+    if refresh_days < 1 or refresh_days > 30:
+        raise RuntimeError(
+            "REFRESH_TOKEN_EXPIRE_DAYS must be between 1 and 30."
+        )
