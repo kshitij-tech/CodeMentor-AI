@@ -17,6 +17,7 @@ from backend.problem_catalog import (
     ensure_starter_code,
     extract_constraints,
     invalid_topic_names,
+    is_english_problem,
     normalize_difficulty,
     normalize_problem_record,
     quality_flags,
