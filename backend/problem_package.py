@@ -624,8 +624,18 @@ def package_to_problem(raw_files: dict[str, bytes], package_name: str) -> dict[s
     normalized = normalize_problem_record(candidate)
     flags = quality_flags(normalized)
     if flags:
+        case_debug = [
+            {
+                "keys": sorted(case.keys()) if isinstance(case, dict) else type(case).__name__,
+                "input_type": type(case.get("input")).__name__ if isinstance(case, dict) else None,
+                "expected_type": type(case.get("expected_output", case.get("output"))).__name__ if isinstance(case, dict) else None,
+            }
+            for case in normalized.get("test_cases", [])
+        ]
         raise ProblemPackageError(
-            "Problem package failed catalogue quality checks: " + ", ".join(flags)
+            "Problem package failed catalogue quality checks: "
+            + ", ".join(flags)
+            + f"; mode={normalized.get('execution_mode')!r}; cases={case_debug[:3]!r}"
         )
     return normalized
 
