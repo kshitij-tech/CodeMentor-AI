@@ -2,7 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
+<<<<<<< HEAD
 from backend.database import AUTO_CREATE_SCHEMA, SessionLocal, Base, engine
+=======
+from backend.database import SessionLocal
+from backend.database import Base, engine
+>>>>>>> origin/feature/auth-security
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
 from backend.routers.problems import router as problems_router, prime_problem_catalog
@@ -12,6 +17,16 @@ from backend.routers.analytics import router as analytics_router
 from backend.routers.recommendations import router as recommendations_router
 from backend.routers.workspace import router as workspace_router
 from backend.problem_seed import seed_problems
+from backend.security import (
+    APP_ENV,
+    get_cors_origins,
+    validate_security_configuration,
+)
+
+
+# Fail closed before touching the application database if deployment security
+# configuration is invalid.
+validate_security_configuration()
 
 
 def initialize_database() -> None:
@@ -83,6 +98,7 @@ def initialize_database() -> None:
                     )
 
 
+
 initialize_database()
 
 with SessionLocal() as db:
@@ -96,16 +112,41 @@ app = FastAPI(
     title="CodeMentor AI API",
     version="0.2.0",
     description="Backend API for the CodeMentor AI platform.",
+    docs_url="/docs" if APP_ENV != "production" else None,
+    redoc_url="/redoc" if APP_ENV != "production" else None,
+    openapi_url="/openapi.json" if APP_ENV != "production" else None,
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5500", "http://127.0.0.1:5500", "null"],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Accept", "Authorization", "Content-Type", "Origin"],
 )
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=()"
+    )
+
+    if request.url.path.startswith("/auth/"):
+        response.headers["Cache-Control"] = "no-store"
+
+    if APP_ENV == "production":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+
+    return response
+
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -119,11 +160,13 @@ app.include_router(workspace_router)
 
 @app.get("/")
 def root() -> dict[str, str]:
-    return {
+    payload = {
         "message": "CodeMentor AI API is running.",
-        "docs": "/docs",
         "health": "/health",
     }
+    if APP_ENV != "production":
+        payload["docs"] = "/docs"
+    return payload
 
 
 @app.get("/health")
