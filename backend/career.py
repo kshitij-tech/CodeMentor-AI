@@ -32,7 +32,7 @@ ROLE_PROFILES: dict[str, RoleProfile] = {
         (
             {"id": "foundations", "title": "Build foundations", "weeks": 2, "items": ["OOP", "DBMS", "Operating Systems", "Computer Networks"]},
             {"id": "dsa", "title": "Sharpen DSA", "weeks": 4, "items": ["Arrays & Strings", "Hashing & Hash Maps", "Trees & BST", "Graphs (BFS/DFS)", "Dynamic Programming"]},
-            {"id": "interviews", "title": "Interview simulation", "weeks": 2, "items": ["Technical questions", "Behavioral questions", "Mock interviews"]},
+            {"id": "interviews", "title": "Interview simulation", "weeks": 2, "items": ["System Design", "Software Engineering", "Testing", "Git"]},
         ),
     ),
     "backend_developer": RoleProfile(
@@ -46,7 +46,7 @@ ROLE_PROFILES: dict[str, RoleProfile] = {
         (
             {"id": "backend-foundations", "title": "Backend foundations", "weeks": 2, "items": ["DBMS", "Computer Networks", "OOP", "REST APIs"]},
             {"id": "systems", "title": "Production systems", "weeks": 3, "items": ["Caching", "Authentication", "Distributed Systems", "Docker"]},
-            {"id": "backend-interviews", "title": "Backend interviews", "weeks": 3, "items": ["SQL questions", "API design", "System design", "Mock interviews"]},
+            {"id": "backend-interviews", "title": "Backend interviews", "weeks": 3, "items": ["SQL", "REST APIs", "System Design", "Docker"]},
         ),
     ),
     "frontend_developer": RoleProfile(
@@ -60,7 +60,7 @@ ROLE_PROFILES: dict[str, RoleProfile] = {
         (
             {"id": "web-foundations", "title": "Web foundations", "weeks": 2, "items": ["JavaScript/TypeScript", "Computer Networks", "Browser APIs", "Accessibility"]},
             {"id": "frontend-systems", "title": "Frontend systems", "weeks": 3, "items": ["React", "State Management", "Performance", "Testing"]},
-            {"id": "frontend-interviews", "title": "Frontend interviews", "weeks": 2, "items": ["JavaScript questions", "React questions", "Mock interviews"]},
+            {"id": "frontend-interviews", "title": "Frontend interviews", "weeks": 2, "items": ["JavaScript/TypeScript", "React", "Performance", "Testing"]},
         ),
     ),
     "full_stack_developer": RoleProfile(
@@ -68,13 +68,13 @@ ROLE_PROFILES: dict[str, RoleProfile] = {
         "End-to-end preparation spanning frontend, backend, data and deployment.",
         ("Arrays & Strings", "Hashing & Hash Maps", "Sorting", "Trees & BST", "Graphs (BFS/DFS)"),
         ("OOP", "DBMS", "Operating Systems", "Computer Networks", "System Design", "Web Fundamentals"),
-        ("JavaScript/TypeScript", "React", "Python/FastAPI/Django", "SQL", "REST APIs", "Docker", "Testing", "Git"),
+        ("JavaScript/TypeScript", "React", "Python/FastAPI/Django", "SQL", "REST APIs", "Docker", "Testing", "Git", "Debugging"),
         ("Full-stack architecture", "APIs", "Databases", "Frontend", "Behavioral"),
         ("Product/SaaS", "Startups", "Big Tech"),
         (
             {"id": "fullstack-foundations", "title": "Full-stack foundations", "weeks": 3, "items": ["JavaScript/TypeScript", "Python/FastAPI/Django", "SQL", "Computer Networks"]},
             {"id": "integration", "title": "Build integrated systems", "weeks": 3, "items": ["React", "REST APIs", "Authentication", "Docker"]},
-            {"id": "fullstack-interviews", "title": "Full-stack interviews", "weeks": 2, "items": ["System design", "Debugging", "Behavioral", "Mock interviews"]},
+            {"id": "fullstack-interviews", "title": "Full-stack interviews", "weeks": 2, "items": ["System Design", "Debugging", "Testing", "Docker"]},
         ),
     ),
     "data_ml": RoleProfile(
@@ -88,7 +88,7 @@ ROLE_PROFILES: dict[str, RoleProfile] = {
         (
             {"id": "data-foundations", "title": "Data foundations", "weeks": 3, "items": ["Python", "SQL", "Statistics", "DBMS"]},
             {"id": "ml-core", "title": "ML core", "weeks": 4, "items": ["Supervised Learning", "Model Evaluation", "Feature Engineering", "Pipelines"]},
-            {"id": "ml-interviews", "title": "ML interviews", "weeks": 2, "items": ["ML theory", "ML system design", "Behavioral", "Mock interviews"]},
+            {"id": "ml-interviews", "title": "ML interviews", "weeks": 2, "items": ["Machine Learning", "Model Evaluation", "Data Pipelines", "Docker"]},
         ),
     ),
     "devops_engineer": RoleProfile(
@@ -96,13 +96,13 @@ ROLE_PROFILES: dict[str, RoleProfile] = {
         "Infrastructure, networking, automation, reliability and production troubleshooting preparation.",
         ("Arrays & Strings", "Hashing & Hash Maps", "Binary Search", "Graphs (BFS/DFS)"),
         ("Operating Systems", "Computer Networks", "DBMS", "System Design", "Distributed Systems", "Security Fundamentals"),
-        ("Linux", "Docker", "CI/CD", "Cloud", "Kubernetes", "Observability", "Infrastructure as Code"),
+        ("Linux", "Docker", "CI/CD", "Cloud", "Kubernetes", "Observability", "Infrastructure as Code", "Troubleshooting", "Incident Response"),
         ("Networking", "Troubleshooting", "System design", "Incident response", "Behavioral"),
         ("Big Tech", "Product/SaaS", "FinTech", "Startups"),
         (
             {"id": "infra-foundations", "title": "Infrastructure foundations", "weeks": 3, "items": ["Linux", "Computer Networks", "Operating Systems", "Docker"]},
             {"id": "platform", "title": "Platform engineering", "weeks": 3, "items": ["Cloud", "CI/CD", "Kubernetes", "Observability"]},
-            {"id": "devops-interviews", "title": "Reliability interviews", "weeks": 2, "items": ["Troubleshooting", "System design", "Incident response", "Mock interviews"]},
+            {"id": "devops-interviews", "title": "Reliability interviews", "weeks": 2, "items": ["Troubleshooting", "System Design", "Incident Response", "Observability"]},
         ),
     ),
     "mobile_developer": RoleProfile(
@@ -116,7 +116,7 @@ ROLE_PROFILES: dict[str, RoleProfile] = {
         (
             {"id": "mobile-foundations", "title": "Mobile foundations", "weeks": 3, "items": ["OOP", "Computer Networks", "State Management", "REST APIs"]},
             {"id": "app-architecture", "title": "App architecture", "weeks": 3, "items": ["Platform fundamentals", "Testing", "Performance", "App architecture"]},
-            {"id": "mobile-interviews", "title": "Mobile interviews", "weeks": 2, "items": ["Technical questions", "Debugging", "Behavioral", "Mock interviews"]},
+            {"id": "mobile-interviews", "title": "Mobile interviews", "weeks": 2, "items": ["Flutter/React Native", "State Management", "Performance", "Testing"]},
         ),
     ),
 }
