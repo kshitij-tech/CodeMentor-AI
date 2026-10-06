@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeMentor AI — Profile</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="ui.css">
+  <style>body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}.mono{font-family:"JetBrains Mono",monospace}</style>
+</head>
+<body class="min-h-screen text-slate-900">
+<header class="fixed inset-x-0 top-0 z-40 h-16 border-b bg-white/90 backdrop-blur"><div class="mx-auto flex h-full max-w-6xl items-center justify-between px-4"><a href="dashboard.html" class="font-bold">CodeMentor <span class="mono text-xs text-indigo-700">AI</span></a><nav class="flex gap-2 text-sm"><a href="preferences.html" class="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">Preferences</a><a href="settings.html" class="rounded-lg bg-slate-100 px-3 py-2 font-semibold">Settings</a></nav></div></header>
+<main class="mx-auto max-w-5xl px-4 pb-16 pt-24">
+  <div id="error" class="mb-5 hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
+  <section class="overflow-hidden rounded-2xl bg-white shadow-sm">
+    <div class="bg-indigo-700 px-6 py-10 text-white sm:px-10">
+      <div class="flex flex-wrap items-center justify-between gap-5">
+        <div><div class="mono text-[11px] uppercase tracking-wider text-indigo-200">Developer profile</div><h1 id="name" class="mt-2 text-3xl font-bold">Loading...</h1><p id="email" class="mt-1 text-sm text-indigo-100"></p></div>
+        <div id="status" class="rounded-full bg-white/15 px-3 py-2 text-xs font-semibold">Onboarding complete</div>
+      </div>
+    </div>
+    <div class="p-6 sm:p-10">
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="rounded-xl bg-slate-50 p-5"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Experience</div><div id="experience" class="mt-1 font-semibold"></div></div>
+        <div class="rounded-xl bg-slate-50 p-5"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Target role</div><div id="role" class="mt-1 font-semibold"></div></div>
+        <div class="rounded-xl bg-slate-50 p-5"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Daily target</div><div id="daily" class="mt-1 font-semibold"></div></div>
+      </div>
+      <div class="mt-6 rounded-xl bg-slate-50 p-5"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Bio</div><p id="bio" class="mt-2 text-sm leading-6 text-slate-700">No introduction added.</p></div>
+      <div class="mt-6 grid gap-6 lg:grid-cols-2">
+        <div><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Preferred languages</div><p id="languages" class="mt-2 text-sm"></p></div>
+        <div><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Preparation timeline</div><p id="timeline" class="mt-2 text-sm"></p></div>
+      </div>
+      <div class="mt-6"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">DSA familiarity</div><div id="dsa" class="mt-3 flex flex-wrap gap-2"></div></div>
+      <div class="mt-6 grid gap-6 lg:grid-cols-2"><div><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Target companies</div><p id="companies" class="mt-2 text-sm leading-6"></p></div><div><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Target categories</div><p id="categories" class="mt-2 text-sm leading-6"></p></div></div>
+      <div class="mt-8 flex justify-end"><a href="settings.html" class="rounded-xl bg-indigo-700 px-5 py-3 text-sm font-semibold text-white">Edit profile & preferences</a></div>
+    </div>
+  </section>
+</main>
+<script>
+const API='http://127.0.0.1:8000',KEY='codementor_access_token';
+function addTag(root,value){const s=document.createElement('span');s.className='rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600';s.textContent=value;root.appendChild(s)}
+async function load(){const t=localStorage.getItem(KEY);if(!t){location.replace('auth.html');return}try{const [p,u]=await Promise.all([fetch(API+'/profile',{headers:{Authorization:'Bearer '+t}}),fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+t}})]);if(p.status===401||u.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}const profile=await p.json(),user=await u.json();if(!profile.onboarding_completed){location.replace('onboarding.html');return}document.getElementById('name').textContent=profile.full_name||'CodeMentor user';document.getElementById('email').textContent=user.email||'';document.getElementById('experience').textContent=profile.experience_level||'Not set';document.getElementById('role').textContent=profile.target_role||'Not set';document.getElementById('daily').textContent=(profile.daily_practice_target||3)+' problems/day';document.getElementById('bio').textContent=profile.bio||'No introduction added.';document.getElementById('languages').textContent=(profile.preferred_languages&&profile.preferred_languages.length?profile.preferred_languages:[profile.preferred_language]).filter(Boolean).join(', ')||'Not set';document.getElementById('timeline').textContent=profile.preparation_timeline||'Flexible';(profile.dsa_familiarity||[]).forEach(function(x){addTag(document.getElementById('dsa'),x)});document.getElementById('companies').textContent=(profile.target_companies||[]).join(', ')||'No companies selected';document.getElementById('categories').textContent=(profile.target_categories||[]).join(', ')||'No categories selected'}catch(e){document.getElementById('error').textContent='Unable to load your profile.';document.getElementById('error').classList.remove('hidden')}}
+load();
+</script>
+</body>
+</html>
