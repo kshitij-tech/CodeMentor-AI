@@ -15,6 +15,25 @@ from backend.problem_catalog import (
 
 
 class ProblemCatalogTests(unittest.TestCase):
+    VALID_STARTERS = {
+        "Python": """def solve(*args):
+    return 0
+""",
+        "C++": """int solve() { return 0; }
+""",
+        "Java": """class Solution { int solve() { return 0; } }
+""",
+        "JavaScript": """function solve() { return 0; }
+""",
+        "TypeScript": """function solve(): any { return 0; }
+""",
+        "Go": """package main
+func solve() int { return 0 }
+""",
+        "Rust": """fn solve() -> i32 { 0 }
+""",
+    }
+
     def test_difficulty_normalization(self):
         self.assertEqual(normalize_difficulty("easy"), "Easy")
         self.assertEqual(normalize_difficulty("INTERMEDIATE"), "Medium")
@@ -40,24 +59,7 @@ class ProblemCatalogTests(unittest.TestCase):
             "constraints": ["2 <= len(nums) <= 100000"],
             "examples": [{"input": "nums = [2,7], target = 9", "output": "[0,1]"}],
             "test_cases": [{"args": [[2,7], 9], "expected": [0,1]}],
-            "starter_code": {
-                "Python": "def solve(nums, target):
-    return []
-",
-                "C++": "int solve(vector<int> nums, int target) { return 0; }
-",
-                "Java": "class Solution { int solve(int[] nums, int target) { return 0; } }
-",
-                "JavaScript": "function solve(nums, target) { return []; }
-",
-                "TypeScript": "function solve(nums: any[], target: number): any[] { return []; }
-",
-                "Go": "package main
-func solve(nums []int, target int) []int { return nil }
-",
-                "Rust": "fn solve(nums: &[i32], target: i32) -> Vec<i32> { vec![] }
-",
-            },
+            "starter_code": dict(self.VALID_STARTERS),
             "execution_mode": "function",
             "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
         }
@@ -65,14 +67,18 @@ func solve(nums []int, target int) []int { return nil }
 
     def test_quality_flags(self):
         problem = {
+            "slug": "two-sum",
             "title": "Two Sum",
             "description": "Given an array of integers and a target, return the indices of the two numbers that add up to the target.",
             "difficulty": "Medium",
             "topics": ["array"],
             "source": "fixture",
-            "examples": [{"input": "[2,7,11,15], 9", "output": "[0,1]"}],
+            "constraints": ["2 <= n <= 100000"],
+            "examples": [{"input": "nums = [2,7], target = 9", "output": "[0,1]"}],
             "test_cases": [{"input": "2 7 9", "expected_output": "0 1"}],
-            "starter_code": {"Python": "def solve():\n    pass\n"},
+            "starter_code": dict(self.VALID_STARTERS),
+            "execution_mode": "stdio",
+            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
         }
         self.assertEqual(quality_flags(problem), [])
 
@@ -93,14 +99,18 @@ func solve(nums []int, target int) []int { return nil }
 
     def test_duplicate_audit(self):
         base = {
+            "slug": "two-sum-a",
             "title": "Two Sum",
             "description": "Given an array of integers and a target, return the indices of the two numbers that add up to the target.",
             "difficulty": "Medium",
             "topics": ["array"],
             "source": "fixture",
+            "constraints": ["2 <= n <= 100000"],
             "examples": [{"input": "x", "output": "y"}],
             "test_cases": [{"input": "x", "expected_output": "y"}],
-            "starter_code": {"Python": "def solve():\n    pass\n"},
+            "starter_code": dict(self.VALID_STARTERS),
+            "execution_mode": "stdio",
+            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
         }
         first = {**base, "slug": "two-sum-a", "external_id": None}
         second = {**base, "slug": "two-sum-b", "external_id": None}
@@ -109,7 +119,6 @@ func solve(nums []int, target int) []int { return nil }
         self.assertEqual(report["clean"], 0)
         self.assertEqual(len(report["duplicates"]["same_content"]), 1)
         self.assertTrue(all("duplicate_content" in item["flags"] for item in report["problem_reports"]))
-
 
     def test_canonical_topic_catalog_contains_required_topics(self):
         required = {"Arrays", "Strings", "Hashing", "Stack", "Queue", "Trees", "BST", "Graphs", "DFS", "BFS", "Recursion"}
@@ -127,20 +136,13 @@ func solve(nums []int, target int) []int { return nil }
             "examples": [{"input": "nums = [1,4,2]", "output": "4"}],
             "test_cases": [{"args": [[1,4,2]], "expected": 4}],
             "execution_mode": "function",
-            "starter_code": {
-                "Python": "def solve(nums)\n    return 0\n",
-                "C++": "int solve(vector<int> nums) { return 0; }",
-                "Java": "class Solution { int solve(int[] nums) { return 0; } }",
-                "JavaScript": "function solve(nums) { return 0; }",
-                "TypeScript": "function solve(nums: any[]): any { return 0; }",
-                "Go": "package main\nfunc solve(nums []int) int { return 0 }",
-                "Rust": "fn solve(nums: &[i32]) -> i32 { 0 }",
-            },
+            "starter_code": dict(self.VALID_STARTERS),
             "package_metadata": {
                 "supported_languages": list(SUPPORTED_LANGUAGES),
                 "editor_input_schema": [{"name": "input", "type": "not-a-real-type"}],
             },
         }
+        problem["starter_code"]["Python"] = "def solve(nums)\n    return 0\n"
         flags = quality_flags(problem)
         self.assertIn("broken_starter_code", flags)
         self.assertIn("invalid_io_definition", flags)
@@ -156,15 +158,7 @@ func solve(nums []int, target int) []int { return nil }
             "constraints": ["1 <= n <= 1000"],
             "examples": [{"input": "nums = [1,4,2]", "output": "4"}],
             "test_cases": [{"args": [[1,4,2]], "expected": 4}],
-            "starter_code": {
-                "Python": "def solve(nums):\n    return 0\n",
-                "C++": "int solve(vector<int> nums) { return 0; }",
-                "Java": "class Solution { int solve(int[] nums) { return 0; } }",
-                "JavaScript": "function solve(nums) { return 0; }",
-                "TypeScript": "function solve(nums: any[]): any { return 0; }",
-                "Go": "package main\nfunc solve(nums []int) int { return 0 }",
-                "Rust": "fn solve(nums: &[i32]) -> i32 { 0 }",
-            },
+            "starter_code": dict(self.VALID_STARTERS),
             "execution_mode": "function",
             "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
         }
