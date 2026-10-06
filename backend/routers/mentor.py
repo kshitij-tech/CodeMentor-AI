@@ -353,3 +353,56 @@ def analyze(
         "patch": result.get("patch"),
         "message_id": assistant_message.id,
     }
+
+
+class CreateSessionRequest(BaseModel):
+    scope: Literal["dashboard", "practice"] = "practice"
+    problem_slug: str | None = Field(default=None, max_length=120)
+    title: str | None = Field(default=None, max_length=180)
+
+
+@router.post("/sessions")
+def create_session(
+    request: CreateSessionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    problem = None
+    if request.problem_slug:
+        problem = db.query(Problem).filter(Problem.slug == request.problem_slug).first()
+        if problem is None:
+            raise HTTPException(status_code=404, detail="Problem not found.")
+
+    if request.scope == "dashboard" and problem is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="Dashboard mentor sessions cannot be attached to a problem.",
+        )
+    if request.scope == "practice" and problem is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Practice mentor sessions require problem_slug.",
+        )
+
+    session = MentorSession(
+        user_id=current_user.id,
+        problem_id=problem.id if problem else None,
+        scope=request.scope,
+        title=(
+            request.title.strip()
+            if request.title and request.title.strip()
+            else (problem.title if problem else "Dashboard AI Mentor")
+        ),
+    )
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+
+    return {
+        "id": session.id,
+        "title": session.title,
+        "scope": session.scope,
+        "problem_slug": problem.slug if problem else None,
+        "updated_at": session.updated_at.isoformat(),
+        "messages": [],
+    }
