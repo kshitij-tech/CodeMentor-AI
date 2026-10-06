@@ -262,9 +262,10 @@ def _parse_positive_int(value: str, field_name: str) -> int:
 
 
 def get_cors_origins() -> list[str]:
+    app_env = os.getenv("APP_ENV", APP_ENV).strip().lower() or APP_ENV
     configured = os.getenv("CORS_ORIGINS", "").strip()
     if not configured:
-        if APP_ENV == "production":
+        if app_env == "production":
             raise RuntimeError(
                 "CORS_ORIGINS must be configured explicitly in production."
             )
