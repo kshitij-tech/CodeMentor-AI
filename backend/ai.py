@@ -9,9 +9,11 @@ import urllib.request
 from typing import Any
 
 OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
+LMSTUDIO_CHAT_URL = "http://localhost:1234/v1/chat/completions"
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 DEFAULT_PROVIDER = "ollama"
 DEFAULT_MODEL = "qwen3:4b"
+DEFAULT_LMSTUDIO_MODEL = "mistralai/ministral-3-3b"
 DEFAULT_FALLBACK_MODEL = ""
 
 class AIProviderError(RuntimeError):
@@ -51,7 +53,7 @@ def _extract_message_text(payload: dict[str, Any], provider: str) -> str:
     else:
         choices = payload.get("choices") or []
         if not choices:
-            raise AIProviderError("Mistral returned no candidate response.")
+            raise AIProviderError(f"{provider.capitalize()} returned no candidate response.")
         message = choices[0].get("message") or {}
 
     # Ollama may return reasoning in a separate thinking field.
@@ -156,16 +158,22 @@ def _normalize_provider(provider: str) -> str:
     normalized = (provider or DEFAULT_PROVIDER).strip().lower()
     if normalized in {"ollama", "local"}:
         return "ollama"
+    if normalized in {"lmstudio", "lm-studio", "local_openai"}:
+        return "lmstudio"
     if normalized == "mistral":
         return "mistral"
-    raise AIProviderError("Invalid AI_PROVIDER value. Use 'ollama' or 'mistral'.")
+    raise AIProviderError("Invalid AI_PROVIDER value. Use 'ollama', 'lmstudio', or 'mistral'.")
 
 
 def _normalize_model(model: str, provider: str) -> str:
     normalized = (model or "").strip()
     if normalized:
         return normalized
-    return DEFAULT_MODEL if provider == "ollama" else "mistral-small-latest"
+    if provider == "ollama":
+        return DEFAULT_MODEL
+    if provider == "lmstudio":
+        return DEFAULT_LMSTUDIO_MODEL
+    return "mistral-small-latest"
 
 
 def _ollama_url() -> str:
@@ -244,6 +252,65 @@ def _request_ollama(
             raise AIProviderError("Ollama returned an unreadable HTTP response.") from exc
 
     raise AIProviderError(last_error or "Ollama request failed after retries.")
+
+
+
+def _lmstudio_url() -> str:
+    base = os.getenv("LMSTUDIO_BASE_URL", "http://localhost:1234").strip().rstrip("/")
+    if base.endswith("/v1"):
+        return base + "/chat/completions"
+    return base + "/v1/chat/completions"
+
+
+def _request_lmstudio(
+    *,
+    model: str,
+    body: dict[str, Any],
+) -> dict[str, Any]:
+    url = _lmstudio_url()
+    request_body = {
+        "model": model,
+        "messages": body["messages"],
+        "stream": False,
+        "temperature": 0.2,
+        "max_tokens": max(
+            128,
+            int(os.getenv("LMSTUDIO_MAX_TOKENS", "400")),
+        ),
+        "response_format": {"type": "json_object"},
+    }
+
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(request_body).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:1200]
+        if exc.code == 404:
+            raise AIProviderError(
+                f"LM Studio model '{model}' was not found. "
+                "Check the model identifier shown by LM Studio.",
+                status_code=404,
+            ) from exc
+        raise AIProviderError(
+            f"LM Studio request failed (HTTP {exc.code}): {detail}",
+            retryable=exc.code in {429, 500, 502, 503, 504},
+            status_code=exc.code,
+        ) from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise AIProviderError(
+            f"Cannot reach LM Studio at {url}. "
+            "Start the LM Studio local server and load a model.",
+            retryable=True,
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise AIProviderError("LM Studio returned an unreadable HTTP response.") from exc
 
 
 def _request_mistral(
@@ -451,7 +518,9 @@ Keep the answer concise, educational, and conversational.
     if provider == "ollama":
         request_body = {
             "messages": messages,
-            "format": response_schema,
+            # Use Ollama's generic JSON mode rather than a complex schema.
+            # This is more compatible across local model versions.
+            "format": "json",
         }
         try:
             payload = _request_ollama(
@@ -488,6 +557,11 @@ Keep the answer concise, educational, and conversational.
                     raise primary_error
             else:
                 raise
+    elif provider == "lmstudio":
+        payload = _request_lmstudio(
+            model=model,
+            body={"messages": messages},
+        )
     elif provider == "mistral":
         api_key = os.getenv("MISTRAL_API_KEY", "").strip()
         if not api_key:
