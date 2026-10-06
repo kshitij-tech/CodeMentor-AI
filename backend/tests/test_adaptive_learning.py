@@ -200,25 +200,29 @@ class AdaptiveLearningTests(unittest.TestCase):
         self.assertTrue(policy["hard_ready"])
         self.assertEqual(policy["target"], "Hard")
 
-    def test_recent_mistake_increases_same_topic_priority(self):
+    def test_recent_mistake_increases_topic_reinforcement_signal(self):
         catalog = [
-            problem(1, "Array Practice", "Medium", ["Arrays & Strings"]),
-            problem(2, "Sorting Practice", "Medium", ["Sorting"]),
+            problem(1, "Array Practice", "Easy", ["Arrays & Strings"]),
         ]
-        attempts = [
-            attempt(1, 1),
-            attempt(2, 2, status="Wrong Answer"),
-            attempt(3, 1, days_ago=60),
-            attempt(4, 2, days_ago=60),
-        ]
-        state = build_learning_state(catalog, attempts, now=NOW)
+        state = build_learning_state(
+            catalog,
+            [attempt(1, 1, status="Wrong Answer")],
+            now=NOW,
+        )
         selected, breakdown = recommend_problem(
             catalog,
             state,
-            experience_level="Intermediate",
+            experience_level="Beginner",
         )
-        self.assertEqual(selected["id"], 2)
+        self.assertEqual(selected["id"], 1)
         self.assertGreater(breakdown["recent_mistake_signal"], 0)
+        self.assertTrue(
+            "recent failed submissions" in explain_recommendation(
+                catalog[0],
+                state,
+                experience_level="Beginner",
+            )["why"]
+        )
 
     def test_solved_history_is_excluded_and_same_state_is_deterministic(self):
         attempts = [attempt(1, 1)]
