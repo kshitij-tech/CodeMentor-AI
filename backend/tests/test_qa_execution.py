@@ -84,8 +84,9 @@ class ExecutionApiQualityTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json["status"], "Rejected")
-        self.assertEqual(response.json["error_line"], 7)
-        self.assertEqual(response.json["error_column"], 3)
+        self.assertIn("prohibited import", response.json["summary"])
+        self.assertIsNone(response.json["error_line"])
+        self.assertIsNone(response.json["error_column"])
 
     def test_secret_expected_output_is_redacted_from_api_response(self):
         problem = add_problem(
@@ -148,7 +149,7 @@ class ExecutionApiQualityTests(unittest.TestCase):
         self.assertEqual(response.json["results"][1]["actual"], "9\n")
 
     def test_unsupported_custom_validator_is_reported_without_running_code(self):
-        problem = add_problem(
+        add_problem(
             self.db,
             slug="custom-validator-unsupported",
             package_metadata={"judge_supported": True},
@@ -161,15 +162,13 @@ class ExecutionApiQualityTests(unittest.TestCase):
                 },
             ],
         )
-        with patch(
-            "backend.routers.execution.run_python_stdio_tests"
-        ) as runner:
+        with patch("backend.routers.execution.run_python_stdio_tests") as runner:
             response = self.client.request(
                 "POST",
                 "/execution/run",
                 headers=self.headers,
                 json_body={
-                    "problem_slug": problem.slug,
+                    "problem_slug": "custom-validator-unsupported",
                     "language": "C++",
                     "code": "int main() { return 0; }",
                     "mode": "run",

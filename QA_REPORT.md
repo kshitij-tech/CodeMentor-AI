@@ -24,7 +24,7 @@ This branch adds QA infrastructure and tests only. Application behavior was not 
 | Workspace | Per-user and per-language isolation plus history scoping |
 | Frontend | Local asset resolution, shared UI assets, Node JavaScript syntax checks |
 | Docker | Dockerfile contract checks plus opt-in live multi-runtime smoke tests |
-| Concurrency | Threaded SQLite writes and short writer-lock contention |
+| Concurrency | Concurrent API workspace requests, threaded SQLite writes, and short writer-lock contention |
 | Coverage | Coverage configuration and a 50% minimum quality-gate floor |
 | Static quality | Ruff and mypy checks through the reusable quality gate |
 
@@ -43,8 +43,14 @@ The Dockerfile uses WORKDIR /workspace and USER 65532:65532 and does not provide
 This branch does not modify that workflow or Dockerfile because they belong to other workstreams.
 
 Required owner action:
-- feature/devops-deployment should update .github/workflows/backend-check.yml to use an existing writable smoke-test path such as /tmp or a properly mounted workspace path.
+- feature/devops-deployment should update .github/workflows/backend-check.yml to provide the /runner tmpfs used by the execution runtime, or use another writable smoke-test path.
 - Alternatively, feature/code-execution could deliberately add a compatible /runner path to the image.
+
+## Additional code-execution defect found
+
+CodeRejectedError currently inherits ValueError, while the execution router catches ValueError before CodeRejectedError. As a result, the specialized error branch is unreachable and API responses lose parsed error-line and error-column metadata for CodeRejectedError instances.
+
+The QA suite intentionally tests the currently observed response without changing the owned execution router. feature/code-execution should reorder the exception handlers so CodeRejectedError is handled before ValueError.
 
 ## Deliberately unchanged
 
@@ -104,7 +110,8 @@ The coverage floor is a regression guard, not a claim of exhaustive business-pat
 
 1. feature/devops-deployment must wire the quality gate and test dependencies into .github/workflows/backend-check.yml.
 2. feature/devops-deployment or feature/code-execution must resolve the existing /runner/smoke.cpp path mismatch.
-3. A future browser E2E suite would benefit from an agreed browser-runner/dependency policy.
+3. feature/code-execution should reorder CodeRejectedError before ValueError to preserve error location metadata.
+4. A future browser E2E suite would benefit from an agreed browser-runner/dependency policy.
 
 ## QA conclusion
 
