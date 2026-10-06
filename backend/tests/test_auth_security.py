@@ -472,7 +472,7 @@ class AuthenticationSecurityTests(unittest.TestCase):
                 recommendation = recommendations.next_recommendation(
                     None, alice, db
                 )
-            self.assertNotEqual(
+            self.assertEqual(
                 recommendation["problem"]["id"],
                 problem_one.id,
             )
