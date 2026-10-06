@@ -8,7 +8,13 @@ from sqlalchemy import select
 
 from backend.database import SessionLocal
 from backend.models import Problem
-from backend.problem_catalog import canonicalize_topics, ensure_starter_code
+from backend.problem_catalog import (
+    canonicalize_topics,
+    ensure_starter_code,
+    extract_constraints,
+    normalize_problem_record,
+    quality_flags,
+)
 from backend.stdio_adapter import infer_editor_input_schema
 
 
@@ -227,13 +233,13 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         "editor_input_schema": editor_input_schema,
     }
 
-    return {
+    candidate = {
         "slug": _slugify(f"{source_name}-{title}"),
         "title": title[:180],
         "difficulty": _difficulty(row),
         "topics": topics,
         "description": description,
-        "constraints": [],
+        "constraints": extract_constraints(description),
         "examples": samples,
         "test_cases": test_cases,
         "starter_code": ensure_starter_code(
@@ -261,7 +267,10 @@ def _to_problem(row: dict[str, Any], split: str, max_secret_tests: int) -> dict[
         "validation": "default",
         "package_metadata": package_metadata,
     }
-
+    normalized = normalize_problem_record(candidate)
+    if quality_flags(normalized):
+        return None
+    return normalized
 
 def bulk_import(
     *,
