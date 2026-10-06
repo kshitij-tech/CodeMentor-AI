@@ -143,6 +143,19 @@ class ProfilePreferenceTests(unittest.TestCase):
         self.assertEqual(context_b.preferred_languages, [])
         self.assertEqual(context_b.target_companies, [])
 
+    def test_recommendation_context_exposes_complete_profile_preferences(self):
+        complete_onboarding(self.payload(), self.user_a, self.db)
+        context = get_recommendation_context(self.user_a, self.db)
+
+        self.assertEqual(context.experience_level, "Intermediate")
+        self.assertEqual(context.dsa_familiarity, ["Arrays & Strings", "Hashing & Hash Maps"])
+        self.assertEqual(context.preferred_languages, ["Python", "C++"])
+        self.assertEqual(context.target_role, "Backend Engineer")
+        self.assertEqual(context.target_companies, ["Google"])
+        self.assertEqual(context.target_categories, ["SaaS"])
+        self.assertEqual(context.daily_practice_target, 5)
+        self.assertEqual(context.learning_preferences.hint_preference, "Guided")
+
     def test_status_reports_missing_mandatory_fields(self):
         profile = get_profile(self.user_a, self.db)
         self.assertFalse(profile.onboarding_completed)
