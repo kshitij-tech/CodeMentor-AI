@@ -234,6 +234,16 @@ class ObservabilityTests(unittest.TestCase):
         self.assertNotIn("levelno", payload)
 
     def test_sanitize_error_message_redacts_secret_like_values(self):
+        database_error = OperationalError(
+            "SELECT * FROM users WHERE password = :password",
+            {"password": "secret-value"},
+            RuntimeError("password=secret-value"),
+        )
+        self.assertEqual(
+            obs._safe_error_message(database_error),
+            "database operation failed",
+        )
+
         error = RuntimeError(
             "api_key=abc123 password=hello token=xyz"
         )
