@@ -1,910 +1,402 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CodeMentor AI — Dashboard</title>
-<link href="https://fonts.googleapis.com" rel="preconnect">
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
-tailwind.config = {
-  theme: {
-    extend: {
-      colors: {
-        surface: '#f8f9ff', 'surface-container-lowest':'#ffffff',
-        'surface-container-low':'#eff4ff', 'surface-container':'#e5eeff',
-        'surface-container-high':'#dce9ff', 'surface-container-highest':'#d3e4fe',
-        'on-surface':'#0b1c30','on-surface-variant':'#464554',
-        primary:'#2a14b4','primary-container':'#4338ca','on-primary':'#ffffff',
-        secondary:'#006591','secondary-container':'#39b8fd',
-        tertiary:'#00442d','tertiary-container':'#005e3f',
-        error:'#ba1a1a','error-container':'#ffdad6',
-        'outline-variant':'#c7c4d7'
-      },
-      fontFamily:{ body:['Plus Jakarta Sans'], mono:['JetBrains Mono'] }
-    }
-  }
-};
+tailwind.config={theme:{extend:{colors:{
+surface:"#f8f9ff","surface-container-lowest":"#ffffff","surface-container-low":"#eff4ff",
+"surface-container":"#e5eeff","surface-container-high":"#dce9ff","surface-container-highest":"#d3e4fe",
+"on-surface":"#0b1c30","on-surface-variant":"#464554",primary:"#2a14b4","primary-container":"#4338ca",
+"on-primary":"#ffffff",secondary:"#006591","secondary-container":"#39b8fd",error:"#ba1a1a",
+"error-container":"#ffdad6","tertiary":"#00442d","tertiary-container":"#005e3f","outline-variant":"#c7c4d7"
+},fontFamily:{body:["Plus Jakarta Sans"],mono:["JetBrains Mono"]}}}};
 </script>
 <style>
-  html,body{margin:0;padding:0}
-  body{overscroll-behavior:none}
-  ::-webkit-scrollbar{width:7px;height:7px}
-  ::-webkit-scrollbar-thumb{background:#c7c4d7;border-radius:999px}
-  .dashboard-mentor-chat{max-height:320px;overflow-y:auto;scrollbar-width:thin}
-  .dashboard-mentor-message{max-width:90%;padding:10px 12px;border-radius:12px;font-size:12px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
-  .dashboard-mentor-user{align-self:flex-end;background:#4338ca;color:#fff;border-bottom-right-radius:4px}
-  .dashboard-mentor-ai{align-self:flex-start;background:#eff4ff;color:#0b1c30;border-bottom-left-radius:4px}
-  .dashboard-mentor-label{font-size:9px;color:#777586;margin-bottom:3px}
+body{font-family:"Plus Jakarta Sans",sans-serif}
+.mono{font-family:"JetBrains Mono",monospace}
+.metric-card{box-shadow:0 1px 2px rgba(11,28,48,.05)}
+.chart-grid line{stroke:#e2e8f0;stroke-width:1}
+.chart-line{fill:none;stroke:#4338ca;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.chart-dot{fill:#4338ca}
+.heatmap{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,12px);grid-auto-columns:12px;gap:3px;overflow-x:auto;padding-bottom:4px}
+.heat-cell{width:12px;height:12px;border-radius:3px;background:#e5eeff}
+.heat-1{background:#cbd5ff}.heat-2{background:#9aa5ff}.heat-3{background:#656fea}.heat-4{background:#4338ca}
+.topic-bar,.runtime-bar{transition:width .25s ease}
+.status{font-size:10px;font-weight:700;border-radius:999px;padding:4px 8px;display:inline-flex;white-space:nowrap}
+.status.accepted{color:#166534;background:#dcfce7}.status.failed{color:#9a3412;background:#ffedd5}
+.status.error{color:#991b1b;background:#fee2e2}.status.neutral{color:#475569;background:#e2e8f0}
+.section{background:#fff;border-radius:18px;box-shadow:0 1px 2px rgba(11,28,48,.06)}
 </style>
-  <link rel="stylesheet" href="ui.css">
-  <script src="ui.js" defer></script>
+<link rel="stylesheet" href="ui.css">
+<script src="ui.js" defer></script>
 </head>
-<body class="bg-surface font-body text-on-surface min-h-screen">
-<header class="fixed top-0 left-0 right-0 z-50 bg-surface/90 backdrop-blur-xl shadow-sm">
-  <div class="h-16 px-4 lg:px-8 flex items-center justify-between gap-4">
-    <div class="flex items-center gap-6 min-w-0">
-      <a href="dashboard.html" class="flex items-center gap-3 shrink-0" aria-label="CodeMentor AI dashboard">
-        <div class="w-8 h-8 rounded-lg bg-primary-container text-on-primary flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
-        <span class="font-bold tracking-tight">CodeMentor <span class="text-primary">AI</span></span>
-      </a>
-      <nav class="flex xl:hidden items-center gap-1 p-1 bg-surface-container-low rounded-xl overflow-x-auto max-w-[58vw]">
-        <button data-nav="dashboard" class="nav-top px-3 py-1.5 rounded-lg bg-primary-container text-on-primary text-sm font-medium">Dashboard</button>
-        <button data-nav="practice" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Practice</button>
-        <button data-nav="analytics" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Analytics</button>
-        <button data-nav="mentor" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">AI Mentor</button>
-        <button data-nav="career" class="nav-top px-3 py-1.5 rounded-lg text-on-surface-variant text-sm hover:bg-surface-container-high">Career Prep</button>
-      </nav>
-    </div>
-    <div class="flex items-center gap-2 sm:gap-4">
-      <button id="search-btn" class="hidden sm:flex items-center gap-3 px-3 py-2 bg-surface-container-low hover:bg-surface-container-high rounded-lg text-on-surface-variant text-sm" type="button">
-        <span class="material-symbols-outlined text-[18px]">search</span><span>Search challenges, syntax...</span><kbd class="px-1.5 py-0.5 rounded bg-surface-container font-mono text-[10px]">Ctrl+K</kbd>
-      </button>
-      <button id="notification-btn" class="relative p-2 rounded-lg hover:bg-surface-container-low text-on-surface-variant" aria-label="Notifications" type="button">
-        <span class="material-symbols-outlined">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error"></span>
-      </button>
-      <div class="relative">
-        <button id="account-btn" class="flex items-center gap-2 p-1 rounded-lg hover:bg-surface-container-low" aria-expanded="false" aria-haspopup="menu" type="button">
-          <div class="w-8 h-8 rounded-full bg-primary text-on-primary flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">person</span></div>
-          <div class="hidden md:flex flex-col text-left leading-tight">
-            <span id="account-name" class="text-xs font-semibold">CodeMentor User</span>
-            <span id="account-role" class="text-[10px] text-on-surface-variant">Your profile</span>
-          </div>
-          <span class="material-symbols-outlined text-[18px] text-on-surface-variant">expand_more</span>
-        </button>
-        <div id="account-menu" class="hidden absolute right-0 top-12 w-60 rounded-xl bg-surface-container-lowest shadow-xl border border-surface-container-high overflow-hidden">
-          <div class="px-4 py-3 border-b border-surface-container-high">
-            <p id="menu-name" class="font-semibold text-sm truncate">Account</p>
-            <p id="menu-email" class="text-xs text-on-surface-variant truncate">Signed in</p>
-          </div>
-          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="profile" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">person</span>Profile</button>
-          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="preferences" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">tune</span>Preferences</button>
-          <button class="w-full text-left px-4 py-3 hover:bg-surface-container-low text-sm" data-account-action="settings" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">settings</span>Settings</button>
-          <button class="w-full text-left px-4 py-3 hover:bg-error-container/50 text-error text-sm" data-account-action="logout" type="button"><span class="material-symbols-outlined align-middle mr-2 text-[18px]">logout</span>Log out</button>
-        </div>
-      </div>
+<body class="min-h-screen bg-surface text-on-surface">
+<header class="fixed top-0 inset-x-0 h-16 z-50 bg-white/90 backdrop-blur-xl shadow-sm">
+  <div class="h-full px-4 lg:px-8 flex items-center justify-between gap-4">
+    <a href="dashboard.html" class="flex items-center gap-3 shrink-0">
+      <div class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
+      <span class="font-bold">CodeMentor <span class="text-primary">AI</span></span>
+    </a>
+    <nav class="hidden md:flex items-center gap-1 p-1 bg-surface-container-low rounded-xl">
+      <a href="dashboard.html" class="px-3 py-2 rounded-lg bg-primary-container text-white text-sm font-medium">Dashboard</a>
+      <a href="practice.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Practice</a>
+      <a href="analytics.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Analytics</a>
+      <a href="mentor.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">AI Mentor</a>
+      <a href="career.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Career Prep</a>
+    </nav>
+    <div class="flex items-center gap-2">
+      <span id="timezone-label" class="hidden lg:inline mono text-[10px] text-on-surface-variant"></span>
+      <button id="logout" type="button" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Log out</button>
     </div>
   </div>
 </header>
 
-<aside class="fixed left-0 top-16 bottom-10 w-64 bg-surface-container-low z-40 hidden lg:flex flex-col justify-between py-6 px-4">
-  <div class="flex flex-col gap-6">
-    <div class="px-3">
-      <div class="flex items-center justify-between"><span class="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">Workspace</span><span class="text-[10px] px-2 py-0.5 rounded-full bg-surface-container text-primary font-medium">Personal</span></div>
-      <div class="mt-2 font-semibold text-lg">Algorithms Lab</div>
-    </div>
-    <nav class="flex flex-col gap-1">
-      <button data-side="dashboard" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg bg-primary-container text-on-primary text-sm font-medium text-left"><span class="material-symbols-outlined">space_dashboard</span>Overview</button>
-      <button data-side="practice" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">code</span>Practice</button>
-      <button data-side="mentor" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">smart_toy</span>AI Mentor</button>
-      <button data-side="analytics" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">monitoring</span>Analytics</button>
-      <button data-side="career" class="side-nav flex items-center gap-3 px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high text-sm text-left"><span class="material-symbols-outlined">badge</span>Interview Prep</button>
-    </nav>
-  </div>
-  <div class="flex flex-col gap-3 px-3">
-    <div class="p-3 rounded-xl bg-surface-container-lowest shadow-sm">
-      <div class="flex items-center justify-between"><span class="font-mono text-[10px] text-on-surface-variant">Daily Streak</span><span class="material-symbols-outlined text-primary text-[18px]">local_fire_department</span></div>
-      <div class="mt-1"><span id="streak-days" class="font-bold text-2xl">0</span><span class="text-xs text-on-surface-variant ml-1">day streak</span></div>
-      <p class="text-[10px] text-on-surface-variant mt-1">Practice telemetry will appear here.</p>
-      <div id="streak-calendar" class="grid grid-cols-7 gap-1.5 mt-3" aria-label="Last seven days of solving activity"></div>
-    </div>
-  </div>
-</aside>
+<main class="pt-24 pb-14 px-4 sm:px-6 lg:px-8">
+<div class="max-w-7xl mx-auto space-y-6">
 
-<div class="lg:pl-64">
-<main class="pt-16 pb-12 min-h-screen bg-surface px-4 sm:px-6 lg:px-8">
-<div class="max-w-7xl mx-auto flex flex-col gap-6 py-6">
-
-<section class="bg-surface-container-lowest rounded-xl shadow-sm p-6 sm:p-8 relative overflow-hidden">
-  <div class="absolute -right-20 -top-20 w-80 h-80 bg-primary/10 rounded-full blur-3xl"></div>
-  <div class="relative flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
+<section class="section p-6 sm:p-8">
+  <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
     <div>
-      <div class="flex items-center gap-3"><span class="w-8 h-8 rounded-lg bg-surface-container-high text-primary flex items-center justify-center"><span class="material-symbols-outlined">waving_hand</span></span><h1 id="welcome-title" class="text-2xl sm:text-3xl font-bold tracking-tight">Welcome</h1></div>
-      <p class="text-sm text-on-surface-variant flex flex-wrap items-center gap-2 mt-2">
-        <span id="welcome-role">Complete your profile to personalize this workspace</span><span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span><span id="welcome-language" class="text-primary font-semibold">Language not set</span>
-      </p>
+      <div class="mono text-[10px] uppercase tracking-[.18em] text-primary font-semibold">Coding performance</div>
+      <h1 id="welcome" class="text-3xl sm:text-4xl font-bold tracking-tight mt-1">Your progress at a glance</h1>
+      <p id="subtitle" class="text-sm text-on-surface-variant mt-2">Telemetry is calculated from your submissions; only accepted submissions count as solved.</p>
     </div>
-    <div class="flex flex-wrap items-center gap-3">
-      <div class="px-3.5 py-2 rounded-lg bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Target Role</span><p id="hero-role" class="text-sm font-semibold">Not set</p></div>
-      <div class="px-3.5 py-2 rounded-lg bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Timeline</span><p id="hero-timeline" class="text-sm font-semibold">Not set</p></div>
-      <div class="px-3.5 py-2 rounded-lg bg-surface-container-low flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full bg-on-tertiary-container"></span><div><span class="font-mono text-[10px] uppercase text-on-surface-variant">Profile Sync</span><p class="text-sm font-semibold">Connected</p></div></div>
+    <div class="flex flex-wrap gap-2">
+      <a href="practice.html" class="px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold shadow-sm">Solve a problem</a>
+      <a href="analytics.html" class="px-4 py-2.5 rounded-lg bg-surface-container-low text-primary text-sm font-semibold">Open full analytics</a>
     </div>
   </div>
 </section>
 
-<section class="flex items-center gap-3 overflow-x-auto pb-1">
-  <button data-action="problem" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold shadow-sm"><span class="material-symbols-outlined text-[18px]">bolt</span>Solve Today's Problem</button>
-  <button data-action="weak" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-error text-[18px]">target</span>Review Weak Topics</button>
-  <button data-action="mentor" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-secondary text-[18px]">smart_toy</span>Ask AI Mentor</button>
-  <button data-action="analytics" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-surface-container-lowest hover:bg-surface-container text-sm shadow-sm"><span class="material-symbols-outlined text-on-surface-variant text-[18px]">insights</span>View Detailed Analytics</button>
-  <button id="roadmap-jump" type="button" class="action-btn shrink-0 flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/15 text-sm shadow-sm"><span class="material-symbols-outlined text-[18px]">route</span>Learning Roadmap</button>
-</section>
-
-<section id="adaptive-roadmap" class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm scroll-mt-20">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary">route</span><h3 class="text-lg font-bold">Adaptive Learning Roadmap</h3></div><p class="text-xs text-on-surface-variant mt-1">Prerequisites, your practice evidence, and your experience level determine what unlocks next.</p></div>
-    <span id="roadmap-focus" class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low text-primary">Building path…</span>
-  </div>
-  <div id="learning-roadmap" class="mt-6 flex flex-col gap-3">
-    <div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Analyzing your skill signals…</div>
+<section id="empty-state" class="hidden section p-8">
+  <div class="max-w-2xl mx-auto text-center">
+    <div class="mx-auto w-14 h-14 rounded-2xl bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined text-3xl">insights</span></div>
+    <h2 class="text-2xl font-bold mt-4">Your dashboard is ready for telemetry</h2>
+    <p class="text-sm text-on-surface-variant mt-2">Start by running and submitting a problem. Runs appear as activity, but failed submissions never increase your solved count or streak.</p>
+    <a href="practice.html" class="inline-flex mt-5 px-5 py-3 rounded-lg bg-primary text-white text-sm font-semibold">Start practicing</a>
   </div>
 </section>
 
+<section class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+  <div class="section metric-card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Solved</div><div id="m-solved" class="text-2xl font-bold mt-2">0</div><div id="m-solved-sub" class="text-[10px] text-on-surface-variant mt-1">unique problems</div></div>
+  <div class="section metric-card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Acceptance</div><div id="m-acceptance" class="text-2xl font-bold mt-2">0%</div><div id="m-accepted" class="text-[10px] text-on-surface-variant mt-1">0 accepted</div></div>
+  <div class="section metric-card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Submissions</div><div id="m-submissions" class="text-2xl font-bold mt-2">0</div><div id="m-attempts" class="text-[10px] text-on-surface-variant mt-1">0 total events</div></div>
+  <div class="section metric-card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Current streak</div><div id="m-streak" class="text-2xl font-bold mt-2">0 days</div><div class="text-[10px] text-on-surface-variant mt-1">accepted solve days</div></div>
+  <div class="section metric-card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Longest streak</div><div id="m-longest" class="text-2xl font-bold mt-2">0 days</div><div class="text-[10px] text-on-surface-variant mt-1">all-time best</div></div>
+  <div class="section metric-card p-4"><div class="mono text-[10px] uppercase text-on-surface-variant">Avg time to solve</div><div id="m-time" class="text-2xl font-bold mt-2">—</div><div class="text-[10px] text-on-surface-variant mt-1">first submit → first accepted</div></div>
+</section>
 
-<div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-<div class="xl:col-span-8 flex flex-col gap-6">
-
-<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-low text-primary font-mono text-[10px] uppercase tracking-wide"><span class="material-symbols-outlined text-[14px]">psychology</span>Next recommendation</span>
-    <span class="text-xs text-on-surface-variant font-mono">Personalized after telemetry is available</span>
+<section class="section p-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div><h2 class="text-lg font-bold">Problem-solving heatmap</h2><p class="text-xs text-on-surface-variant mt-1">Daily activity for the last 365 local calendar days.</p></div>
+    <div class="flex items-center gap-2 text-[10px] text-on-surface-variant"><span>Less</span><span class="heat-cell"></span><span class="heat-cell heat-1"></span><span class="heat-cell heat-2"></span><span class="heat-cell heat-3"></span><span class="heat-cell heat-4"></span><span>More</span></div>
   </div>
-  <div class="mt-5 flex flex-wrap items-center gap-3"><h2 id="recommendation-title" class="text-xl font-bold">Loading recommendation…</h2><span id="recommendation-difficulty" class="px-2.5 py-0.5 rounded bg-surface-container text-xs font-semibold">—</span><span class="px-2.5 py-0.5 rounded bg-surface-container text-xs text-on-surface-variant">CodeMentor</span></div>
-  <div id="recommendation-topics" class="flex flex-wrap gap-2 mt-3"><span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">Building recommendation…</span></div>
-  <div class="mt-5 p-4 rounded-xl bg-surface-container-low flex gap-3.5 items-start"><div class="p-2 rounded-lg bg-surface-container-lowest text-primary shadow-sm"><span class="material-symbols-outlined">auto_awesome</span></div><div><span class="font-mono text-[10px] text-primary font-bold uppercase tracking-wider">Why this problem</span><p id="recommendation-reason" class="text-sm text-on-surface-variant leading-relaxed mt-1">Analyzing your attempts, topic gaps, and experience level…</p></div></div>
-  <div id="hint-box" class="hidden mt-4 p-4 rounded-xl bg-surface-container text-sm"><div class="font-semibold text-primary mb-1 flex items-center gap-1.5"><span class="material-symbols-outlined text-[16px]">lightbulb</span>Socratic Scaffold Hint #1</div>Let <code class="font-mono bg-surface-container-high px-1.5 py-0.5 rounded">dp[i]</code> represent whether the prefix can be segmented. What previous state would you inspect before deciding <code class="font-mono">dp[i]</code>?</div>
-  <div class="flex flex-wrap items-center gap-3 mt-5">
-    <button id="recommendation-start" data-action="problem" class="px-5 py-2.5 rounded-lg bg-primary text-on-primary text-sm font-semibold">Start Problem <span class="material-symbols-outlined text-[16px] align-middle">arrow_forward</span></button>
-    <button id="hint-btn" class="px-4 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm"><span class="material-symbols-outlined text-[18px] align-middle">lightbulb</span> Toggle Scaffold Hint</button>
-    <button data-action="mentor" class="text-on-surface-variant hover:text-primary text-sm font-semibold">Review with AI <span class="material-symbols-outlined text-[16px] align-middle">chevron_right</span></button>
+  <div id="heatmap" class="heatmap mt-6"></div>
+  <div id="heatmap-summary" class="text-[11px] text-on-surface-variant mt-3"></div>
+</section>
+
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+  <div class="section p-6">
+    <div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Progress over time</h2><p class="text-xs text-on-surface-variant mt-1">Cumulative unique problems solved.</p></div><span class="mono text-[10px] text-on-surface-variant">180 days</span></div>
+    <svg id="progress-chart" viewBox="0 0 800 240" class="w-full h-56 mt-4" role="img" aria-label="Cumulative solved progress chart"></svg>
+    <div id="progress-caption" class="text-[11px] text-on-surface-variant"></div>
+  </div>
+  <div class="section p-6">
+    <div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Runtime trend</h2><p class="text-xs text-on-surface-variant mt-1">Average recorded execution runtime per day.</p></div><span class="mono text-[10px] text-on-surface-variant">30 days</span></div>
+    <svg id="runtime-chart" viewBox="0 0 800 240" class="w-full h-56 mt-4" role="img" aria-label="Runtime trend chart"></svg>
+    <div id="runtime-caption" class="text-[11px] text-on-surface-variant"></div>
   </div>
 </section>
 
+<section>
+  <div class="flex items-end justify-between mb-3"><div><h2 class="text-xl font-bold">Difficulty performance</h2><p class="text-xs text-on-surface-variant mt-1">Solved counts are unique accepted problems.</p></div></div>
+  <div id="difficulty-grid" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+</section>
 
-
-<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
-  <div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Velocity &amp; Problem Solving Mastery</h3><p class="text-xs text-on-surface-variant">Your real trend will be computed from practice sessions.</p></div><span id="telemetry-badge" class="font-mono text-[10px] px-2 py-1 rounded bg-surface-container-low">No attempts yet</span></div>
-  <div class="mt-5 p-5 rounded-xl bg-surface-container-low min-h-56">
-    <div id="daily-telemetry" class="h-44 flex items-end justify-between gap-2 px-2"></div>
-    <div class="flex justify-between gap-2 text-[9px] text-on-surface-variant mt-2" id="daily-labels"></div>
+<section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+  <div class="section p-6 xl:col-span-2">
+    <div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Topic-wise performance</h2><p class="text-xs text-on-surface-variant mt-1">Mastery is solved unique problems ÷ attempted unique problems.</p></div><a href="analytics.html" class="text-xs font-semibold text-primary">View all</a></div>
+    <div id="topics" class="mt-5 space-y-4"></div>
   </div>
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Total Solved</span><p id="metric-solved" class="text-xl font-bold mt-1">0</p><span id="metric-solved-note" class="text-[10px] text-on-surface-variant">Across accepted submissions</span></div>
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Acceptance</span><p id="metric-acceptance" class="text-xl font-bold mt-1">0%</p><span id="metric-acceptance-note" class="text-[10px] text-on-surface-variant">0 submissions</span></div>
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">Velocity Pace</span><p id="metric-velocity" class="text-xl font-bold mt-1">0/day</p><span id="metric-velocity-note" class="text-[10px] text-on-surface-variant">Last 7 days</span></div>
-    <div class="p-4 rounded-xl bg-surface-container-low"><span class="font-mono text-[10px] uppercase text-on-surface-variant">AI Hints</span><p id="metric-hints" class="text-xl font-bold mt-1">0</p><span id="metric-runtime" class="text-[10px] text-on-surface-variant">No runtime data</span></div>
+  <div class="section p-6">
+    <h2 class="text-lg font-bold">Strengths & gaps</h2>
+    <div class="mt-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Strongest topics</div><div id="strongest" class="mt-2 space-y-2"></div></div>
+    <div class="mt-6"><div class="mono text-[10px] uppercase text-on-surface-variant">Weakest topics</div><div id="weakest" class="mt-2 space-y-2"></div></div>
   </div>
 </section>
 
-<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
-  <div class="flex items-center justify-between gap-3">
-    <div><h3 class="text-lg font-bold">DSA Skill Mastery Matrix</h3><p class="text-xs text-on-surface-variant">These topics come directly from the Practice problem catalogue, so the names stay consistent.</p></div>
-    <span id="skill-topic-count" class="font-mono text-[10px] px-2.5 py-1 rounded bg-surface-container-low">Loading topics…</span>
-  </div>
-  <div id="skill-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-    <div class="col-span-full p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Loading problem topics…</div>
-  </div>
-</section>
-
-
-<section class="bg-surface-container-lowest rounded-xl p-6 sm:p-8 shadow-sm">
-  <div class="flex items-center justify-between gap-3"><div><h3 class="text-lg font-bold">Weak Areas &amp; AI Remediation Plan</h3><p class="text-xs text-on-surface-variant">Built from your actual submission history.</p></div><span class="material-symbols-outlined text-primary">construction</span></div>
-  <div id="weak-areas" class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
-    <div class="sm:col-span-2 p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Analyzing your practice history…</div>
-  </div>
-</section>
-
-</div>
-
-<div class="xl:col-span-4 flex flex-col gap-6">
-<section id="dashboard-mentor-card" class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
-  <div class="p-6 bg-gradient-to-br from-primary-container via-primary to-primary text-on-primary">
-    <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-3 min-w-0"><div class="w-10 h-10 rounded-xl bg-surface-container-lowest text-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined">smart_toy</span></div><div><h3 class="font-bold">Ask your AI Mentor</h3><span class="font-mono text-[10px] text-on-primary">Mentor engine</span></div></div><a href="mentor.html" class="shrink-0 px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-semibold">Open full mentor</a></div>
-    <p class="text-sm text-on-primary mt-4 opacity-90">Ask about an approach, a bug, an edge case, or what to practice next. Get the answer directly here, then continue into Live Practice when you want to work on code.</p>
-  </div>
-  <div class="p-6">
-    <span class="font-mono text-[10px] uppercase text-on-surface-variant">Suggested inquiries</span>
-    <div class="flex flex-col gap-2 mt-2">
-      <button data-query="Why am I struggling with DP state transitions?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">Why am I struggling with DP state transitions? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
-      <button data-query="How should I analyze my recent graph mistakes?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">How should I analyze my recent graph mistakes? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
-      <button data-query="What should I practice next?" class="mentor-query text-left px-3.5 py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container text-sm">What should I practice next? <span class="material-symbols-outlined float-right text-[16px]">arrow_forward</span></button>
-    </div>
-    <div id="dashboard-mentor-chat" class="dashboard-mentor-chat mt-5 flex flex-col gap-3"></div>
-    <div class="relative mt-5">
-      <input id="mentor-input" class="w-full pl-3.5 pr-12 py-3 rounded-lg bg-surface-container-low text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" placeholder="Ask your AI Mentor..." type="text">
-      <button id="mentor-send" class="absolute right-2 top-2 p-1.5 rounded-md bg-primary text-on-primary" type="button" aria-label="Send to AI Mentor"><span class="material-symbols-outlined text-[18px]">send</span></button>
+<section class="section p-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div><h2 class="text-lg font-bold">Weekly / monthly statistics</h2><p class="text-xs text-on-surface-variant mt-1">Local calendar periods based on your browser timezone.</p></div>
+    <div class="flex p-1 rounded-lg bg-surface-container-low w-fit">
+      <button id="weekly-btn" type="button" class="px-3 py-1.5 rounded-md bg-primary-container text-white text-xs font-semibold">Weekly</button>
+      <button id="monthly-btn" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold text-on-surface-variant">Monthly</button>
     </div>
   </div>
+  <div id="period-table" class="mt-5 overflow-x-auto"></div>
 </section>
 
-<section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
-  <div class="flex items-center justify-between"><h3 class="font-bold">Recent Practice Stream</h3><span id="activity-badge" class="font-mono text-[10px] text-on-surface-variant">Live telemetry</span></div>
-  <div id="recent-practice" class="mt-4 flex flex-col gap-2">
-    <div class="p-4 rounded-lg bg-surface-container-low text-xs text-on-surface-variant">Loading recent practice…</div>
+<section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+  <div class="section p-6">
+    <div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Recent submissions</h2><p class="text-xs text-on-surface-variant mt-1">Latest 12 submit events.</p></div><a href="analytics.html" class="text-xs font-semibold text-primary">Full history</a></div>
+    <div id="recent-submissions" class="mt-5 space-y-2"></div>
   </div>
-  <button data-action="analytics" class="w-full text-center text-sm text-on-surface-variant hover:text-primary mt-4" type="button">View full solution history →</button>
+  <div class="section p-6">
+    <div class="flex items-center justify-between"><div><h2 class="text-lg font-bold">Recent mistakes</h2><p class="text-xs text-on-surface-variant mt-1">Failed submissions only.</p></div><span class="material-symbols-outlined text-error">warning</span></div>
+    <div id="mistakes" class="mt-5 space-y-2"></div>
+  </div>
 </section>
-</div>
-</div>
+
+<section class="section p-6">
+  <div class="flex flex-col lg:flex-row lg:items-start gap-5">
+    <div class="flex-1">
+      <div class="mono text-[10px] uppercase tracking-[.18em] text-primary font-semibold">Dashboard AI Mentor</div>
+      <h2 class="text-xl font-bold mt-1">Coach me using my telemetry</h2>
+      <p class="text-xs text-on-surface-variant mt-1">The mentor can use your existing coaching session; analytics does not change mentor behavior or recommendation logic.</p>
+      <div id="mentor-suggestions" class="flex flex-wrap gap-2 mt-4"></div>
+    </div>
+    <div class="w-full lg:w-[520px]">
+      <div id="mentor-chat" class="border border-surface-container-high rounded-xl bg-surface-container-lowest p-3 h-56 overflow-y-auto space-y-2" aria-live="polite"></div>
+      <div class="flex gap-2 mt-2"><input id="mentor-input" class="flex-1 rounded-lg border border-surface-container-high px-3 py-2 text-sm outline-none focus:border-primary" placeholder="Ask about your performance..." aria-label="Ask dashboard AI mentor"><button id="mentor-send" type="button" class="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold">Ask</button></div>
+    </div>
+  </div>
+</section>
+
+<div id="error" class="hidden fixed bottom-5 right-5 max-w-md px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm shadow-lg"></div>
 </div>
 </main>
-</div>
-
-<footer class="fixed bottom-0 left-0 right-0 h-10 z-40 bg-surface-container-lowest/95 backdrop-blur-md shadow-sm flex items-center justify-between px-4 sm:px-6 text-on-surface-variant font-mono text-[10px]">
-  <div class="flex items-center gap-4"><span class="flex items-center gap-1.5 text-tertiary"><span class="w-2 h-2 rounded-full bg-on-tertiary-container"></span>System Operational</span><span class="hidden sm:inline">Authenticated session</span></div>
-  <div class="flex items-center gap-4"><span>CodeMentor Engine</span><span class="hidden sm:inline">Telemetry: waiting</span></div>
-</footer>
-
-<div id="notification-panel" class="hidden fixed right-4 top-20 z-[70] w-80 rounded-xl bg-surface-container-lowest shadow-xl border border-surface-container-high p-4">
-  <div class="flex items-center justify-between"><p class="font-semibold text-sm">Notifications</p><button id="close-notifications" class="text-on-surface-variant" type="button"><span class="material-symbols-outlined text-[18px]">close</span></button></div>
-  <div class="mt-3 p-3 rounded-lg bg-surface-container-low text-xs text-on-surface-variant">No new notifications yet. Practice events and mentor updates will appear here.</div>
-</div>
-
-<div id="search-panel" class="hidden fixed inset-0 z-[80] bg-on-surface/20 backdrop-blur-sm items-start justify-center pt-28 px-4">
-  <div class="w-full max-w-xl bg-surface-container-lowest rounded-2xl shadow-2xl p-5">
-    <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">search</span><input id="search-input" autofocus class="flex-1 outline-none text-sm" placeholder="Search problems, topics, syntax..." type="text"><button id="close-search" class="text-on-surface-variant" type="button"><span class="material-symbols-outlined">close</span></button></div>
-    <div id="search-result" class="mt-4 p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">Search will connect to the problem index in the next stage.</div>
-  </div>
-</div>
-
-<div id="toast" class="hidden fixed bottom-14 right-4 z-[90] max-w-sm px-4 py-3 rounded-xl bg-on-surface text-white text-sm shadow-xl"></div>
-<div id="skill-modal" class="hidden fixed inset-0 z-[95] bg-on-surface/25 backdrop-blur-sm items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="skill-modal-title">
-  <div class="w-full max-w-xl bg-surface-container-lowest rounded-2xl shadow-2xl border border-surface-container-high overflow-hidden">
-    <div class="flex items-start justify-between gap-4 px-6 py-5 border-b border-surface-container-high">
-      <div><div class="font-mono text-[10px] uppercase tracking-wider text-primary">Skill diagnostics</div><h3 id="skill-modal-title" class="text-xl font-bold mt-1">DSA Topic</h3></div>
-      <button id="close-skill-modal" class="w-9 h-9 rounded-lg hover:bg-surface-container-low text-on-surface-variant flex items-center justify-center" type="button" aria-label="Close skill details"><span class="material-symbols-outlined">close</span></button>
-    </div>
-    <div class="px-6 py-5 space-y-5">
-      <div class="grid grid-cols-3 gap-3">
-        <div class="p-3 rounded-xl bg-surface-container-low"><span class="font-mono text-[9px] uppercase text-on-surface-variant">Mastery</span><p id="skill-modal-mastery" class="font-bold text-lg mt-1">Awaiting data</p></div>
-        <div class="p-3 rounded-xl bg-surface-container-low"><span class="font-mono text-[9px] uppercase text-on-surface-variant">Solved</span><p id="skill-modal-solved" class="font-bold text-lg mt-1">0</p></div>
-        <div class="p-3 rounded-xl bg-surface-container-low"><span class="font-mono text-[9px] uppercase text-on-surface-variant">Status</span><p id="skill-modal-status" class="font-bold text-sm mt-1">Not evaluated</p></div>
-      </div>
-      <div><p class="font-semibold text-sm">What this topic covers</p><p id="skill-modal-focus" class="text-sm text-on-surface-variant mt-1">—</p></div>
-      <div><p class="font-semibold text-sm">Suggested next step</p><p id="skill-modal-next" class="text-sm text-on-surface-variant mt-1">Complete practice sessions in this topic so CodeMentor can calculate mastery.</p></div>
-    </div>
-    <div class="px-6 py-4 bg-surface-container-low border-t border-surface-container-high flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-      <p class="text-[11px] text-on-surface-variant">Mastery becomes data-driven after the execution and submission engine is connected.</p>
-      <button id="skill-modal-action" class="px-4 py-2 rounded-lg bg-primary text-on-primary text-sm font-semibold" type="button">Practice this topic</button>
-    </div>
-  </div>
-</div>
 
 <script>
-const API_BASE_URL = 'http://127.0.0.1:8000';
-const TOKEN_KEY = 'codementor_access_token';
+const API="http://127.0.0.1:8000";
+const TOKEN_KEY="codementor_access_token";
+let analytics=null;
+let mentorSessionId=null;
+const mentorMessages=[];
 
-function token(){ return localStorage.getItem(TOKEN_KEY); }
-function esc(value){
-  return String(value??'').replace(/[&<>"']/g,character=>({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[character]));
+function token(){return localStorage.getItem(TOKEN_KEY)}
+function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
+function showError(message){const el=document.getElementById("error");el.textContent=message;el.classList.remove("hidden")}
+function formatDuration(seconds){
+  if(seconds==null||!Number.isFinite(Number(seconds)))return "—";
+  const s=Math.round(Number(seconds));
+  if(s<60)return s+"s";
+  const m=Math.floor(s/60);
+  if(m<60)return m+"m "+(s%60)+"s";
+  const h=Math.floor(m/60);
+  return h+"h "+(m%60)+"m";
 }
-function toast(message){
-  const el=document.getElementById('toast');
-  el.textContent=message; el.classList.remove('hidden');
-  clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.classList.add('hidden'),2600);
+function formatRuntime(ms){return ms==null?"—":(Number(ms)>=1000?(Number(ms)/1000).toFixed(2)+" s":Math.round(Number(ms))+" ms")}
+function localTime(value){if(!value)return "—";const d=new Date(value);return Number.isNaN(d.getTime())?"—":d.toLocaleString([], {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}
+function statusClass(status){
+  if(status==="Accepted")return "accepted";
+  if(["Wrong Answer","Output Limit Exceeded"].includes(status))return "failed";
+  if(["Runtime Error","Time Limit Exceeded","Compile Error","Judge Error"].includes(status))return "error";
+  return "neutral";
 }
-function requireAuth(){
-  if(!token()){ window.location.replace('auth.html'); return false; }
-  return true;
-}
-function closeAccount(){
-  document.getElementById('account-menu')?.classList.add('hidden');
-  document.getElementById('account-btn')?.setAttribute('aria-expanded','false');
-}
-function toggleAccount(){
-  const menu=document.getElementById('account-menu'); const btn=document.getElementById('account-btn');
-  if(!menu||!btn) return;
-  const opening=menu.classList.contains('hidden');
-  menu.classList.toggle('hidden',!opening); btn.setAttribute('aria-expanded',String(opening));
-}
-function navNotice(area){ toast(area + ' will be connected in the next implementation stage.'); }
-let currentRecommendation=null;
-let dashboardUserId=null;
 
-function tokenUserId(){
-  try{
-    const raw=token();
-    if(!raw)return null;
-    const parts=raw.split('.');
-    if(parts.length!==3)return null;
-    const payload=JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
-    return payload?.sub ? String(payload.sub) : null;
-  }catch(_err){
-    return null;
+function renderHeatmap(items){
+  const host=document.getElementById("heatmap");
+  host.innerHTML="";
+  if(!items.length){host.innerHTML='<div class="text-xs text-on-surface-variant">No activity yet.</div>';return}
+  const first=new Date(items[0].date+"T12:00:00");
+  const offset=(first.getDay()+6)%7;
+  for(let i=0;i<offset;i++){const blank=document.createElement("div");blank.className="heat-cell opacity-0";host.appendChild(blank)}
+  let active=0, solved=0, submissions=0;
+  const max=Math.max(1,...items.map(i=>Number(i.attempts)||0));
+  for(const item of items){
+    const cell=document.createElement("div");
+    const attempts=Number(item.attempts)||0;
+    const level=attempts===0?0:attempts/max>=.75?4:attempts/max>=.5?3:attempts/max>=.25?2:1;
+    cell.className="heat-cell "+(level?"heat-"+level:"");
+    cell.title=item.date+" • "+attempts+" events • "+(item.submissions||0)+" submissions • "+(item.solved||0)+" solved";
+    host.appendChild(cell);
+    active+=attempts>0?1:0;solved+=Number(item.solved)||0;submissions+=Number(item.submissions)||0;
   }
+  document.getElementById("heatmap-summary").textContent=active+" active days • "+submissions+" submissions • "+solved+" unique solves in the displayed year.";
 }
 
-function recommendationStorageKey(){
-  const userId=dashboardUserId || tokenUserId();
-  return userId ? 'codementor_current_recommendation_'+String(userId) : null;
-}
-
-function startRecommendation(){
-  const slug=currentRecommendation?.problem?.slug;
-  if(slug) window.location.replace('problem.html?problem='+encodeURIComponent(slug));
-  else window.location.replace('practice.html');
-}
-function handleAction(action){
-  if(action==='problem') startRecommendation();
-  else if(action==='weak') window.location.replace('practice.html?topic=Dynamic%20Programming');
-  else if(action==='mentor') window.location.replace('mentor.html');
-  else if(action==='analytics') window.location.replace('analytics.html');
-  else if(action==='career') window.location.replace('career.html');
-}
-const skillCatalog = {
-  'Arrays & Strings': {focus:'Array traversal, strings, prefix techniques, sliding windows, and in-place transformations.', next:'Start with array/string problems and let the mentor identify recurring edge-case mistakes.'},
-  'Hashing & Hash Maps': {focus:'Frequency maps, membership checks, grouping, counting, and hash-based lookups.', next:'Practice a small set of frequency/counting problems and compare brute force with hash-based solutions.'},
-  'Two Pointers': {focus:'Opposing pointers, same-direction scans, partitioning, and sorted-array pair techniques.', next:'Practice pointer movement decisions and explicitly identify the invariant you preserve.'},
-  'Binary Search': {focus:'Sorted searches, boundary handling, answer-space search, and monotonic predicates.', next:'Practice writing the search invariant before coding to reduce off-by-one errors.'},
-  'Linked Lists': {focus:'Pointer manipulation, reversal, cycle detection, merging, and fast/slow pointer patterns.', next:'Work through pointer diagrams before implementing mutation-heavy solutions.'},
-  'Trees & BST': {focus:'DFS/BFS traversal, recursion, tree invariants, BST ordering, and path problems.', next:'Practice identifying whether the problem is traversal-based, subtree-based, or BST-invariant-based.'},
-  'Graphs (BFS/DFS)': {focus:'Graph traversal, connected components, shortest unweighted paths, and visited-state design.', next:'Practice choosing BFS vs DFS and defining visited state before writing traversal code.'},
-  'Dynamic Programming': {focus:'State definition, transitions, base cases, memoization, tabulation, and optimization.', next:'Start by writing the state in one sentence, then derive the transition from smaller subproblems.'},
-  'Backtracking': {focus:'Search-space exploration, choices, constraints, pruning, and recursive state restoration.', next:'Practice identifying the decision tree and the exact state that must be undone after each branch.'},
-  'Greedy Algorithms': {focus:'Local-choice strategies, exchange arguments, sorting by the right key, and feasibility checks.', next:'Practice proving why a local choice is safe before coding the greedy implementation.'}
-};
-
-function openSkillModal(topic){
-  const modal=document.getElementById('skill-modal');
-  const meta=skillCatalog[topic] || {focus:'Topic diagnostics will be learned from your submissions.',next:'Complete practice sessions in this topic so CodeMentor can calculate mastery.'};
-  if(!modal) return;
-  document.getElementById('skill-modal-title').textContent=topic;
-  document.getElementById('skill-modal-focus').textContent=meta.focus;
-  document.getElementById('skill-modal-next').textContent=meta.next;
-  const stat=(analyticsSnapshot?.topics||[]).find(item=>item.topic===topic)||{mastery:0,solved_problems:0,attempted_problems:0,acceptance_rate:0};
-  document.getElementById('skill-modal-mastery').textContent=(stat.mastery||0)+'%';
-  document.getElementById('skill-modal-solved').textContent=String(stat.solved_problems||0);
-  document.getElementById('skill-modal-status').textContent=stat.attempted_problems ? 'Tracked from attempts' : 'Not evaluated';
-  const action=document.getElementById('skill-modal-action');
-  action.onclick=()=>{ closeSkillModal(); window.location.replace('practice.html?topic='+encodeURIComponent(topic)); };
-  modal.classList.remove('hidden'); modal.classList.add('flex');
-  document.body.classList.add('overflow-hidden');
-}
-
-function closeSkillModal(){
-  const modal=document.getElementById('skill-modal');
-  modal?.classList.add('hidden'); modal?.classList.remove('flex');
-  document.body.classList.remove('overflow-hidden');
-}
-
-let analyticsSnapshot=null;
-let practiceTopicFacets=[];
-
-function renderSkills(){
-  const grid=document.getElementById('skill-grid');
-  const count=document.getElementById('skill-topic-count');
-  if(!grid)return;
-
-  const topics=practiceTopicFacets
-    .map(item=>String(item?.name||'').trim())
-    .filter(Boolean);
-
-  if(count)count.textContent=topics.length+' catalogue topics';
-
-  if(!topics.length){
-    grid.innerHTML='<div class="col-span-full p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant">No problem topics are available yet.</div>';
-    return;
-  }
-
-  const statsByTopic=Object.fromEntries((analyticsSnapshot?.topics||[]).map(item=>[item.topic,item]));
-  grid.innerHTML=topics.map(topic=>{
-    const stat=statsByTopic[topic]||{mastery:0,solved_problems:0,attempted_problems:0,acceptance_rate:0};
-    const mastery=Math.max(0,Math.min(100,Number(stat.mastery)||0));
-    const status=stat.attempted_problems?'Tracked':'No attempts';
-    return '<button class="skill-card w-full text-left p-3.5 rounded-lg bg-surface-container-low hover:bg-surface-container transition-all focus:outline-none focus:ring-2 focus:ring-primary/20" data-topic="'+esc(topic)+'" type="button" aria-label="Open '+esc(topic)+' skill details" title="Open '+esc(topic)+' skill details">'+
-      '<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold">'+esc(topic)+'</span><div class="flex items-center gap-2"><span class="font-mono text-[10px] px-2 py-0.5 rounded bg-surface-container text-on-surface-variant">'+status+'</span><span class="material-symbols-outlined text-[16px] text-outline">chevron_right</span></div></div>'+
-      '<div class="w-full h-2 rounded-full bg-surface-container mt-2 overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:'+mastery+'%"></div></div>'+
-      '<div class="flex justify-between text-[10px] text-on-surface-variant mt-2"><span>'+stat.solved_problems+' solved in app</span><span>'+mastery+'% mastery</span></div>'+
-    '</button>';
-  }).join('');
-
-  grid.querySelectorAll('.skill-card').forEach(card=>{
-    card.addEventListener('click',()=>openSkillModal(card.dataset.topic));
-    card.addEventListener('keydown',event=>{
-      if(event.key==='Enter'||event.key===' '){
-        event.preventDefault();
-        openSkillModal(card.dataset.topic);
-      }
-    });
+function chartPoints(items,valueKey){
+  const W=800,H=240,L=40,R=18,T=14,B=28;
+  const values=items.map(i=>Number(i[valueKey])||0);
+  const max=Math.max(1,...values), min=Math.min(0,...values), span=Math.max(1,max-min);
+  const pts=values.map((v,i)=>{
+    const x=L+(i*(W-L-R))/Math.max(1,values.length-1);
+    const y=T+(H-T-B)-((v-min)/span)*(H-T-B);
+    return [x,y,v];
   });
+  return {pts,W,H,L,R,T,B,max,min};
+}
+function renderLineChart(svgId,items,valueKey){
+  const svg=document.getElementById(svgId);
+  if(!items.some(i=>i[valueKey]!=null)){svg.innerHTML='<text x="400" y="125" text-anchor="middle" fill="#64748b" font-size="13">No telemetry for this period.</text>';return}
+  const c=chartPoints(items,valueKey);
+  const grid=[0,.5,1].map(r=>{
+    const y=c.T+(c.H-c.T-c.B)*r;
+    return '<line x1="'+c.L+'" x2="'+(c.W-c.R)+'" y1="'+y+'" y2="'+y+'"/>';
+  }).join("");
+  const points=c.pts.map(p=>p[0]+","+p[1]).join(" ");
+  const firstLabel=items[0].date.slice(5), lastLabel=items[items.length-1].date.slice(5);
+  svg.innerHTML='<g class="chart-grid">'+grid+'</g><polyline class="chart-line" points="'+points+'"/><circle class="chart-dot" cx="'+c.pts.at(-1)[0]+'" cy="'+c.pts.at(-1)[1]+'" r="4"/><text x="'+c.L+'" y="232" fill="#64748b" font-size="11">'+firstLabel+'</text><text x="'+(c.W-c.R)+'" y="232" text-anchor="end" fill="#64748b" font-size="11">'+lastLabel+'</text><text x="'+c.L+'" y="10" fill="#64748b" font-size="10">'+(valueKey==="cumulative_solved"?"solved":"ms")+'</text>';
+}
+function renderProgress(){
+  renderLineChart("progress-chart",analytics.progress_over_time,"cumulative_solved");
+  const first=analytics.progress_over_time[0], last=analytics.progress_over_time.at(-1);
+  document.getElementById("progress-caption").textContent=(last?.cumulative_solved||0)+" total solved by "+(last?.date||"today")+".";
+}
+function renderRuntime(){
+  renderLineChart("runtime-chart",analytics.runtime_trend,"average_runtime_ms");
+  const values=analytics.runtime_trend.filter(x=>x.average_runtime_ms!=null).map(x=>x.average_runtime_ms);
+  document.getElementById("runtime-caption").textContent=values.length?("Average recorded runtime: "+formatRuntime(values.reduce((a,b)=>a+b,0)/values.length)+"."):"No runtime measurements recorded yet.";
 }
 
-async function loadPracticeTopics(){
-  try{
-    const res=await fetch(API_BASE_URL+'/problems/topics',{headers:{Authorization:'Bearer '+token()}});
-    if(res.status===401){
-      localStorage.removeItem(TOKEN_KEY);
-      window.location.replace('auth.html');
-      return;
-    }
-    if(!res.ok)throw new Error('Problem topic request failed.');
-    const data=await res.json();
-    practiceTopicFacets=data.topics||[];
-    renderSkills();
-  }catch(err){
-    console.warn('Problem topics load failed:',err);
-    practiceTopicFacets=[];
-    const count=document.getElementById('skill-topic-count');
-    if(count)count.textContent='Topics unavailable';
-    const grid=document.getElementById('skill-grid');
-    if(grid)grid.innerHTML='<div class="col-span-full p-4 rounded-xl bg-surface-container-low text-xs text-error">Unable to load the Practice topic catalogue.</div>';
-  }
-}
-function renderRecommendation(data){
-  currentRecommendation=data;
-  const problem=data?.problem;
-  if(!problem)return;
-  document.getElementById('recommendation-title').textContent=problem.title;
-  document.getElementById('recommendation-difficulty').textContent=problem.difficulty;
-  document.getElementById('recommendation-topics').innerHTML=(problem.topics||[]).map(topic=>'<span class="px-2 py-1 rounded bg-surface-container-low font-mono text-[11px]">DSA: '+esc(topic)+'</span>').join('');
-  document.getElementById('recommendation-reason').textContent=data.reason||'Recommended from your current practice telemetry.';
-}
-async function loadRecommendation(){
-  try{
-    const key=recommendationStorageKey();
-    const savedId=key ? Number(localStorage.getItem(key)) : NaN;
-    const query=Number.isInteger(savedId) && savedId>0
-      ? '?current_problem_id='+encodeURIComponent(String(savedId))
-      : '';
-    const res=await fetch(API_BASE_URL+'/recommendations/next'+query,{
-      headers:{Authorization:'Bearer '+token()}
-    });
-    if(!res.ok)throw new Error('Recommendation request failed.');
-
-    const data=await res.json();
-    if(data?.problem?.id){
-      if(key) localStorage.setItem(key,String(data.problem.id));
-      renderRecommendation(data);
-    }else{
-      if(key) localStorage.removeItem(key);
-      currentRecommendation=null;
-      document.getElementById('recommendation-title').textContent='All available problems solved';
-      document.getElementById('recommendation-difficulty').textContent='Complete';
-      document.getElementById('recommendation-topics').innerHTML='';
-      document.getElementById('recommendation-reason').textContent=data.reason||'You have solved every currently available problem.';
-    }
-  }catch(err){
-    console.warn('Recommendation load failed:',err);
-    document.getElementById('recommendation-title').textContent='Recommendation unavailable';
-    document.getElementById('recommendation-difficulty').textContent='Error';
-    document.getElementById('recommendation-topics').innerHTML='';
-    document.getElementById('recommendation-reason').textContent=(err?.message||'Could not calculate a recommendation.')+' Open Practice to choose a problem while the service is unavailable.';
-  }
+function renderMetrics(){
+  document.getElementById("m-solved").textContent=analytics.total_solved||0;
+  document.getElementById("m-accepted").textContent=(analytics.accepted_submissions||0)+" accepted";
+  document.getElementById("m-acceptance").textContent=(analytics.acceptance_rate||0)+"%";
+  document.getElementById("m-submissions").textContent=analytics.total_submissions||0;
+  document.getElementById("m-attempts").textContent=(analytics.total_attempts||0)+" total events";
+  document.getElementById("m-streak").textContent=(analytics.current_streak||0)+" day"+(analytics.current_streak===1?"":"s");
+  document.getElementById("m-longest").textContent=(analytics.longest_streak||0)+" day"+(analytics.longest_streak===1?"":"s");
+  document.getElementById("m-time").textContent=formatDuration(analytics.average_time_to_solve_seconds);
 }
 
-function renderAnalyticsUnavailable(message){
-  const badge=document.getElementById('telemetry-badge');
-  if(badge){ badge.textContent=message || 'Analytics unavailable'; badge.classList.add('text-error'); }
-  const daily=document.getElementById('daily-telemetry');
-  const labels=document.getElementById('daily-labels');
-  if(daily) daily.innerHTML='<div class="w-full h-full flex items-center justify-center text-xs text-on-surface-variant">Could not load analytics telemetry.</div>';
-  if(labels) labels.innerHTML='';
-}
-function formatActivityTime(value){
-  if(!value)return 'Time unavailable';
-  const date=new Date(value.endsWith('Z')?value:value+'Z');
-  if(Number.isNaN(date.getTime()))return 'Time unavailable';
-  const diff=Math.max(0,Date.now()-date.getTime());
-  const mins=Math.floor(diff/60000);
-  if(mins<1)return 'just now';
-  if(mins<60)return mins+'m ago';
-  const hours=Math.floor(mins/60);
-  if(hours<24)return hours+'h ago';
-  const days=Math.floor(hours/24);
-  if(days<7)return days+'d ago';
-  return date.toLocaleDateString([], {month:'short',day:'numeric'});
+function renderDifficulty(){
+  const host=document.getElementById("difficulty-grid");
+  host.innerHTML=analytics.difficulty.map(item=>{
+    const color=item.difficulty==="Easy"?"text-emerald-700":item.difficulty==="Medium"?"text-amber-700":"text-rose-700";
+    return '<div class="section p-5"><div class="flex items-center justify-between"><div class="font-semibold '+color+'">'+esc(item.difficulty)+'</div><span class="mono text-[10px] text-on-surface-variant">'+item.acceptance_rate+'% acc</span></div><div class="text-3xl font-bold mt-3">'+item.solved_problems+'</div><div class="text-xs text-on-surface-variant">of '+item.attempted_problems+' attempted</div><div class="h-2 bg-surface-container mt-4 rounded-full overflow-hidden"><div class="h-full bg-primary rounded-full" style="width:'+item.mastery+'%"></div></div><div class="mt-2 text-[10px] text-on-surface-variant">'+item.submissions+' submissions • avg '+(item.average_attempts_per_problem==null?"—":item.average_attempts_per_problem)+" / problem • "+formatDuration(item.average_time_to_solve_seconds)+" to solve</div></div>";
+  }).join("");
 }
 
-function renderRecentPractice(items){
-  const host=document.getElementById('recent-practice');
-  const badge=document.getElementById('activity-badge');
-  if(!host)return;
-  if(!items.length){
-    host.innerHTML='<div class="p-4 rounded-lg bg-surface-container-low"><p class="font-semibold text-sm">No practice sessions yet</p><p class="text-xs text-on-surface-variant mt-1">Your Run and Submit activity will appear here.</p></div>';
-    if(badge)badge.textContent='Waiting for activity';
-    return;
-  }
-  if(badge)badge.textContent=items.length+' recent attempts';
-  host.innerHTML=items.slice(0,6).map(item=>{
-    const accepted=item.status==='Accepted';
-    const icon=accepted?'check_circle':'error';
-    const tone=accepted?'text-tertiary bg-emerald-50':'text-error bg-red-50';
-    return '<button type="button" class="w-full text-left flex items-center gap-3 p-3 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors" data-activity-slug="'+esc(item.problem_slug)+'">'+
-      '<span class="w-8 h-8 rounded-lg '+tone+' flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[17px]">'+icon+'</span></span>'+
-      '<span class="min-w-0 flex-1"><span class="block text-xs font-semibold truncate">'+esc(item.problem_title)+'</span><span class="block text-[9px] text-on-surface-variant mt-0.5">'+esc(item.language)+' · '+esc(item.mode)+' · '+esc(formatActivityTime(item.created_at))+'</span></span>'+
-      '<span class="text-[9px] font-semibold '+(accepted?'text-tertiary':'text-error')+'">'+esc(item.status)+'</span>'+
-      '</button>';
-  }).join('');
-  host.querySelectorAll('[data-activity-slug]').forEach(btn=>btn.addEventListener('click',()=>window.location.href='problem.html?problem='+encodeURIComponent(btn.dataset.activitySlug)));
+function renderTopics(){
+  const items=analytics.topics.filter(x=>x.attempted_problems>0).sort((a,b)=>b.attempted_problems-a.attempted_problems||b.mastery-a.mastery).slice(0,8);
+  const host=document.getElementById("topics");
+  if(!items.length){host.innerHTML='<div class="py-8 text-center text-xs text-on-surface-variant">No topic telemetry yet. Your topic rows will appear after the first submission.</div>';return}
+  host.innerHTML=items.map(item=>'<div><div class="flex items-center justify-between text-xs mb-1.5"><span class="font-semibold">'+esc(item.topic)+'</span><span class="mono text-[10px]">'+item.mastery+'% mastery • '+item.solved_problems+'/'+item.attempted_problems+'</span></div><div class="h-2 bg-surface-container rounded-full overflow-hidden"><div class="topic-bar h-full bg-primary rounded-full" style="width:'+item.mastery+'%"></div></div><div class="text-[10px] text-on-surface-variant mt-1">'+item.acceptance_rate+'% submission acceptance • '+(item.average_attempts_per_problem??"—")+' submissions/problem</div></div>').join("");
+}
+function renderRankings(){
+  const make=(items,empty)=>items.length?items.map(i=>'<div class="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-surface-container-low"><span class="text-xs font-medium">'+esc(i.topic)+'</span><span class="mono text-[10px]">'+i.mastery+'%</span></div>').join(""):'<div class="text-xs text-on-surface-variant">'+empty+'</div>';
+  document.getElementById("strongest").innerHTML=make(analytics.strongest_topics.slice(0,4),"Not enough practiced topics yet.");
+  document.getElementById("weakest").innerHTML=make(analytics.weakest_topics.slice(0,4),"Not enough practiced topics yet.");
 }
 
-function renderLearningRoadmap(items,currentTopic,meta={}){
-  const host=document.getElementById('learning-roadmap');
-  const badge=document.getElementById('roadmap-focus');
-  if(!host)return;
-
-  if(!items?.length){
-    host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-xs text-on-surface-variant"><p class="font-semibold">No roadmap topics are available yet.</p><p class="mt-1">The roadmap only uses topics that have real Practice questions.</p><button type="button" id="roadmap-practice-link" class="mt-3 px-3 py-2 rounded-lg bg-primary text-white font-semibold">Open Practice</button></div>';
-    if(badge)badge.textContent='No eligible topics';
-    document.getElementById('roadmap-practice-link')?.addEventListener('click',()=>window.location.replace('practice.html'));
-    return;
-  }
-
-  const experience=meta.experience_level||'Beginner';
-  const targetTier=Number(meta.target_tier)||1;
-  if(badge){
-    badge.textContent=currentTopic
-      ? 'Focus: '+currentTopic
-      : experience+' · Tier '+targetTier;
-  }
-
-  host.innerHTML=items.map(item=>{
-    const completed=item.position==='completed';
-    const current=item.position==='current';
-    const locked=item.position==='locked';
-    const statusText=completed?'Completed':current?'Current focus':locked?'Locked':'Up next';
-    const icon=completed?'check_circle':current?'adjust':locked?'lock':'radio_button_unchecked';
-    const tone=completed
-      ? 'bg-emerald-100 text-emerald-700'
-      : current
-        ? 'bg-primary text-white'
-        : locked
-          ? 'bg-surface-container text-on-surface-variant'
-          : 'bg-surface-container text-on-surface-variant';
-    const border=current
-      ? 'border-primary/30 shadow-sm'
-      : locked
-        ? 'border-surface-container-high opacity-80'
-        : 'border-surface-container-high';
-
-    const difficulty=item.recommended_difficulty
-      ? '<span>Next: '+esc(item.recommended_difficulty)+'</span>'
-      : '';
-    const prereqs=item.prerequisites?.length
-      ? '<span>Prereqs: '+esc(item.prerequisites.join(', '))+'</span>'
-      : '<span>No prerequisites</span>';
-    const why=item.why
-      ? '<p class="mt-2 text-[10px] text-on-surface-variant leading-relaxed">'+esc(item.why)+'</p>'
-      : '';
-
-    return '<button type="button" '+(locked?'disabled ':'')+'class="w-full text-left flex items-center gap-4 p-4 rounded-xl border '+border+' bg-surface-container-lowest '+(locked?'cursor-not-allowed':'hover:bg-surface-container-low transition-colors')+'" data-roadmap-topic="'+esc(item.topic)+'">'+
-      '<div class="w-9 h-9 rounded-full '+tone+' flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-[18px]">'+icon+'</span></div>'+
-      '<div class="min-w-0 flex-1">'+
-        '<div class="flex flex-wrap items-center gap-2"><span class="text-sm font-semibold">'+esc(item.topic)+'</span><span class="text-[9px] font-semibold px-2 py-0.5 rounded-full '+(current?'bg-primary/10 text-primary':locked?'bg-surface-container text-on-surface-variant':'bg-surface-container text-on-surface-variant')+'">'+statusText+'</span></div>'+
-        '<div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] text-on-surface-variant"><span>'+esc(item.attempted_problems)+' practiced</span><span>'+esc(item.solved_problems)+' solved</span><span>'+esc(item.available_problems)+' available</span><span>'+esc(item.mastery)+'% mastery</span><span>'+difficulty+'</span></div>'+
-        '<div class="mt-1 flex flex-wrap gap-x-3 text-[9px] text-on-surface-variant">'+prereqs+'</div>'+
-        why+
-      '</div>'+
-      '<div class="w-24 hidden sm:block"><div class="h-1.5 rounded-full bg-surface-container overflow-hidden"><div class="h-full rounded-full '+(current?'bg-primary':completed?'bg-emerald-500':locked?'bg-surface-container-high':'bg-secondary')+'" style="width:'+Math.max(0,Math.min(100,Number(item.mastery)||0))+'%"></div></div></div>'+
-      '<span class="material-symbols-outlined text-[17px] text-on-surface-variant">'+(locked?'lock':'chevron_right')+'</span>'+
-    '</button>';
-  }).join('');
-
-  host.querySelectorAll('[data-roadmap-topic]:not([disabled])').forEach(btn=>btn.addEventListener('click',()=>{
-    window.location.href='practice.html?topic='+encodeURIComponent(btn.dataset.roadmapTopic);
-  }));
+function renderPeriods(mode){
+  const items=analytics[mode];
+  const host=document.getElementById("period-table");
+  if(!items.length){host.innerHTML='<div class="py-8 text-center text-xs text-on-surface-variant">No period statistics yet.</div>';return}
+  const rows=items.slice(-8).reverse().map(item=>'<tr class="border-b border-slate-100"><td class="py-2 pr-4 mono text-[10px] whitespace-nowrap">'+item.start_date+' → '+item.end_date+'</td><td class="py-2 pr-4">'+item.solved+'</td><td class="py-2 pr-4">'+item.submissions+'</td><td class="py-2 pr-4">'+item.acceptance_rate+'%</td><td class="py-2">'+formatRuntime(item.average_runtime_ms)+'</td></tr>').join("");
+  host.innerHTML='<table class="w-full text-xs"><thead><tr class="text-left text-on-surface-variant border-b border-slate-200"><th class="py-2 pr-4">Period</th><th class="py-2 pr-4">Solved</th><th class="py-2 pr-4">Submissions</th><th class="py-2 pr-4">Acceptance</th><th class="py-2">Runtime</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function togglePeriod(mode){
+  document.getElementById("weekly-btn").className="px-3 py-1.5 rounded-md text-xs font-semibold "+(mode==="weekly"?"bg-primary-container text-white":"text-on-surface-variant");
+  document.getElementById("monthly-btn").className="px-3 py-1.5 rounded-md text-xs font-semibold "+(mode==="monthly"?"bg-primary-container text-white":"text-on-surface-variant");
+  renderPeriods(mode);
 }
 
-function renderWeakAreas(topics){
-  const host=document.getElementById('weak-areas');
-  if(!host)return;
-  const weak=(topics||[])
-    .filter(item=>Number(item.attempted_problems)>0)
-    .sort((a,b)=>(Number(a.mastery)||0)-(Number(b.mastery)||0))
-    .slice(0,4);
-  if(!weak.length){
-    host.innerHTML='<div class="sm:col-span-2 p-4 rounded-xl bg-surface-container-low"><p class="font-semibold text-sm">Build your first skill signals</p><p class="text-xs text-on-surface-variant mt-1">Solve a few problems and this section will identify topics that need more practice.</p></div>';
-    return;
-  }
-  host.innerHTML=weak.map(item=>{
-    const mastery=Math.max(0,Math.min(100,Number(item.mastery)||0));
-    const confidence=Number(item.mastery_confidence)||0;
-    return '<button type="button" class="text-left p-4 rounded-xl bg-surface-container-low hover:bg-surface-container transition-colors" data-weak-topic="'+esc(item.topic)+'">'+
-      '<div class="flex items-center justify-between gap-2"><span class="text-sm font-semibold truncate">'+esc(item.topic)+'</span><span class="text-[10px] font-mono text-error">'+mastery+'%</span></div>'+
-      '<div class="h-2 rounded-full bg-surface-container-high mt-3 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r from-error via-secondary to-primary" style="width:'+mastery+'%"></div></div>'+
-      '<div class="flex items-center justify-between mt-2 text-[9px] text-on-surface-variant"><span>'+esc(item.attempted_problems)+' problems · '+esc(item.solved_problems)+' solved</span><span>'+esc(confidence)+'% confidence</span></div>'+
-      '</button>';
-  }).join('');
-  host.querySelectorAll('[data-weak-topic]').forEach(btn=>btn.addEventListener('click',()=>window.location.href='practice.html?topic='+encodeURIComponent(btn.dataset.weakTopic)));
+function renderRecentSubmissions(){
+  const host=document.getElementById("recent-submissions");
+  const items=analytics.recent_submissions.slice(0,12);
+  if(!items.length){host.innerHTML='<div class="py-8 text-center text-xs text-on-surface-variant">No submissions yet.</div>';return}
+  host.innerHTML=items.map(a=>'<a href="problem.html?problem='+encodeURIComponent(a.problem_slug)+'" class="flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-surface-container-low"><div class="min-w-0"><div class="text-xs font-semibold truncate">'+esc(a.problem_title)+'</div><div class="text-[10px] text-on-surface-variant mt-1">'+esc(a.difficulty)+' • '+esc(a.language)+' • '+localTime(a.created_at_local)+'</div></div><span class="status '+(a.status==="Accepted"?"accepted":"failed")+'">'+esc(a.status)+'</span></a>').join("");
+}
+function renderMistakes(){
+  const host=document.getElementById("mistakes");
+  if(!analytics.recent_mistakes.length){host.innerHTML='<div class="py-8 text-center text-xs text-on-surface-variant">No failed submissions. Keep it up.</div>';return}
+  host.innerHTML=analytics.recent_mistakes.slice(0,8).map(a=>'<div class="p-3 rounded-lg bg-surface-container-low"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="text-xs font-semibold truncate">'+esc(a.problem_title)+'</div><div class="text-[10px] text-on-surface-variant mt-1">'+esc(a.language)+' • '+localTime(a.created_at_local)+'</div></div><span class="status failed">'+esc(a.status)+'</span></div><div class="text-[10px] text-on-surface-variant mt-2 truncate">'+esc(a.summary||"No judge summary")+'</div></div>').join("");
 }
 
-function renderStreakCalendar(data){
-  const host=document.getElementById('streak-calendar');
-  if(!host)return;
-  const days=data.streak_calendar||[];
-  host.innerHTML=days.map(item=>{
-    const date=new Date(item.date+'T12:00:00');
-    const label=date.toLocaleDateString([], {weekday:'short'}).slice(0,2);
-    const day=date.getDate();
-    const solved=Boolean(item.solved);
-    return '<div class="flex flex-col items-center gap-1" title="'+item.date+': '+(solved?'solved':'no accepted solve')+'">'+
-      '<span class="text-[8px] font-mono text-on-surface-variant">'+label+'</span>'+
-      '<span class="w-7 h-7 rounded-lg flex items-center justify-center '+(solved?'bg-emerald-100 text-emerald-700':'bg-surface-container text-on-surface-variant')+'">'+
-        '<span class="material-symbols-outlined text-[14px]">'+(solved?'check':'remove')+'</span>'+
-      '</span>'+
-      '<span class="text-[8px] font-mono text-on-surface-variant">'+day+'</span>'+
-    '</div>';
-  }).join('');
+function renderMentor(){
+  const host=document.getElementById("mentor-chat");
+  host.innerHTML=mentorMessages.length?mentorMessages.map(m=>'<div class="flex '+(m.role==="user"?"justify-end":"justify-start")+'"><div class="max-w-[90%] rounded-xl px-3 py-2 text-xs whitespace-pre-wrap '+(m.role==="user"?"bg-primary text-white":"bg-surface-container-low text-on-surface")+'">'+esc(m.text)+'</div></div>').join(""):'<div class="h-full flex items-center justify-center text-xs text-on-surface-variant">Ask the mentor about your streak, weak topics, runtime, or recent mistakes.</div>';
+  host.scrollTop=host.scrollHeight;
 }
-
-function renderAnalytics(data){
-  document.getElementById('streak-days').textContent=String(data.current_streak||0);
-  document.getElementById('metric-solved').textContent=String(data.total_solved||0);
-  document.getElementById('metric-acceptance').textContent=String(data.acceptance_rate||0)+'%';
-  document.getElementById('metric-acceptance-note').textContent=String(data.total_submissions||0)+' submissions';
-  document.getElementById('metric-velocity').textContent=String(data.velocity_pace||0)+'/day';
-  document.getElementById('metric-hints').textContent=String(data.ai_hints||0);
-  renderStreakCalendar(data);
-  document.getElementById('metric-runtime').textContent=data.average_runtime_ms==null?'No runtime data':'Avg runtime '+data.average_runtime_ms+' ms';
-  const badge=document.getElementById('telemetry-badge');
-  if(badge){
-    badge.textContent=data.total_attempts ? data.total_attempts+' attempts tracked' : 'No attempts yet';
-    badge.classList.remove('text-error');
-  }
-  const daily=document.getElementById('daily-telemetry');
-  const labels=document.getElementById('daily-labels');
-  if(!daily||!labels)return;
-  const points=data.daily||[];
-  const max=Math.max(1,...points.map(x=>Number(x.attempts)||0));
-  daily.innerHTML=points.map(point=>{
-    const height=point.attempts?Math.max(8,Math.round(((point.attempts)/max)*150)):4;
-    return '<div class="flex-1 h-full flex items-end justify-center" title="'+point.date+': '+point.attempts+' attempts, '+point.solved+' solved"><div class="w-full max-w-10 rounded-t-lg bg-primary" style="height:'+height+'px"></div></div>';
-  }).join('');
-  labels.innerHTML=points.map(point=>'<span class="flex-1 text-center">'+point.date.slice(5)+'</span>').join('');
+function renderMentorSuggestions(){
+  const weak=analytics.weakest_topics[0]?.topic;
+  const queries=[
+    weak?"How should I improve my "+weak+" performance?":"How should I improve my coding performance?",
+    "What do my recent mistakes suggest I should practice?",
+    "How can I build a better coding streak?"
+  ];
+  document.getElementById("mentor-suggestions").innerHTML=queries.map(q=>'<button type="button" class="mentor-q px-3 py-2 rounded-lg bg-surface-container-low text-xs font-semibold hover:bg-surface-container" data-q="'+esc(q)+'">'+esc(q)+'</button>').join("");
+  document.querySelectorAll(".mentor-q").forEach(b=>b.addEventListener("click",()=>askMentor(b.dataset.q)));
 }
-
-async function loadRoadmap(){
-  const host=document.getElementById('learning-roadmap');
-  const badge=document.getElementById('roadmap-focus');
-  try{
-    const res=await fetch(API_BASE_URL+'/recommendations/roadmap',{
-      headers:{Authorization:'Bearer '+token()}
-    });
-    if(res.status===401){
-      localStorage.removeItem(TOKEN_KEY);
-      window.location.replace('auth.html');
-      return;
-    }
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok){
-      throw new Error(data.detail || ('Roadmap request failed ('+res.status+').'));
-    }
-    renderLearningRoadmap(data.items||[],data.current_topic,data);
-  }catch(err){
-    console.warn('Roadmap load failed:',err);
-    if(host){
-      host.innerHTML='<div class="p-4 rounded-xl bg-surface-container-low text-error text-xs"><p class="font-semibold">Roadmap unavailable</p><p class="mt-1">'+esc(err?.message||'Could not load the adaptive roadmap.')+'</p><button type="button" id="roadmap-retry" class="mt-3 px-3 py-2 rounded-lg bg-primary text-white font-semibold">Retry</button></div>';
-      document.getElementById('roadmap-retry')?.addEventListener('click',()=>void loadRoadmap());
-    }
-    if(badge)badge.textContent='Unavailable';
-  }
-}
-
-async function loadDashboard(){
-  if(!requireAuth()) return;
-  renderSkills();
-  void loadDashboardMentor();
-  void loadPracticeTopics();
-
-  const headers={headers:{Authorization:'Bearer '+token()}};
-
-  // Recommendation and roadmap are core dashboard modules. Start them immediately
-  // and keep them independent from profile/analytics/mentor requests.
-  void loadRecommendation();
-  void loadRoadmap();
-
-  // Load identity independently so an analytics failure cannot leave the
-  // entire dashboard showing prototype/default account information.
-  try{
-    const [profileRes, meRes]=await Promise.all([
-      fetch(API_BASE_URL+'/profile',headers),
-      fetch(API_BASE_URL+'/auth/me',headers)
-    ]);
-    if(profileRes.status===401||meRes.status===401){
-      localStorage.removeItem(TOKEN_KEY);
-      window.location.replace('auth.html');
-      return;
-    }
-
-    const profile=profileRes.ok?await profileRes.json():{};
-    const me=meRes.ok?await meRes.json():{};
-
-    dashboardUserId=me.id || null;
-
-    const name=profile.full_name || 'CodeMentor User';
-    const role=profile.target_role || 'Complete your profile';
-    const language=profile.preferred_language || 'Language not set';
-
-    document.getElementById('welcome-title').textContent='Welcome, '+name;
-    document.getElementById('welcome-role').textContent=role;
-    document.getElementById('welcome-language').textContent=language;
-    document.getElementById('hero-role').textContent=role;
-    document.getElementById('hero-timeline').textContent=profile.preparation_timeline || 'Not set';
-    document.getElementById('account-name').textContent=name;
-    document.getElementById('account-role').textContent=role;
-    document.getElementById('menu-name').textContent=name;
-    document.getElementById('menu-email').textContent=me.email || (profile.leetcode_username ? '@'+profile.leetcode_username : 'Signed in');
-  }catch(err){
-    console.warn('Dashboard identity load failed:',err);
-  }
-
-  // Analytics is intentionally independent from identity/profile rendering.
-  try{
-    const clientTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-    const analyticsRes=await fetch(
-      API_BASE_URL+'/analytics/summary?timezone_name='+encodeURIComponent(clientTimeZone),
-      headers
-    );
-    if(analyticsRes.status===401){
-      localStorage.removeItem(TOKEN_KEY);
-      window.location.replace('auth.html');
-      return;
-    }
-    if(analyticsRes.ok){
-      analyticsSnapshot=await analyticsRes.json();
-      renderAnalytics(analyticsSnapshot);
-      renderWeakAreas(analyticsSnapshot.topics||[]);
-    }else{
-      analyticsSnapshot=null;
-      const detail=await analyticsRes.text().catch(()=> '');
-      renderAnalyticsUnavailable(
-        'Analytics API error ('+analyticsRes.status+')'+
-        (detail?' — '+detail.slice(0,120):'')
-      );
-    }
-  }catch(err){
-    analyticsSnapshot=null;
-    renderAnalyticsUnavailable('Unable to load analytics telemetry.');
-    console.warn('Dashboard analytics load failed:',err);
-  }
-
-  renderSkills();
-
-  try{
-    const detailRes=await fetch(API_BASE_URL+'/analytics/detail',headers);
-    if(detailRes.ok){
-      const detail=await detailRes.json();
-      renderRecentPractice(detail.history||[]);
-    }else{
-      renderRecentPractice([]);
-    }
-  }catch(err){
-    console.warn('Recent practice load failed:',err);
-    renderRecentPractice([]);
-  }
-}
-document.getElementById('close-skill-modal')?.addEventListener('click',closeSkillModal);
-document.getElementById('skill-modal')?.addEventListener('click',event=>{if(event.target.id==='skill-modal')closeSkillModal();});
-
-document.querySelectorAll('[data-action]').forEach(b=>b.addEventListener('click',()=>handleAction(b.dataset.action)));
-document.querySelectorAll('[data-nav],[data-side]').forEach(b=>b.addEventListener('click',()=>{
-  const target=b.dataset.nav||b.dataset.side;
-  if(target==='practice') window.location.replace('practice.html');
-  else if(target==='mentor') window.location.replace('mentor.html');
-  else if(target==='analytics') window.location.replace('analytics.html');
-  else if(target==='career') window.location.replace('career.html');
-  else navNotice((b.textContent||'Module').trim());
-}));
-document.getElementById('hint-btn')?.addEventListener('click',()=>document.getElementById('hint-box')?.classList.toggle('hidden'));
-document.getElementById('roadmap-jump')?.addEventListener('click',()=>{
-  document.getElementById('adaptive-roadmap')?.scrollIntoView({behavior:'smooth',block:'start'});
-});
-const dashboardMentorMessages=[];
-let dashboardMentorSessionId=null;
-function cleanDashboardMentorText(value){
-  return String(value||'').replace(/\r/g,'').replace(/\*\*([^*]+)\*\*/g,'$1').replace(/__([^_]+)__/g,'$1').replace(/\*([^*]+)\*/g,'$1').replace(/^#{1,6}\s*/gm,'').replace(/^\s*[-•]\s+/gm,'').replace(/^\s*\d+[.)]\s+/gm,'').replace(/\`\`\`[a-zA-Z0-9_+-]*\n?/g,'').replace(/\`([^\`]+)\`/g,'$1').trim();
-}
-function renderDashboardMentor(){
-  const chat=document.getElementById('dashboard-mentor-chat');
-  if(!chat)return;
-  if(!dashboardMentorMessages.length){
-    chat.innerHTML='';
-    return;
-  }
-  chat.innerHTML=dashboardMentorMessages.map(m=>{
-    const cls=m.role==='user'?'dashboard-mentor-user':'dashboard-mentor-ai';
-    const label=m.role==='user'?'You':'AI Mentor';
-    return '<div class="flex flex-col '+(m.role==='user'?'items-end':'items-start')+'"><div class="dashboard-mentor-label">'+label+'</div><div class="dashboard-mentor-message '+cls+'">'+esc(cleanDashboardMentorText(m.text))+'</div></div>';
-  }).join('');
-  chat.scrollTop=chat.scrollHeight;
-}
-
-async function loadDashboardMentor(){
-  dashboardMentorSessionId=null;
-  dashboardMentorMessages.length=0;
-  renderDashboardMentor();
+async function loadMentorSession(){
   if(!token())return;
   try{
-    const listRes=await fetch(API_BASE_URL+'/mentor/sessions?scope=dashboard',{
-      headers:{Authorization:'Bearer '+token()}
-    });
-    if(!listRes.ok)return;
-    const sessions=await listRes.json();
+    const res=await fetch(API+"/mentor/sessions?scope=dashboard",{headers:{Authorization:"Bearer "+token()}});
+    if(!res.ok)return;
+    const sessions=await res.json();
     if(!sessions.length)return;
-
-    const sessionRes=await fetch(API_BASE_URL+'/mentor/sessions/'+sessions[0].id,{
-      headers:{Authorization:'Bearer '+token()}
-    });
-    if(!sessionRes.ok)return;
-    const session=await sessionRes.json();
-    dashboardMentorSessionId=session.id;
-    dashboardMentorMessages.push(...(session.messages||[]).map(m=>({
-      role:m.role==='user'?'user':'ai',
-      text:m.content
-    })));
-    renderDashboardMentor();
-  }catch(err){
-    console.warn('Dashboard Mentor history load failed:',err);
-  }
+    const detail=await fetch(API+"/mentor/sessions/"+sessions[0].id,{headers:{Authorization:"Bearer "+token()}});
+    if(!detail.ok)return;
+    const session=await detail.json();
+    mentorSessionId=session.id;
+    mentorMessages.push(...(session.messages||[]).map(m=>({role:m.role==="user"?"user":"assistant",text:m.role==="user"?displayMentorQuestion(m.content):m.content})));
+    renderMentor();
+  }catch(err){console.warn("Dashboard mentor history unavailable",err)}
 }
-async function askDashboardMentor(question){
-  const input=document.getElementById('mentor-input');
-  const q=(question||'').trim();
-  if(!q){input.focus();return;}
-  dashboardMentorMessages.push({role:'user',text:q});
-  renderDashboardMentor();
-  const responseButton=document.getElementById('mentor-send');
-  input.disabled=true; responseButton.disabled=true;
-  const chat=document.getElementById('dashboard-mentor-chat');
-  chat.insertAdjacentHTML('beforeend','<div class="flex flex-col items-start"><div class="dashboard-mentor-label">AI Mentor</div><div class="dashboard-mentor-message dashboard-mentor-ai cm-busy-dots">Thinking</div></div>');
-  chat.scrollTop=chat.scrollHeight;
+function mentorContext(q){
+  const weak=(data?.weakest_topics||[]).slice(0,3).map(x=>x.topic+" ("+x.mastery+"% mastery)").join(", ")||"none yet";
+  const mistakes=(data?.recent_mistakes||[]).slice(0,3).map(x=>x.problem_title+" — "+x.status).join("; ")||"none yet";
+  return "[Dashboard telemetry context]\nSolved: "+(data?.total_solved||0)+
+    "\nAcceptance: "+(data?.acceptance_rate||0)+"%"+
+    "\nCurrent streak: "+(data?.current_streak||0)+" days"+
+    "\nLongest streak: "+(data?.longest_streak||0)+" days"+
+    "\nAverage solve time: "+duration(data?.average_time_to_solve_seconds)+
+    "\nAverage runtime: "+runtime(data?.average_runtime_ms)+
+    "\nWeakest topics: "+weak+
+    "\nRecent mistakes: "+mistakes+
+    "\nUser question: "+q;
+}
+function displayMentorQuestion(content){
+  const marker="[Dashboard telemetry context]";
+  if(!content?.startsWith(marker))return content;
+  const question=content.split("\nUser question:").slice(1).join("\nUser question:").trim();
+  return question||content;
+}
+async function askMentor(question){
+  const input=document.getElementById("mentor-input");
+  const q=(question||input.value||"").trim();
+  if(!q)return;
+  mentorMessages.push({role:"user",text:q});renderMentor();
+  input.value="";input.disabled=true;document.getElementById("mentor-send").disabled=true;
   try{
-    const res=await fetch(API_BASE_URL+'/mentor/chat',{
-      method:'POST',
-      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},
-      body:JSON.stringify({question:q,session_id:dashboardMentorSessionId})
-    });
-    if(res.status===401){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');return;}
+    const res=await fetch(API+"/mentor/chat",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()},body:JSON.stringify({question:mentorContext(q),session_id:mentorSessionId})});
     const data=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error(data.detail||'Mentor request failed.');
-    dashboardMentorSessionId=data.session_id||dashboardMentorSessionId;
-    dashboardMentorMessages.push({role:'ai',text:data.answer||'The mentor returned no explanation.'});
-  }catch(err){
-    const message=err.message||'Unable to contact the AI Mentor.'; dashboardMentorMessages.push({role:'ai',text:message.includes('GEMINI_API_KEY')?'AI Mentor is not configured yet. Add GEMINI_API_KEY to backend/.env and restart the FastAPI server.':message});
-  }finally{
-    input.disabled=false; responseButton.disabled=false; input.value=''; input.focus();
-    renderDashboardMentor();
-  }
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace("auth.html");return}
+    if(!res.ok)throw new Error(data.detail||"AI Mentor request failed.");
+    mentorSessionId=data.session_id||mentorSessionId;
+    mentorMessages.push({role:"assistant",text:data.answer||"The mentor returned no answer."});
+  }catch(err){mentorMessages.push({role:"assistant",text:err.message||"Unable to contact the AI Mentor."})}
+  finally{input.disabled=false;document.getElementById("mentor-send").disabled=false;renderMentor();input.focus()}
 }
-document.querySelectorAll('.mentor-query').forEach(b=>b.addEventListener('click',()=>askDashboardMentor(b.dataset.query||'')));
-function sendMentor(){
-  const input=document.getElementById('mentor-input');
-  askDashboardMentor(input.value);
+async function loadDashboard(){
+  if(!token()){location.replace("auth.html");return}
+  const tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
+  document.getElementById("timezone-label").textContent="Timezone: "+tz;
+  try{
+    const res=await fetch(API+"/analytics/detail?timezone_name="+encodeURIComponent(tz),{headers:{Authorization:"Bearer "+token()}});
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace("auth.html");return}
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.detail||"Analytics request failed.");
+    analytics=data;
+    renderMetrics();renderHeatmap(data.activity||[]);renderProgress();renderRuntime();renderDifficulty();renderTopics();renderRankings();renderPeriods("weekly");renderRecentSubmissions();renderMistakes();renderMentor();renderMentorSuggestions();
+    document.getElementById("empty-state").classList.toggle("hidden",(data.total_attempts||0)>0);
+    document.getElementById("subtitle").textContent=(data.total_attempts||0)===0?"No coding events yet. Start a problem to populate your analytics.":"Updated from "+data.total_submissions+" submissions across "+data.active_days+" active days.";
+    await loadMentorSession();
+  }catch(err){showError(err.message||"Unable to load dashboard analytics.")}
 }
-document.getElementById('mentor-send')?.addEventListener('click',sendMentor);
-document.getElementById('mentor-input')?.addEventListener('keydown',e=>{if(e.key==='Enter')sendMentor();});
-document.getElementById('account-btn')?.addEventListener('click',toggleAccount);
-document.addEventListener('click',e=>{const menu=document.getElementById('account-menu');const btn=document.getElementById('account-btn');if(menu&&!menu.contains(e.target)&&!btn.contains(e.target))closeAccount();});
-document.querySelectorAll('[data-account-action]').forEach(b=>b.addEventListener('click',()=>{
-  const action=b.dataset.accountAction; closeAccount();
-  if(action==='logout'){localStorage.removeItem(TOKEN_KEY);window.location.replace('auth.html');}
-  else if(action==='preferences') window.location.replace('preferences.html?v=20260921');
-  else if(action==='settings') window.location.replace('settings.html');
-  else if(action==='profile') window.location.replace('preferences.html?v=20260921');
-}));
-document.getElementById('notification-btn')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.toggle('hidden'));
-document.getElementById('close-notifications')?.addEventListener('click',()=>document.getElementById('notification-panel')?.classList.add('hidden'));
-function openSearch(){const p=document.getElementById('search-panel');p.classList.remove('hidden');p.classList.add('flex');setTimeout(()=>document.getElementById('search-input')?.focus(),50);}
-function closeSearch(){const p=document.getElementById('search-panel');p.classList.add('hidden');p.classList.remove('flex');}
-document.getElementById('search-btn')?.addEventListener('click',openSearch);
-document.getElementById('close-search')?.addEventListener('click',closeSearch);
-document.getElementById('search-panel')?.addEventListener('click',e=>{if(e.target.id==='search-panel')closeSearch();});
-document.getElementById('search-input')?.addEventListener('input',e=>{document.getElementById('search-result').textContent=e.target.value.trim()?'Problem search will connect to the authorized problem provider in the next stage.':'Search will connect to the problem index in the next stage.';});
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openSearch();} if(e.key==='Escape'){closeSearch();document.getElementById('notification-panel')?.classList.add('hidden');closeAccount();closeSkillModal();}});
+document.getElementById("weekly-btn").addEventListener("click",()=>togglePeriod("weekly"));
+document.getElementById("monthly-btn").addEventListener("click",()=>togglePeriod("monthly"));
+document.getElementById("mentor-send").addEventListener("click",()=>askMentor(""));
+document.getElementById("mentor-input").addEventListener("keydown",e=>{if(e.key==="Enter")askMentor("")});
+document.getElementById("logout").addEventListener("click",()=>{localStorage.removeItem(TOKEN_KEY);location.replace("auth.html")});
 loadDashboard();
 </script>
 </body>
