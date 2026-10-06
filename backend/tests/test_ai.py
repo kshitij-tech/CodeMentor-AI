@@ -85,5 +85,20 @@ class AIProviderConfigurationTests(unittest.TestCase):
         )
         self.assertEqual(result, '{"answer":"ok","error_line":null,"patch":null}')
 
+    def test_modify_patch_without_answer_gets_safe_fallback(self):
+        result = _parse_mentor_response(
+            '{"start_line":2,"end_line":2,"replacement":"total += value"}'
+        )
+        self.assertTrue(result["answer"])
+        self.assertEqual(result["patch"]["start_line"], 2)
+        self.assertEqual(result["patch"]["end_line"], 2)
+        self.assertEqual(result["patch"]["replacement"], "total += value")
+
+    def test_model_suggestion_alias_is_accepted(self):
+        result = _parse_mentor_response(
+            '{"suggestion":"Change the loop boundary.","error_line":3,"patch":null}'
+        )
+        self.assertEqual(result["answer"], "Change the loop boundary.")
+
 if __name__ == "__main__":
     unittest.main()
