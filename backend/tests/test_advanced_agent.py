@@ -1,9 +1,14 @@
 import unittest
+from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from backend.agent import AgentPlanner, AgentRequest, run_agent, select_context
 from backend.agent_evaluation import DEFAULT_EVALUATIONS, score_plan
 from backend.agent_models import AgentPlan, AgentToolCall
+from backend.agent_memory import load_memory, save_memory, summarize_learning_state
 from backend.agent_tools import (
     AgentSafetyError,
     AgentToolRegistry,
@@ -140,6 +145,75 @@ class EvaluationTests(unittest.TestCase):
         )
         score = score_plan(case, plan, context_chars=2000, safety_ok=True)
         self.assertGreaterEqual(score.overall, 0.9)
+
+
+
+class LearningMemoryTests(unittest.TestCase):
+    def setUp(self):
+        from backend.models import Base
+        self.engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(self.engine)
+        self.Session = sessionmaker(bind=self.engine)
+        self.db = self.Session()
+
+        from backend.models import Problem, User
+        self.user = User(email="agent-test@example.com", password_hash="x")
+        self.db.add(self.user)
+        self.db.flush()
+
+        self.problem = Problem(
+            slug="agent-test-arrays",
+            title="Agent Arrays",
+            difficulty="Easy",
+            topics=["Arrays & Strings"],
+            description="Test problem.",
+            constraints=[],
+            examples=[],
+            test_cases=[],
+            starter_code={"Python": "def solve(nums):\n    pass"},
+        )
+        self.db.add(self.problem)
+        self.db.flush()
+
+    def tearDown(self):
+        self.db.close()
+        self.engine.dispose()
+
+    def test_learning_state_detects_recurring_failure_and_objective(self):
+        from backend.models import CodingAttempt
+        now = datetime.now(timezone.utc)
+        for i, status in enumerate(["Wrong Answer", "Wrong Answer", "Accepted"]):
+            self.db.add(
+                CodingAttempt(
+                    user_id=self.user.id,
+                    problem_id=self.problem.id,
+                    language="Python",
+                    mode="submit",
+                    code="def solve(nums):\n    return []",
+                    status=status,
+                    summary=status,
+                    results=[],
+                    created_at=now - timedelta(minutes=i),
+                )
+            )
+        self.db.commit()
+
+        state = summarize_learning_state(self.db, self.user)
+
+        self.assertTrue(state.recurring_mistakes)
+        self.assertEqual(state.recurring_mistakes[0]["pattern"], "Wrong Answer")
+        self.assertTrue(state.learning_objectives)
+
+    def test_memory_snapshot_round_trips(self):
+        payload = {
+            "focus_topics": [{"topic": "Arrays & Strings", "mastery": 20}],
+            "recurring_mistakes": [{"topic": "Arrays & Strings", "pattern": "Wrong Answer"}],
+            "learning_objectives": [{"topic": "Arrays & Strings", "target_mastery": 75}],
+        }
+        save_memory(self.db, self.user, payload)
+        loaded = load_memory(self.db, self.user)
+        self.assertEqual(loaded["focus_topics"][0]["mastery"], 20)
+        self.assertIn("learning_objectives", loaded)
 
 
 class IntegrationSafetyTests(unittest.TestCase):
