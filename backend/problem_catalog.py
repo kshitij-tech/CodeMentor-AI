@@ -977,6 +977,11 @@ def duplicate_fingerprint(problem: dict[str, Any]) -> str:
     return _external_fingerprint(problem) or _content_fingerprint(problem)
 
 
+def content_fingerprint(problem: dict[str, Any]) -> str:
+    """Return normalized title/description identity independent of external IDs."""
+    return _content_fingerprint(problem)
+
+
 def audit_problems(problems: Iterable[dict[str, Any]]) -> dict[str, Any]:
     items = list(problems)
     base_flags = []

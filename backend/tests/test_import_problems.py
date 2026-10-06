@@ -1,6 +1,9 @@
+import json
+import tempfile
 import unittest
+from pathlib import Path
 
-from backend.import_problems import validate
+from backend.import_problems import _iter_items, _preflight_catalog, validate
 
 
 class ImportProblemValidationTests(unittest.TestCase):
@@ -57,6 +60,25 @@ class ImportProblemValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "broken_starter_code"):
             validate(problem, 1)
 
+    def test_preflight_accepts_object_catalog_and_streams_items(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "catalog.json"
+            path.write_text(json.dumps({"problems": [self.BASE]}), encoding="utf-8")
+            self.assertEqual(len(list(_iter_items(path))), 1)
+            self.assertEqual(_preflight_catalog(path), 1)
+
+    def test_preflight_rejects_duplicate_content_with_different_external_ids(self):
+        first = dict(self.BASE)
+        first["slug"] = "two-sum-one"
+        first["external_id"] = "source-1"
+        second = dict(self.BASE)
+        second["slug"] = "two-sum-two"
+        second["external_id"] = "source-2"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "catalog.json"
+            path.write_text(json.dumps([first, second]), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "duplicate content"):
+                _preflight_catalog(path)
 
 if __name__ == "__main__":
     unittest.main()

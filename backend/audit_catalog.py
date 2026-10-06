@@ -9,11 +9,11 @@ from backend.models import Problem
 from backend.problem_catalog import audit_problems
 
 
-def load_problem_records() -> list[dict]:
+def load_problem_records():
     with SessionLocal() as db:
-        rows = db.query(Problem).order_by(Problem.id.asc()).all()
-        return [
-            {
+        rows = db.query(Problem).order_by(Problem.id.asc()).yield_per(1000)
+        for row in rows:
+            yield {
                 "id": row.id,
                 "slug": row.slug,
                 "title": row.title,
@@ -30,9 +30,6 @@ def load_problem_records() -> list[dict]:
                 "execution_mode": row.execution_mode,
                 "package_metadata": row.package_metadata or {},
             }
-            for row in rows
-        ]
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
