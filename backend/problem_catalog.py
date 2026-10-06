@@ -653,8 +653,6 @@ TOPIC_HIERARCHY = {
 }
 
 
-_DIFFICULTY_ALIASES
-
 _DIFFICULTY_ALIASES = {
     "easy": "Easy",
     "beginner": "Easy",
