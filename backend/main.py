@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -13,10 +14,18 @@ from backend.routers.mentor import router as mentor_router
 from backend.routers.analytics import router as analytics_router
 from backend.routers.recommendations import router as recommendations_router
 from backend.routers.workspace import router as workspace_router
+from backend.routers.health import router as health_router
+from backend.runtime_config import cors_options
 from backend.problem_seed import seed_problems
+
+APP_ENV = os.getenv('APP_ENV', 'development').strip().lower()
+PRODUCTION_ENVS = {'prod', 'production'}
 
 
 def initialize_database() -> None:
+    if APP_ENV in PRODUCTION_ENVS:
+        return
+
     Base.metadata.create_all(bind=engine)
 
     # Development-only schema upgrade for the existing SQLite database.
@@ -86,7 +95,8 @@ def initialize_database() -> None:
 initialize_database()
 
 with SessionLocal() as db:
-    seed_problems(db)
+    if APP_ENV not in PRODUCTION_ENVS:
+        seed_problems(db)
     # Warm the problem catalogue once at startup so the first Practice request
     # does not have to scan and normalize the full problem dataset.
     prime_problem_catalog(db)
@@ -94,17 +104,13 @@ with SessionLocal() as db:
 
 app = FastAPI(
     title="CodeMentor AI API",
-    version="0.2.0",
+    version=os.getenv("APP_VERSION", "0.2.0"),
     description="Backend API for the CodeMentor AI platform.",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5500", "http://127.0.0.1:5500", "null"],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    **cors_options(),
 )
 
 app.include_router(auth_router)
@@ -115,6 +121,7 @@ app.include_router(mentor_router)
 app.include_router(analytics_router)
 app.include_router(recommendations_router)
 app.include_router(workspace_router)
+app.include_router(health_router)
 
 
 @app.get("/")
@@ -125,11 +132,3 @@ def root() -> dict[str, str]:
         "health": "/health",
     }
 
-
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "codementor-ai-api",
-        "version": "0.2.0",
-    }
