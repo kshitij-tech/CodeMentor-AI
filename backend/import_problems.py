@@ -7,7 +7,7 @@ from typing import Iterator
 
 from backend.database import SessionLocal
 from backend.models import Problem
-from backend.problem_catalog import _content_fingerprint, invalid_topic_names, normalize_problem_record, quality_flags
+from backend.problem_catalog import SUPPORTED_LANGUAGES, _content_fingerprint, _starter_syntax_valid, invalid_topic_names, normalize_problem_record, quality_flags
 
 REQUIRED = {
     "slug", "title", "difficulty", "topics", "description",
@@ -18,6 +18,18 @@ def validate(item: dict, index: int) -> dict:
     missing = REQUIRED - set(item)
     if missing:
         raise ValueError(f"Problem {index} is missing: {', '.join(sorted(missing))}")
+
+    starter_code = item.get("starter_code")
+    if isinstance(starter_code, dict):
+        for language, source in starter_code.items():
+            if language in SUPPORTED_LANGUAGES and not _starter_syntax_valid(
+                language,
+                source,
+                str(item.get("execution_mode") or "function").strip().lower(),
+            ):
+                raise ValueError(
+                    f"Problem {index}: broken_starter_code in {language}"
+                )
 
     bad_topics = invalid_topic_names(item.get("topics"))
     if bad_topics:

@@ -396,6 +396,18 @@ func solve() int { return 0 }
         self.assertIn("b", starters["C++"])
         self.assertNotIn("int main()", starters["C++"])
 
+    def test_explicit_stdio_mode_wins_over_solve_wrapper(self):
+        from backend.problem_catalog import infer_execution_mode
+
+        self.assertEqual(
+            infer_execution_mode(
+                "stdio",
+                test_cases=[{"input": "1\n", "expected_output": "1\n"}],
+                starter_code={"Python": "def solve():\n    pass\n"},
+            ),
+            "stdio",
+        )
+
     def test_execution_mode_infers_function_contract(self):
         from backend.problem_catalog import infer_execution_mode
 

@@ -805,7 +805,7 @@ def _starter_syntax_valid(language: str, source: Any, execution_mode: str = "fun
             return True
         except (SyntaxError, ValueError, TypeError):
             return False
-    if source.count("{") != source.count("}"):
+    if any(source.count(opening) != source.count(closing) for opening, closing in (("(", ")"), ("[", "]"), ("{", "}"))):
         return False
     if language == "C++":
         return bool(re.search(r"\bsolve\s*\(", source) or re.search(r"\bint\s+main\s*\(", source))
@@ -923,8 +923,16 @@ def quality_flags(problem: dict[str, Any]) -> list[str]:
         flags.append("missing_or_invalid_tests")
     elif any(not _valid_test_case(case, mode) for case in tests):
         flags.append("broken_test_cases")
-    if not isinstance(starter_code, dict):
+    if (
+        not isinstance(starter_code, dict)
+        or not any(
+            isinstance(starter_code.get(language), str) and starter_code[language].strip()
+            for language in SUPPORTED_LANGUAGES
+        )
+    ):
         flags.append("missing_starter_code")
+    if not isinstance(starter_code, dict):
+        pass
     else:
         missing = [language for language in SUPPORTED_LANGUAGES if not isinstance(starter_code.get(language), str) or not starter_code[language].strip()]
         broken = [language for language in SUPPORTED_LANGUAGES if language in starter_code and not _starter_syntax_valid(language, starter_code.get(language), mode)]
@@ -1062,6 +1070,14 @@ def infer_execution_mode(
         isinstance(test_cases, list)
         and any(isinstance(case, dict) and "args" in case for case in test_cases)
     )
+
+    # Respect an explicit mode unless the test contract proves a legacy
+    # function-style record was mislabeled as stdio.
+    if explicit == "function":
+        return "function"
+    if explicit == "stdio" and not cases_have_args:
+        return "stdio"
+
     python_names = _function_parameter_names(
         (starter_code or {}).get("Python") if isinstance(starter_code, dict) else None
     )
@@ -1069,8 +1085,6 @@ def infer_execution_mode(
 
     if cases_have_args or python_names or example_names:
         return "function"
-    if explicit == "stdio":
-        return "stdio"
     return "function"
 
 
