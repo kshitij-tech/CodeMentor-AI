@@ -110,7 +110,7 @@ class AgentPlanner:
                 }
             ]
 
-        if asks_recommend and len(tool_calls) < TOOL_BUDGET:
+        if (asks_recommend or asks_study_plan) and len(tool_calls) < TOOL_BUDGET:
             add("explain_recommendation")
 
         if not tool_calls:
