@@ -337,9 +337,28 @@ async function loadMentorSession(){
     if(!detail.ok)return;
     const session=await detail.json();
     mentorSessionId=session.id;
-    mentorMessages.push(...(session.messages||[]).map(m=>({role:m.role==="user"?"user":"assistant",text:m.content})));
+    mentorMessages.push(...(session.messages||[]).map(m=>({role:m.role==="user"?"user":"assistant",text:m.role==="user"?displayMentorQuestion(m.content):m.content})));
     renderMentor();
   }catch(err){console.warn("Dashboard mentor history unavailable",err)}
+}
+function mentorContext(q){
+  const weak=(data?.weakest_topics||[]).slice(0,3).map(x=>x.topic+" ("+x.mastery+"% mastery)").join(", ")||"none yet";
+  const mistakes=(data?.recent_mistakes||[]).slice(0,3).map(x=>x.problem_title+" — "+x.status).join("; ")||"none yet";
+  return "[Dashboard telemetry context]\nSolved: "+(data?.total_solved||0)+
+    "\nAcceptance: "+(data?.acceptance_rate||0)+"%"+
+    "\nCurrent streak: "+(data?.current_streak||0)+" days"+
+    "\nLongest streak: "+(data?.longest_streak||0)+" days"+
+    "\nAverage solve time: "+duration(data?.average_time_to_solve_seconds)+
+    "\nAverage runtime: "+runtime(data?.average_runtime_ms)+
+    "\nWeakest topics: "+weak+
+    "\nRecent mistakes: "+mistakes+
+    "\nUser question: "+q;
+}
+function displayMentorQuestion(content){
+  const marker="[Dashboard telemetry context]";
+  if(!content?.startsWith(marker))return content;
+  const question=content.split("\nUser question:").slice(1).join("\nUser question:").trim();
+  return question||content;
 }
 async function askMentor(question){
   const input=document.getElementById("mentor-input");
@@ -348,7 +367,7 @@ async function askMentor(question){
   mentorMessages.push({role:"user",text:q});renderMentor();
   input.value="";input.disabled=true;document.getElementById("mentor-send").disabled=true;
   try{
-    const res=await fetch(API+"/mentor/chat",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()},body:JSON.stringify({question:q,session_id:mentorSessionId})});
+    const res=await fetch(API+"/mentor/chat",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()},body:JSON.stringify({question:mentorContext(q),session_id:mentorSessionId})});
     const data=await res.json().catch(()=>({}));
     if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace("auth.html");return}
     if(!res.ok)throw new Error(data.detail||"AI Mentor request failed.");

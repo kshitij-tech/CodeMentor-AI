@@ -166,17 +166,17 @@ def build_analytics(
     attempted_problem_ids = {attempt.problem_id for attempt, _, _ in submissions}
     solved_problem_ids = {attempt.problem_id for attempt, _, _ in accepted_submissions}
 
+    # Keep solve-duration arithmetic in UTC so DST transitions cannot change
+    # elapsed time. Calendar/streak grouping still uses the user's local zone.
     first_submission_by_problem: dict[int, datetime] = {}
     first_accept_by_problem: dict[int, datetime] = {}
-    problem_lookup: dict[int, Problem] = {}
     for attempt, problem, local_dt in submissions:
-        problem_lookup[problem.id] = problem
-        first_submission_by_problem.setdefault(problem.id, local_dt)
+        first_submission_by_problem.setdefault(problem.id, _utc_aware(attempt.created_at))
         if _is_accepted(attempt):
-            first_accept_by_problem.setdefault(problem.id, local_dt)
+            first_accept_by_problem.setdefault(problem.id, _utc_aware(attempt.created_at))
 
     first_solve_day_by_problem = {
-        problem_id: accepted_at.date()
+        problem_id: accepted_at.astimezone(zone).date()
         for problem_id, accepted_at in first_accept_by_problem.items()
     }
     solved_days = set(first_solve_day_by_problem.values())
@@ -305,7 +305,7 @@ def build_analytics(
             bucket["submissions"] = int(bucket["submissions"]) + 1
         if _is_accepted(attempt):
             bucket["accepted_submissions"] = int(bucket["accepted_submissions"]) + 1
-        if first_accept_by_problem.get(problem.id) == local_dt:
+        if _is_accepted(attempt) and first_solve_day_by_problem.get(problem.id) == day:
             solved_ids = bucket["solved_ids"]
             if isinstance(solved_ids, set):
                 solved_ids.add(problem.id)

@@ -63,6 +63,29 @@ class AnalyticsCalculationTests(unittest.TestCase):
         self.assertEqual(payload["current_streak"], 1)
         self.assertEqual(payload["longest_streak"], 1)
 
+    def test_solve_time_uses_elapsed_utc_across_dst_transition(self):
+        from zoneinfo import ZoneInfo
+
+        # 01:30 EDT → 01:30 EST is one real hour despite identical local
+        # wall-clock times around the DST fallback.
+        rows = [
+            (
+                attempt(1, 1, datetime(2026, 11, 1, 5, 30, tzinfo=timezone.utc), status="Wrong Answer"),
+                problem(1),
+            ),
+            (
+                attempt(2, 1, datetime(2026, 11, 1, 6, 30, tzinfo=timezone.utc), status="Accepted"),
+                problem(1),
+            ),
+        ]
+        payload = build_analytics(
+            rows,
+            timezone_name="America/New_York",
+            now=datetime(2026, 11, 1, 8, 0, tzinfo=timezone.utc),
+        )
+        self.assertEqual(payload["average_time_to_solve_seconds"], 3600)
+        self.assertEqual(payload["current_streak"], 1)
+
     def test_failed_and_run_attempts_never_count_as_solved(self):
         now = datetime(2026, 10, 6, 12, tzinfo=timezone.utc)
         rows = [
