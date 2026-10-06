@@ -260,6 +260,35 @@ class AuthenticationSecurityTests(unittest.TestCase):
                 )
         self.assertEqual(reused.exception.status_code, 401)
 
+    def test_expired_refresh_token_is_rejected(self):
+        self._register("expired-refresh@example.com")
+        tokens = self._login("expired-refresh@example.com")
+
+        expired_refresh = jwt.encode(
+            {
+                "sub": "1",
+                "type": "refresh",
+                "jti": "expired-refresh-test",
+                "iat": datetime.now(timezone.utc) - timedelta(days=2),
+                "nbf": datetime.now(timezone.utc) - timedelta(days=2),
+                "exp": datetime.now(timezone.utc) - timedelta(seconds=1),
+                "iss": JWT_ISSUER,
+            },
+            SECRET_KEY,
+            algorithm=ALGORITHM,
+        )
+
+        with self.Session() as db:
+            with self.assertRaises(HTTPException) as context:
+                auth.refresh(
+                    auth.RefreshRequest(refresh_token=expired_refresh),
+                    DummyRequest(),
+                    Response(),
+                    db,
+                )
+        self.assertEqual(context.exception.status_code, 401)
+        self.assertTrue(tokens.refresh_token)
+
     def test_logout_revokes_access_and_refresh_tokens(self):
         self._register("alice@example.com")
         tokens = self._login("alice@example.com")
