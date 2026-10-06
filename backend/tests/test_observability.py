@@ -1,3 +1,5 @@
+import json
+import logging
 import unittest
 from unittest.mock import patch
 
@@ -48,6 +50,14 @@ class ObservabilityTests(unittest.TestCase):
         def recommendation_failure():
             raise RuntimeError("recommendation calculation failed")
 
+        @self.app.get("/db-error")
+        def database_failure():
+            raise OperationalError(
+                "SELECT * FROM users",
+                [],
+                RuntimeError("secret=abc"),
+            )
+
         self.client = TestClient(self.app)
 
     def test_request_id_is_generated_and_returned(self):
@@ -95,6 +105,12 @@ class ObservabilityTests(unittest.TestCase):
         )._value.get()
         self.assertGreaterEqual(value, 1)
 
+        latency = obs.EXECUTION_LATENCY.labels(
+            route="/execution/run",
+            status_code="200",
+        )
+        self.assertGreaterEqual(latency._count.get(), 1)
+
     def test_ai_failure_is_counted(self):
         response = self.client.get("/mentor/chat")
         self.assertEqual(response.status_code, 503)
@@ -103,6 +119,12 @@ class ObservabilityTests(unittest.TestCase):
             status_code="503",
         )._value.get()
         self.assertGreaterEqual(value, 1)
+
+        latency = obs.AI_LATENCY.labels(
+            route="/mentor/chat",
+            status_code="503",
+        )
+        self.assertGreaterEqual(latency._count.get(), 1)
 
     def test_recommendation_unhandled_error_is_categorized(self):
         response = self.client.get("/recommendations/next")
@@ -114,7 +136,17 @@ class ObservabilityTests(unittest.TestCase):
         )._value.get()
         self.assertGreaterEqual(value, 1)
 
-    def test_database_exception_is_categorized_without_detail_leakage(self):
+    def test_database_exception_is_counted_and_details_are_not_returned(self):
+        response = self.client.get("/db-error")
+        self.assertEqual(response.status_code, 500)
+        self.assertIn("request_id", response.json())
+        self.assertNotIn("SELECT", response.text)
+        value = obs.DATABASE_ERRORS.labels(
+            operation="http",
+        )._value.get()
+        self.assertGreaterEqual(value, 1)
+
+    def test_database_exception_is_categorized(self):
         exc = OperationalError(
             "SELECT * FROM users",
             [],
@@ -141,6 +173,11 @@ class ObservabilityTests(unittest.TestCase):
             response.text,
         )
 
+    def test_liveness_endpoint_is_database_independent(self):
+        response = self.client.get("/health/live")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["status"], "ok")
+
     def test_diagnostics_contains_no_secret_environment_values(self):
         with patch.dict(
             "os.environ",
@@ -166,6 +203,35 @@ class ObservabilityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["status"], "not_ready")
         self.assertNotIn("SELECT", response.text)
+
+    def test_json_formatter_outputs_structured_request_fields(self):
+        token = obs._REQUEST_ID_CONTEXT.set("req-formatter")
+        try:
+            record = logging.LogRecord(
+                "codementor.observability",
+                logging.INFO,
+                __file__,
+                1,
+                "request.completed",
+                (),
+                None,
+            )
+            record.event = "request.completed"
+            record.method = "GET"
+            record.path = "/demo"
+            record.status_code = 200
+            record.category = "success"
+            record.latency_ms = 12.34
+            payload = json.loads(obs.JsonFormatter().format(record))
+        finally:
+            obs._REQUEST_ID_CONTEXT.reset(token)
+
+        self.assertEqual(payload["request_id"], "req-formatter")
+        self.assertEqual(payload["event"], "request.completed")
+        self.assertEqual(payload["status_code"], 200)
+        self.assertEqual(payload["latency_ms"], 12.34)
+        self.assertNotIn("pathname", payload)
+        self.assertNotIn("levelno", payload)
 
     def test_sanitize_error_message_redacts_secret_like_values(self):
         error = RuntimeError(
