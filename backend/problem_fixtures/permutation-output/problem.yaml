@@ -10,3 +10,5 @@ limits:
   time_limit: 1
   validation_time: 2
   validation_output: 1
+constraints:
+  - "The input contains between 1 and 200 integers."

@@ -22,51 +22,36 @@ router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
 TOPICS = CANONICAL_TOPICS
 
-# A learning dependency graph for the roadmap. The graph is intentionally
-# limited to the topics that can actually appear in the Practice catalogue.
-# Missing prerequisites are ignored, so a small catalogue does not create
-# impossible locks.
 ROADMAP_PREREQUISITES = {
-    "Arrays & Strings": [],
-    "Hashing & Hash Maps": ["Arrays & Strings"],
-    "Sorting": ["Arrays & Strings"],
-    "Prefix Sum": ["Arrays & Strings"],
-    "Two Pointers": ["Arrays & Strings", "Sorting"],
-    "Sliding Window": ["Arrays & Strings", "Two Pointers"],
-    "Binary Search": ["Arrays & Strings", "Sorting"],
-    "Stacks & Queues": ["Arrays & Strings"],
-    "Linked Lists": ["Arrays & Strings"],
-    "Intervals": ["Arrays & Strings", "Sorting"],
-    "Trees & BST": ["Stacks & Queues"],
-    "Heaps & Priority Queues": ["Trees & BST"],
-    "Backtracking": ["Trees & BST"],
-    "Greedy Algorithms": ["Sorting", "Prefix Sum"],
-    "Bit Manipulation": ["Arrays & Strings"],
-    "Graphs (BFS/DFS)": ["Trees & BST"],
-    "Dynamic Programming": ["Arrays & Strings", "Prefix Sum"],
-    "Math": ["Arrays & Strings"],
+    "Arrays": [], "Strings": ["Arrays"], "Hashing": ["Arrays"], "Sorting": ["Arrays"],
+    "Prefix Sum": ["Arrays"], "Math": ["Arrays"], "Recursion": ["Arrays"],
+    "Two Pointers": ["Arrays", "Sorting"], "Sliding Window": ["Arrays", "Two Pointers"],
+    "Binary Search": ["Arrays", "Sorting"], "Stack": ["Arrays"], "Queue": ["Arrays", "Stack"],
+    "Linked List": ["Arrays"], "Intervals": ["Arrays", "Sorting"], "Bit Manipulation": ["Arrays"],
+    "Trees": ["Stack", "Recursion"], "BST": ["Trees", "Binary Search"],
+    "Heap/Priority Queue": ["Trees"], "Backtracking": ["Trees", "Recursion"],
+    "Greedy": ["Sorting", "Prefix Sum"], "Graphs": ["Trees"], "DFS": ["Graphs"], "BFS": ["Graphs"],
+    "Dynamic Programming": ["Arrays", "Prefix Sum"], "Trie": ["Strings"], "Union Find": ["Graphs"],
+    "Topological Sort": ["Graphs"], "Divide and Conquer": ["Recursion"],
+    "Monotonic Stack": ["Stack"], "Monotonic Queue": ["Queue"], "Matrix": ["Arrays"],
+    "Implementation": ["Arrays"], "Brute Force": ["Arrays"],
+    "Constructive Algorithms": ["Arrays"], "Number Theory": ["Math"],
+    "Combinatorics": ["Math"], "Geometry": ["Math"], "Probability": ["Math"],
+    "Game Theory": ["Math"], "Meet in the Middle": ["Brute Force"],
 }
 
 ROADMAP_TIER = {
-    "Arrays & Strings": 1,
-    "Hashing & Hash Maps": 1,
-    "Sorting": 1,
-    "Prefix Sum": 1,
-    "Math": 1,
-    "Two Pointers": 2,
-    "Sliding Window": 2,
-    "Binary Search": 2,
-    "Stacks & Queues": 2,
-    "Linked Lists": 2,
-    "Intervals": 2,
-    "Bit Manipulation": 2,
-    "Trees & BST": 3,
-    "Heaps & Priority Queues": 3,
-    "Backtracking": 3,
-    "Greedy Algorithms": 3,
-    "Graphs (BFS/DFS)": 4,
-    "Dynamic Programming": 4,
+    "Arrays": 1, "Strings": 1, "Hashing": 1, "Sorting": 1, "Prefix Sum": 1, "Math": 1,
+    "Recursion": 1, "Implementation": 1, "Brute Force": 2, "Constructive Algorithms": 2,
+    "Number Theory": 2, "Combinatorics": 2, "Geometry": 2, "Probability": 3, "Game Theory": 3,
+    "Two Pointers": 2, "Sliding Window": 2, "Binary Search": 2, "Stack": 2, "Queue": 2,
+    "Linked List": 2, "Intervals": 2, "Bit Manipulation": 2, "Matrix": 2,
+    "Trees": 3, "BST": 3, "Heap/Priority Queue": 3, "Backtracking": 3, "Greedy": 3,
+    "Trie": 3, "Divide and Conquer": 3, "Monotonic Stack": 3, "Meet in the Middle": 3,
+    "Graphs": 4, "DFS": 4, "BFS": 4, "Dynamic Programming": 4,
+    "Union Find": 4, "Topological Sort": 4, "Monotonic Queue": 3,
 }
+
 
 EXPERIENCE_TARGET_TIER = {
     "Beginner": 1,
