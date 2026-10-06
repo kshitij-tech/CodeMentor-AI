@@ -3,31 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CodeMentor AI — Career Prep</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400;500;600&display=swap" rel="stylesheet">
+<title>CodeMentor AI — Career Preparation</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
 tailwind.config={theme:{extend:{colors:{
-surface:'#f8f9ff','surface-container-lowest':'#ffffff','surface-container-low':'#eff4ff',
-'surface-container':'#e5eeff','surface-container-high':'#dce9ff',
-'on-surface':'#0b1c30','on-surface-variant':'#464554',
-primary:'#2a14b4','primary-container':'#4338ca','on-primary':'#ffffff'
-},fontFamily:{body:['Plus Jakarta Sans'],mono:['JetBrains Mono']}}}};
+surface:'#f8f9ff','surface-container-low':'#eff4ff','surface-container':'#e5eeff',
+'on-surface':'#0b1c30','on-surface-variant':'#464554','primary':'#2a14b4',
+'primary-container':'#4338ca'
+},fontFamily:{sans:['Plus Jakarta Sans','ui-sans-serif','system-ui']}}}};
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="ui.css">
 <script src="ui.js" defer></script>
 </head>
-<body class="bg-surface font-body text-on-surface min-h-screen">
-<header class="fixed inset-x-0 top-0 z-50 h-16 bg-white/90 backdrop-blur-xl border-b border-slate-200">
+<body class="bg-surface text-on-surface min-h-screen font-sans">
+<header class="fixed inset-x-0 top-0 z-50 h-16 bg-white/95 backdrop-blur-xl border-b border-slate-200">
   <div class="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
-    <a href="dashboard.html?v=20260924"" class="flex items-center gap-3">
+    <a href="dashboard.html" class="flex items-center gap-3">
       <div class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div>
       <span class="font-bold">CodeMentor <span class="text-primary">AI</span></span>
     </a>
-    <nav class="flex items-center gap-1">
-      <a href="dashboard.html?v=20260924"" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Dashboard</a>
+    <nav class="flex items-center gap-1 overflow-x-auto">
+      <a href="dashboard.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Dashboard</a>
       <a href="practice.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Practice</a>
       <a href="analytics.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Analytics</a>
       <a href="mentor.html" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">AI Mentor</a>
@@ -38,58 +37,326 @@ primary:'#2a14b4','primary-container':'#4338ca','on-primary':'#ffffff'
 
 <main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
   <div class="max-w-7xl mx-auto space-y-6">
+    <div id="toast" class="hidden fixed right-5 top-20 z-[60] rounded-xl bg-slate-900 text-white px-4 py-3 text-sm shadow-xl"></div>
+
     <section class="bg-white rounded-2xl shadow-sm p-6 sm:p-8">
-      <div class="mono text-[10px] uppercase tracking-wider text-primary font-semibold">Career intelligence</div>
-      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5 mt-2">
+      <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
         <div>
-          <h1 id="title" class="text-3xl font-bold">Career Preparation</h1>
-          <p class="text-sm text-on-surface-variant mt-2 max-w-3xl">Your profile, target role, companies, and preparation timeline will drive this workspace as the career intelligence layer is expanded.</p>
+          <div class="text-[10px] uppercase tracking-[0.22em] text-primary font-semibold">Career intelligence</div>
+          <h1 class="text-3xl sm:text-4xl font-bold mt-2">Interview readiness, built around your role</h1>
+          <p id="roleSummary" class="text-sm text-on-surface-variant mt-3 max-w-3xl">Loading your career plan…</p>
         </div>
-        <a href="preferences.html?v=20260921" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-primary text-white text-sm font-semibold">Edit profile <span class="material-symbols-outlined text-[17px]">edit</span></a>
+        <div class="flex flex-wrap items-center gap-3">
+          <select id="roleSelect" class="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium"></select>
+          <button id="saveRole" class="rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">Set target role</button>
+        </div>
       </div>
     </section>
 
-    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Target role</div><div id="role" class="font-semibold mt-2">Loading…</div></div>
-      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Language</div><div id="language" class="font-semibold mt-2">Loading…</div></div>
-      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Timeline</div><div id="timeline" class="font-semibold mt-2">Loading…</div></div>
-      <div class="bg-white rounded-xl shadow-sm p-5"><div class="mono text-[10px] uppercase text-on-surface-variant">Experience</div><div id="experience" class="font-semibold mt-2">Loading…</div></div>
+    <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div class="bg-white rounded-2xl shadow-sm p-5"><div class="text-xs text-on-surface-variant">Career readiness</div><div id="readiness" class="text-3xl font-bold mt-2">—</div><div id="readinessBand" class="text-xs mt-1 text-primary">Loading</div></div>
+      <div class="bg-white rounded-2xl shadow-sm p-5"><div class="text-xs text-on-surface-variant">DSA mastery</div><div id="dsaScore" class="text-3xl font-bold mt-2">—</div><div class="text-xs text-slate-500 mt-1">Derived from Practice submissions</div></div>
+      <div class="bg-white rounded-2xl shadow-sm p-5"><div class="text-xs text-on-surface-variant">CS fundamentals</div><div id="csScore" class="text-3xl font-bold mt-2">—</div><div class="text-xs text-slate-500 mt-1">Manual evidence tracking</div></div>
+      <div class="bg-white rounded-2xl shadow-sm p-5"><div class="text-xs text-on-surface-variant">Role skills</div><div id="roleScore" class="text-3xl font-bold mt-2">—</div><div class="text-xs text-slate-500 mt-1">Role-specific coverage</div></div>
+      <div class="bg-white rounded-2xl shadow-sm p-5"><div class="text-xs text-on-surface-variant">Mock interviews</div><div id="mockScore" class="text-3xl font-bold mt-2">—</div><div class="text-xs text-slate-500 mt-1">Average completed score</div></div>
     </section>
 
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="bg-white rounded-2xl shadow-sm p-6">
-        <h2 class="font-bold">What is connected today</h2>
-        <div class="mt-4 space-y-3 text-sm text-on-surface-variant">
-          <div class="flex gap-3"><span class="material-symbols-outlined text-primary text-[19px]">check_circle</span><span>Profile and preparation preferences</span></div>
-          <div class="flex gap-3"><span class="material-symbols-outlined text-primary text-[19px]">check_circle</span><span>Practice library and analytics</span></div>
-          <div class="flex gap-3"><span class="material-symbols-outlined text-primary text-[19px]">check_circle</span><span>AI Mentor workspace</span></div>
+        <div class="flex items-center justify-between">
+          <div><h2 class="font-bold text-lg">Your interview roadmap</h2><p class="text-xs text-on-surface-variant mt-1">Stages become active as you build evidence.</p></div>
+          <span id="roadmapCompletion" class="text-sm font-bold text-primary">—%</span>
+        </div>
+        <div id="roadmap" class="mt-5 space-y-3"></div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-6">
+        <div class="flex items-center justify-between"><div><h2 class="font-bold text-lg">Weak areas</h2><p class="text-xs text-on-surface-variant mt-1">The next plan prioritizes the lowest evidence.</p></div><span class="material-symbols-outlined text-primary">target</span></div>
+        <div id="weakAreas" class="mt-5 space-y-2"></div>
+        <div id="plan" class="mt-6 border-t border-slate-200 pt-5"></div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div class="bg-white rounded-2xl shadow-sm p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div><h2 class="font-bold text-lg">DSA preparation</h2><p class="text-xs text-on-surface-variant mt-1">Uses your existing coding-attempt history.</p></div>
+          <a href="practice.html" class="text-xs font-semibold text-primary hover:underline">Open Practice</a>
+        </div>
+        <div id="dsaTopics" class="mt-5 grid sm:grid-cols-2 gap-3"></div>
+      </div>
+      <div class="bg-white rounded-2xl shadow-sm p-6">
+        <div class="flex items-center justify-between"><div><h2 class="font-bold text-lg">CS fundamentals & role skills</h2><p class="text-xs text-on-surface-variant mt-1">Track learning with evidence instead of a binary checkbox.</p></div><button id="saveSkills" class="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white">Save progress</button></div>
+        <div id="skills" class="mt-5 max-h-[520px] overflow-auto pr-1 space-y-4"></div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl shadow-sm p-6">
+      <div class="flex items-center justify-between gap-4"><div><h2 class="font-bold text-lg">Company & category preparation</h2><p class="text-xs text-on-surface-variant mt-1">Your role determines which interview patterns matter most.</p></div><a href="preferences.html" class="text-xs font-semibold text-primary hover:underline">Update target companies</a></div>
+      <div id="companies" class="mt-5 grid md:grid-cols-2 xl:grid-cols-3 gap-4"></div>
+    </section>
+
+    <section class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div class="bg-white rounded-2xl shadow-sm p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div><h2 class="font-bold text-lg">Mock interview mode</h2><p class="text-xs text-on-surface-variant mt-1">Technical, behavioral or mixed. Each answer gets rubric-based feedback.</p></div>
+          <div class="flex items-center gap-2">
+            <select id="mockMode" class="rounded-lg border border-slate-300 px-3 py-2 text-xs"><option value="mixed">Mixed</option><option value="technical">Technical</option><option value="behavioral">Behavioral</option></select>
+            <button id="startMock" class="rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white">Start mock</button>
+          </div>
+        </div>
+        <div id="mockPanel" class="mt-5"></div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow-sm p-6">
+        <h2 class="font-bold text-lg">Resume / skill-gap analysis</h2>
+        <p class="text-xs text-on-surface-variant mt-1">Paste resume text to compare it with the current role profile. Raw resume text is not persisted by this module.</p>
+        <textarea id="resumeText" class="mt-4 w-full h-44 rounded-xl border border-slate-300 px-4 py-3 text-sm resize-y" placeholder="Paste resume text here…"></textarea>
+        <div class="flex items-center justify-between gap-3 mt-3"><span id="resumePrivacy" class="text-[11px] text-slate-500"></span><button id="analyzeResume" class="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white">Analyze skill gap</button></div>
+        <div id="resumeResult" class="mt-5"></div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-2xl shadow-sm p-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div><h2 class="font-bold text-lg">Interview question bank</h2><p class="text-xs text-on-surface-variant mt-1">Technical and behavioral questions matched to your target role.</p></div>
+        <div class="flex gap-2">
+          <select id="questionType" class="rounded-lg border border-slate-300 px-3 py-2 text-xs"><option value="">All types</option><option value="technical">Technical</option><option value="behavioral">Behavioral</option></select>
+          <select id="questionDifficulty" class="rounded-lg border border-slate-300 px-3 py-2 text-xs"><option value="">All difficulty</option><option>Easy</option><option>Medium</option><option>Hard</option></select>
+          <button id="loadQuestions" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold">Filter</button>
         </div>
       </div>
-      <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm p-6">
-        <h2 class="font-bold">Career intelligence roadmap</h2>
-        <p class="text-sm text-on-surface-variant mt-2">This page is intentionally functional without pretending the later career engine already exists.</p>
-        <div class="grid sm:grid-cols-2 gap-3 mt-5">
-          <a href="analytics.html" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Review skill gaps</div><div class="text-xs text-on-surface-variant mt-1">Inspect your current practice and topic mastery.</div></a>
-          <a href="practice.html" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Practice for your role</div><div class="text-xs text-on-surface-variant mt-1">Continue solving problems while the adaptive career planner is built.</div></a>
-          <a href="mentor.html" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Talk to AI Mentor</div><div class="text-xs text-on-surface-variant mt-1">Discuss an interview strategy or preparation question.</div></a>
-          <a href="preferences.html?v=20260921" class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container"><div class="font-semibold text-sm">Update target companies</div><div class="text-xs text-on-surface-variant mt-1">Keep your career profile current for later recommendations.</div></a>
-        </div>
-      </div>
+      <div id="questions" class="mt-5 grid md:grid-cols-2 gap-4"></div>
     </section>
   </div>
 </main>
 
 <script>
-const API='http://127.0.0.1:8000';
-const KEY='codementor_access_token';
-const token=()=>localStorage.getItem(KEY);
-if(!token()){location.replace('auth.html');}
-else{
-  fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}})
-    .then(async r=>{if(r.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return null;}const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Unable to load profile.');return d;})
-    .then(d=>{if(!d)return;document.getElementById('role').textContent=d.target_role||'Not set';document.getElementById('language').textContent=d.preferred_language||'Not set';document.getElementById('timeline').textContent=d.preparation_timeline||'Not set';document.getElementById('experience').textContent=d.experience_level||'Not set';})
-    .catch(e=>{['role','language','timeline','experience'].forEach(id=>document.getElementById(id).textContent='Unable to load');});
+const API = 'http://127.0.0.1:8000';
+const KEY = 'codementor_access_token';
+const token = () => localStorage.getItem(KEY);
+let dashboard = null;
+let roles = [];
+let activeMock = null;
+
+function authHeaders(extra) {
+  return Object.assign({ Authorization: 'Bearer ' + token() }, extra || {});
 }
+
+async function api(path, options) {
+  const opts = Object.assign({ headers: authHeaders() }, options || {});
+  opts.headers = authHeaders(opts.headers);
+  const response = await fetch(API + path, opts);
+  if (response.status === 401) {
+    localStorage.removeItem(KEY);
+    location.replace('auth.html');
+    return null;
+  }
+  const data = await response.json().catch(function(){ return {}; });
+  if (!response.ok) throw new Error(data.detail || 'Request failed.');
+  return data;
+}
+
+function showToast(message) {
+  const node = document.getElementById('toast');
+  node.textContent = message;
+  node.classList.remove('hidden');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(function(){ node.classList.add('hidden'); }, 2500);
+}
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/\"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function scoreRing(score) {
+  const safe = Math.max(0, Math.min(100, Number(score || 0)));
+  return '<div class="w-24 h-24 rounded-full grid place-items-center bg-slate-100"><div class="w-[78px] h-[78px] rounded-full bg-white grid place-items-center"><span class="font-bold text-2xl">' + safe + '</span></div></div>';
+}
+
+function renderDashboard() {
+  const p = dashboard;
+  document.getElementById('roleSummary').textContent = p.role.summary + ' ' + (p.profile.preparation_timeline ? 'Timeline: ' + p.profile.preparation_timeline + '.' : '');
+  document.getElementById('readiness').textContent = p.readiness_score + '/100';
+  document.getElementById('readinessBand').textContent = p.readiness_band;
+  document.getElementById('dsaScore').textContent = p.metrics.dsa.score + '%';
+  document.getElementById('csScore').textContent = p.metrics.cs_fundamentals.score + '%';
+  document.getElementById('roleScore').textContent = p.metrics.role_skills.score + '%';
+  document.getElementById('mockScore').textContent = p.metrics.mock_interviews.average_score ? p.metrics.mock_interviews.average_score + '%' : '—';
+
+  const roadmap = p.roadmap.phases.map(function(phase){
+    const statusClass = phase.status === 'complete' ? 'bg-emerald-50 text-emerald-700' : phase.status === 'active' ? 'bg-indigo-50 text-primary' : 'bg-slate-100 text-slate-500';
+    return '<div class="border border-slate-200 rounded-xl p-4"><div class="flex justify-between gap-3"><div><div class="text-[10px] uppercase tracking-wider text-slate-400">Phase ' + phase.phase + ' · ' + phase.weeks + ' weeks</div><div class="font-semibold mt-1">' + escapeHtml(phase.title) + '</div></div><span class="text-[11px] px-2 py-1 rounded-full ' + statusClass + '">' + escapeHtml(phase.status) + '</span></div><div class="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-primary" style="width:' + phase.completion + '%"></div></div><div class="text-[11px] text-slate-500 mt-2">' + phase.completion + '% complete · ' + phase.items.map(escapeHtml).join(', ') + '</div></div>';
+  }).join('');
+  document.getElementById('roadmapCompletion').textContent = p.roadmap.overall_completion + '%';
+  document.getElementById('roadmap').innerHTML = roadmap;
+
+  const weak = p.weak_areas.length ? p.weak_areas.map(function(item){
+    return '<div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50"><div><div class="font-semibold text-sm">' + escapeHtml(item.label) + '</div><div class="text-[11px] text-slate-500">' + escapeHtml(item.reason) + '</div></div><span class="font-bold text-primary">' + item.score + '%</span></div>';
+  }).join('') : '<div class="p-4 rounded-xl bg-emerald-50 text-emerald-700 text-sm">No major weak area is below the current threshold. Take a mock interview to find the next gap.</div>';
+  document.getElementById('weakAreas').innerHTML = weak;
+  document.getElementById('plan').innerHTML = '<div class="text-xs uppercase tracking-wider font-semibold text-primary">Personalized next plan</div><div class="mt-3 space-y-2">' + p.personalized_plan.map(function(item){ return '<div class="text-sm"><span class="font-semibold">' + item.priority + '. ' + escapeHtml(item.focus) + '</span><span class="text-slate-600"> — ' + escapeHtml(item.action) + '</span></div>'; }).join('') + '</div>';
+
+  document.getElementById('dsaTopics').innerHTML = Object.keys(p.metrics.dsa.topics).map(function(topic){
+    const row = p.metrics.dsa.topics[topic];
+    return '<div class="border border-slate-200 rounded-xl p-4"><div class="flex justify-between gap-2"><span class="font-semibold text-sm">' + escapeHtml(topic) + '</span><span class="text-xs font-bold text-primary">' + row.mastery + '%</span></div><div class="h-2 bg-slate-100 rounded-full mt-3 overflow-hidden"><div class="h-full bg-primary" style="width:' + row.mastery + '%"></div></div><div class="text-[11px] text-slate-500 mt-2">' + row.solved + ' solved · ' + row.attempted + ' attempted · ' + row.evidence + '% evidence</div></div>';
+  }).join('');
+
+  const allSkills = p.metrics.cs_fundamentals.skills.concat(p.metrics.role_skills.skills);
+  document.getElementById('skills').innerHTML = allSkills.map(function(item){
+    return '<div class="rounded-xl border border-slate-200 p-4" data-skill-row="' + escapeHtml(item.type + '|' + item.key) + '"><div class="flex justify-between gap-3"><div><div class="font-semibold text-sm">' + escapeHtml(item.label) + '</div><div class="text-[10px] uppercase tracking-wider text-slate-400 mt-1">' + escapeHtml(item.type.replace('_',' ')) + '</div></div><output class="text-xs font-bold text-primary">' + item.score + '%</output></div><input type="range" min="0" max="100" step="5" value="' + item.score + '" class="mt-3 w-full career-skill" data-type="' + escapeHtml(item.type) + '" data-key="' + escapeHtml(item.key) + '"><div class="text-[11px] text-slate-500 mt-1">Evidence: ' + item.evidence_count + '</div></div>';
+  }).join('');
+  document.querySelectorAll('.career-skill').forEach(function(input){
+    input.addEventListener('input', function(){ input.closest('[data-skill-row]').querySelector('output').textContent = input.value + '%'; });
+  });
+
+  document.getElementById('companies').innerHTML = p.company_preparation.map(function(item){
+    return '<div class="rounded-xl border border-slate-200 p-4"><div class="flex justify-between gap-3"><div class="font-semibold">' + escapeHtml(item.category) + '</div><span class="text-[11px] px-2 py-1 rounded-full bg-slate-100">' + (item.selected ? 'Selected company match' : 'Available path') + '</span></div><p class="text-xs text-slate-500 mt-2">' + escapeHtml(item.description) + '</p><div class="flex flex-wrap gap-2 mt-3">' + item.companies.map(function(name){ return '<span class="px-2 py-1 rounded-md bg-surface-container-low text-[11px]">' + escapeHtml(name) + '</span>'; }).join('') + '</div><div class="text-[11px] text-slate-500 mt-3">Focus: ' + item.focus.map(escapeHtml).join(' · ') + '</div></div>';
+  }).join('');
+}
+
+async function loadRoles() {
+  roles = await api('/career/roles');
+  const select = document.getElementById('roleSelect');
+  select.innerHTML = roles.map(function(role){ return '<option value="' + escapeHtml(role.key) + '">' + escapeHtml(role.name) + '</option>'; }).join('');
+  if (dashboard) select.value = dashboard.role.key;
+}
+
+async function loadQuestions() {
+  const params = new URLSearchParams({ role_key: dashboard.role.key, limit: '50' });
+  const type = document.getElementById('questionType').value;
+  const difficulty = document.getElementById('questionDifficulty').value;
+  if (type) params.set('type', type);
+  if (difficulty) params.set('difficulty', difficulty);
+  const data = await api('/career/questions?' + params.toString());
+  document.getElementById('questions').innerHTML = data.questions.map(function(q){
+    return '<article class="rounded-xl border border-slate-200 p-4"><div class="flex justify-between gap-3"><span class="text-[10px] uppercase tracking-wider text-primary font-semibold">' + escapeHtml(q.type) + '</span><span class="text-[10px] uppercase tracking-wider text-slate-400">' + escapeHtml(q.difficulty) + '</span></div><h3 class="font-semibold mt-2 text-sm">' + escapeHtml(q.prompt) + '</h3><div class="text-[11px] text-slate-500 mt-3">Topics: ' + q.topics.map(escapeHtml).join(', ') + '</div></article>';
+  }).join('') || '<div class="text-sm text-slate-500">No questions match the selected filters.</div>';
+}
+
+function renderMock(session) {
+  activeMock = session;
+  const panel = document.getElementById('mockPanel');
+  if (session.current_question) {
+    panel.innerHTML = '<div class="rounded-2xl bg-surface-container-low p-5"><div class="text-[10px] uppercase tracking-wider text-primary font-semibold">Question ' + (session.current_index + 1) + ' of ' + session.total_questions + '</div><h3 class="font-bold mt-2">' + escapeHtml(session.current_question.prompt) + '</h3><p class="text-xs text-slate-500 mt-2">Type: ' + escapeHtml(session.current_question.type) + ' · Difficulty: ' + escapeHtml(session.current_question.difficulty) + '</p><textarea id="mockAnswer" class="mt-4 w-full h-36 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm" placeholder="Answer as if you were in the interview…"></textarea><div class="flex justify-end mt-3"><button id="submitMock" class="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-white">Submit answer</button></div></div><div id="lastFeedback" class="mt-4"></div>';
+    document.getElementById('submitMock').addEventListener('click', submitMockAnswer);
+  } else {
+    const feedback = session.feedback ? '<div class="mt-4 rounded-xl bg-emerald-50 p-4"><div class="font-semibold text-emerald-800">Final score: ' + session.feedback.score + '/100</div><div class="text-sm text-emerald-700 mt-1">' + escapeHtml(session.feedback.summary) + '</div></div>' : '';
+    panel.innerHTML = '<div class="rounded-xl border border-slate-200 p-5"><div class="font-semibold">Mock interview ' + escapeHtml(session.status) + '</div><p class="text-sm text-slate-600 mt-2">Completed responses: ' + session.responses.length + ' / ' + session.total_questions + '</p>' + feedback + '</div>';
+  }
+}
+
+async function submitMockAnswer() {
+  const answer = document.getElementById('mockAnswer').value.trim();
+  if (!answer) return showToast('Write an answer before submitting.');
+  try {
+    const data = await api('/career/mock-interviews/' + activeMock.id + '/responses', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ question_id: activeMock.current_question.id, answer: answer })
+    });
+    const feedback = data.response.feedback;
+    document.getElementById('lastFeedback').innerHTML = '<div class="rounded-xl border border-slate-200 p-4"><div class="flex justify-between gap-2"><div class="font-semibold">Feedback</div><span class="font-bold text-primary">' + feedback.score + '/100</span></div><p class="text-sm mt-2 text-slate-700">' + escapeHtml(feedback.feedback) + '</p><div class="grid sm:grid-cols-2 gap-3 mt-3"><div><div class="text-[10px] uppercase tracking-wider text-emerald-600 font-semibold">Strengths</div><div class="text-xs mt-1">' + (feedback.strengths || []).map(escapeHtml).join('<br>') + '</div></div><div><div class="text-[10px] uppercase tracking-wider text-rose-600 font-semibold">Improve</div><div class="text-xs mt-1">' + (feedback.improvements || []).map(escapeHtml).join('<br>') + '</div></div></div><div class="text-[10px] text-slate-400 mt-3">Feedback source: ' + escapeHtml(feedback.source || 'ai') + '</div></div>';
+    const next = await api('/career/mock-interviews/' + activeMock.id);
+    renderMock(next);
+    if (data.status === 'ready_to_complete') {
+      document.getElementById('mockPanel').insertAdjacentHTML('beforeend', '<div class="mt-3 flex justify-end"><button id="completeMock" class="rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white">Complete interview</button></div>');
+      document.getElementById('completeMock').addEventListener('click', async function(){
+        const complete = await api('/career/mock-interviews/' + activeMock.id + '/complete', { method: 'POST' });
+        renderMock(complete);
+        dashboard = await api('/career/dashboard');
+        renderDashboard();
+        showToast('Mock interview completed.');
+      });
+    }
+  } catch (error) { showToast(error.message); }
+}
+
+async function saveSkills() {
+  const rows = document.querySelectorAll('[data-skill-row]');
+  try {
+    for (const row of rows) {
+      const input = row.querySelector('.career-skill');
+      const type = input.dataset.type;
+      const key = input.dataset.key;
+      await api('/career/progress', {
+        method: 'PUT',
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ skill_type: type, skill_key: key, score: Number(input.value), status: Number(input.value) >= 75 ? 'complete' : Number(input.value) > 0 ? 'in_progress' : 'not_started', evidence_count: Number(input.value) > 0 ? 1 : 0 })
+      });
+    }
+    dashboard = await api('/career/dashboard');
+    renderDashboard();
+    await loadQuestions();
+    showToast('Career skill progress saved.');
+  } catch (error) { showToast(error.message); }
+}
+
+async function saveRole() {
+  const roleKey = document.getElementById('roleSelect').value;
+  try {
+    await api('/career/target-role', {
+      method: 'PUT',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ role_key: roleKey })
+    });
+    dashboard = await api('/career/dashboard');
+    document.getElementById('roleSelect').value = dashboard.role.key;
+    renderDashboard();
+    await loadQuestions();
+    showToast('Target role updated.');
+  } catch (error) { showToast(error.message); }
+}
+
+async function startMock() {
+  try {
+    const session = await api('/career/mock-interviews', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ role_key: dashboard.role.key, mode: document.getElementById('mockMode').value, question_count: 6 })
+    });
+    renderMock(session);
+    showToast('Mock interview started.');
+  } catch (error) { showToast(error.message); }
+}
+
+async function analyzeResume() {
+  const resumeText = document.getElementById('resumeText').value.trim();
+  if (resumeText.length < 50) return showToast('Paste at least 50 characters of resume text.');
+  try {
+    const result = await api('/career/resume-analysis', {
+      method: 'POST',
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ resume_text: resumeText, role_key: dashboard.role.key })
+    });
+    document.getElementById('resumePrivacy').textContent = result.privacy;
+    document.getElementById('resumeResult').innerHTML = '<div class="grid sm:grid-cols-2 gap-4"><div class="rounded-xl bg-emerald-50 p-4"><div class="text-[10px] uppercase tracking-wider text-emerald-700 font-semibold">Alignment</div><div class="text-3xl font-bold text-emerald-800 mt-1">' + result.alignment_score + '%</div><div class="text-xs text-emerald-700 mt-1">Matched: ' + result.matched_skills.map(escapeHtml).join(', ') + '</div></div><div class="rounded-xl bg-rose-50 p-4"><div class="text-[10px] uppercase tracking-wider text-rose-700 font-semibold">Priority gaps</div><div class="text-xs text-rose-800 mt-2">' + result.missing_skills.slice(0,8).map(escapeHtml).join('<br>') + '</div></div></div><div class="mt-4 text-xs text-slate-600 space-y-1">' + result.recommendations.slice(0,6).map(function(item){ return '<div>• ' + escapeHtml(item) + '</div>'; }).join('') + '</div>';
+    dashboard = await api('/career/dashboard');
+    renderDashboard();
+    showToast('Resume skill-gap analysis complete.');
+  } catch (error) { showToast(error.message); }
+}
+
+async function init() {
+  if (!token()) return location.replace('auth.html');
+  try {
+    dashboard = await api('/career/dashboard');
+    await loadRoles();
+    renderDashboard();
+    await loadQuestions();
+    document.getElementById('resumePrivacy').textContent = 'Only skill-gap results are stored.';
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+document.getElementById('saveRole').addEventListener('click', saveRole);
+document.getElementById('saveSkills').addEventListener('click', saveSkills);
+document.getElementById('startMock').addEventListener('click', startMock);
+document.getElementById('analyzeResume').addEventListener('click', analyzeResume);
+document.getElementById('loadQuestions').addEventListener('click', loadQuestions);
+init();
 </script>
 </body>
 </html>
