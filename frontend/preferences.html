@@ -1,55 +1,38 @@
-<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CodeMentor AI — Preferences</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={theme:{extend:{colors:{primary:"#2a14b4","primary-container":"#4338ca","surface":"#f8f9ff","surface-container-low":"#eff4ff","surface-container":"#e5eeff","surface-container-high":"#dce9ff","surface-container-highest":"#d3e4fe","on-surface":"#0b1c30","on-surface-variant":"#464554","outline":"#777586","tertiary":"#00442d","tertiary-container":"#005e3f","error":"#ba1a1a"}}}}</script>
-<style>body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mono",monospace}</style>  <link rel="stylesheet" href="ui.css">
-  <script src="ui.js" defer></script>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeMentor AI — Preferences</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="ui.css">
+  <style>body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}.mono{font-family:"JetBrains Mono",monospace}</style>
 </head>
-<body class="min-h-screen bg-surface text-on-surface">
-<header class="fixed top-0 inset-x-0 z-50 h-16 bg-white/90 backdrop-blur-xl border-b border-slate-200"><div class="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-<div class="flex items-center gap-3"><div class="w-9 h-9 rounded-lg bg-primary-container text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div><div class="font-bold tracking-tight">CodeMentor <span class="mono text-primary text-xs uppercase tracking-wider">AI</span></div></div>
-<nav class="flex items-center gap-2"><button onclick="location.href='dashboard.html?v=20260924'" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-low">Dashboard</button><button onclick="location.href='settings.html'" class="px-3 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-low"><span class="material-symbols-outlined align-middle text-[18px] mr-1">settings</span>Settings</button></nav>
-</div></header>
-<main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8"><div class="max-w-4xl mx-auto">
-<div class="mb-7"><div class="mono text-[11px] uppercase tracking-wider text-primary font-semibold">Personalization</div><h1 class="text-3xl font-bold mt-1">Preferences</h1><p class="text-sm text-on-surface-variant mt-2">Update the preferences that shape your problems, hints, recommendations, and interview preparation.</p></div>
-<div id="message" class="hidden mb-5 rounded-xl px-4 py-3 text-sm border"></div>
-<section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 space-y-7">
-<div><h2 class="text-lg font-bold">Profile preferences</h2><p class="text-sm text-on-surface-variant mt-1">These are the preferences that shape your coding practice and interview preparation.</p></div>
-<div class="grid md:grid-cols-2 gap-5">
-<label class="block"><span class="text-sm font-semibold">Name / developer handle</span><input id="full-name" class="mt-2 w-full rounded-lg border-0 bg-surface-container-low px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"></label>
-</div>
-<label class="block"><span class="text-sm font-semibold">Short introduction</span><textarea id="bio" maxlength="180" rows="3" class="mt-2 w-full rounded-lg border-0 bg-surface-container-low px-4 py-3 outline-none focus:ring-2 focus:ring-primary/20"></textarea><span id="bio-count" class="mono text-[10px] text-on-surface-variant"></span></label>
-<div class="grid md:grid-cols-2 gap-5">
-<label class="block"><span class="text-sm font-semibold">Preferred language</span><select id="language" class="mt-2 w-full rounded-lg border-0 bg-surface-container-low px-4 py-3 outline-none"><option>Python</option><option>C++</option><option>Java</option><option>JavaScript</option><option>TypeScript</option><option>Go</option><option>Rust</option><option>Other</option></select></label>
-<label class="block"><span class="text-sm font-semibold">Experience level</span><select id="experience" class="mt-2 w-full rounded-lg border-0 bg-surface-container-low px-4 py-3 outline-none"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></label>
-</div>
-<div class="grid md:grid-cols-2 gap-5">
-<label class="block"><span class="text-sm font-semibold">Target role</span><select id="role" class="mt-2 w-full rounded-lg border-0 bg-surface-container-low px-4 py-3 outline-none"><option>Software Engineer</option><option>Full Stack Engineer</option><option>Backend Engineer</option><option>Frontend Engineer</option><option>Data Scientist</option><option>Machine Learning Engineer</option></select></label>
-<label class="block"><span class="text-sm font-semibold">Preparation timeline</span><select id="timeline" class="mt-2 w-full rounded-lg border-0 bg-surface-container-low px-4 py-3 outline-none"><option>1 Month Intensive</option><option>3 Months Deep Dive</option><option>6 Months Steady</option><option>Long-term / Flexible</option></select></label>
-</div>
-<div><span class="text-sm font-semibold">Target companies</span><div class="flex flex-wrap gap-2 mt-3" id="companies">
-<button type="button" data-company="Google" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">Google</button>
-<button type="button" data-company="Microsoft" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">Microsoft</button>
-<button type="button" data-company="Amazon" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">Amazon</button>
-<button type="button" data-company="Meta" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">Meta</button>
-<button type="button" data-company="Apple" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">Apple</button>
-<button type="button" data-company="NVIDIA" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">NVIDIA</button>
-<button type="button" data-company="Stripe" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">Stripe</button>
-<button type="button" data-company="Atlassian" class="company px-3 py-2 rounded-full bg-surface-container-low text-sm text-on-surface-variant hover:bg-surface-container-high">Atlassian</button>
-</div></div>
-<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2"><p class="text-xs text-on-surface-variant">Changes here update your personalization preferences without repeating onboarding.</p><button id="save" class="px-5 py-2.5 rounded-lg bg-primary-container text-white font-semibold hover:bg-primary transition-colors"><span class="material-symbols-outlined align-middle text-[18px] mr-1">save</span>Save Preferences</button></div>
-</section></div></main>
+<body class="min-h-screen text-slate-900">
+<header class="fixed inset-x-0 top-0 z-40 h-16 border-b bg-white/90 backdrop-blur"><div class="mx-auto flex h-full max-w-6xl items-center justify-between px-4"><a href="dashboard.html" class="font-bold">CodeMentor <span class="mono text-xs text-indigo-700">AI</span></a><nav class="flex gap-2 text-sm"><a href="profile.html" class="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">Profile</a><a href="settings.html" class="rounded-lg bg-slate-100 px-3 py-2 font-semibold">Settings</a></nav></div></header>
+<main class="mx-auto max-w-4xl px-4 pb-16 pt-24">
+  <div class="mb-6"><div class="mono text-[11px] font-semibold uppercase tracking-wider text-indigo-700">Saved preferences</div><h1 class="mt-2 text-3xl font-bold">Preferences</h1><p class="mt-2 text-sm text-slate-600">This page summarizes your saved onboarding choices. Use Settings to edit them later; onboarding is not repeated.</p></div>
+  <div id="error" class="mb-5 hidden rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
+  <section class="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Experience</div><div id="experience" class="mt-1 font-semibold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Target role</div><div id="role" class="mt-1 font-semibold">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Languages</div><div id="languages" class="mt-1 text-sm">—</div></div>
+      <div class="rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Daily target</div><div id="daily" class="mt-1 font-semibold">—</div></div>
+    </div>
+    <div class="mt-5 rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">DSA familiarity</div><div id="dsa" class="mt-2 flex flex-wrap gap-2"></div></div>
+    <div class="mt-5 rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Targets</div><div id="targets" class="mt-2 text-sm leading-6"></div></div>
+    <div class="mt-5 rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Learning preferences</div><div id="learning" class="mt-2 grid gap-2 sm:grid-cols-2 text-sm"></div></div>
+    <div class="mt-6 flex flex-wrap justify-end gap-3"><a href="profile.html" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold">View profile</a><a href="settings.html" class="rounded-xl bg-indigo-700 px-5 py-3 text-sm font-semibold text-white">Edit in Settings</a></div>
+  </section>
+</main>
 <script>
-const API='http://127.0.0.1:8000'; const KEY='codementor_access_token'; let selected=[];
-function token(){return localStorage.getItem(KEY)}
-function auth(){if(!token()){location.replace('auth.html');return false}return true}
-function msg(t,ok=false){const e=document.getElementById('message');e.textContent=t;e.className='mb-5 rounded-xl px-4 py-3 text-sm border '+(ok?'border-emerald-200 bg-emerald-50 text-emerald-700':'border-rose-200 bg-rose-50 text-rose-700');e.classList.remove('hidden')}
-function syncCompanies(list){selected=Array.isArray(list)?list:[];document.querySelectorAll('.company').forEach(b=>{const on=selected.includes(b.dataset.company);b.classList.toggle('bg-primary',on);b.classList.toggle('text-white',on);b.classList.toggle('bg-surface-container-low',!on);b.classList.toggle('text-on-surface-variant',!on)})}
-document.querySelectorAll('.company').forEach(b=>b.addEventListener('click',()=>{const c=b.dataset.company;selected=selected.includes(c)?selected.filter(x=>x!==c):[...selected,c];syncCompanies(selected)}));
-document.getElementById('bio').addEventListener('input',e=>document.getElementById('bio-count').textContent=e.target.value.length+' / 180');
-async function load(){if(!auth())return;try{const [p,u]=await Promise.all([fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})]);if(p.status===401||u.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}const d=await p.json();document.getElementById('full-name').value=d.full_name||'';document.getElementById('bio').value=d.bio||'';document.getElementById('language').value=d.preferred_language||'Python';document.getElementById('experience').value=d.experience_level||'Beginner';document.getElementById('role').value=d.target_role||'Software Engineer';document.getElementById('timeline').value=d.preparation_timeline||'3 Months Deep Dive';document.getElementById('bio-count').textContent=(d.bio||'').length+' / 180';syncCompanies(d.target_companies)}catch(e){msg('Unable to load preferences.')}}
-document.getElementById('save').addEventListener('click',async()=>{const b=document.getElementById('save');b.disabled=true;b.textContent='Saving...';try{const r=await fetch(API+'/profile',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token()},body:JSON.stringify({full_name:document.getElementById('full-name').value.trim(),bio:document.getElementById('bio').value.trim()||null,preferred_language:document.getElementById('language').value,experience_level:document.getElementById('experience').value,target_role:document.getElementById('role').value,target_companies:selected,preparation_timeline:document.getElementById('timeline').value})});if(r.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}const d=await r.json();if(!r.ok)throw new Error(d.detail||'Unable to save preferences.');msg('Preferences updated successfully.',true)}catch(e){msg(e.message||'Unable to save preferences.')}finally{b.disabled=false;b.innerHTML='<span class="material-symbols-outlined align-middle text-[18px] mr-1">save</span>Save Preferences'}});load();
-</script></body></html>
+const API='http://127.0.0.1:8000',KEY='codementor_access_token';
+function tag(value){const s=document.createElement('span');s.className='rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600';s.textContent=value;return s}
+async function load(){const t=localStorage.getItem(KEY);if(!t){location.replace('auth.html');return}try{const r=await fetch(API+'/profile',{headers:{Authorization:'Bearer '+t}});if(r.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}const p=await r.json();if(!p.onboarding_completed){location.replace('onboarding.html');return}document.getElementById('experience').textContent=p.experience_level||'Not set';document.getElementById('role').textContent=p.target_role||'Not set';document.getElementById('languages').textContent=(p.preferred_languages&&p.preferred_languages.length?p.preferred_languages:[p.preferred_language]).filter(Boolean).join(', ')||'Not set';document.getElementById('daily').textContent=(p.daily_practice_target||3)+' problems/day';(p.dsa_familiarity||[]).forEach(function(x){document.getElementById('dsa').appendChild(tag(x))});const companies=(p.target_companies||[]).join(', ')||'None selected';const categories=(p.target_categories||[]).join(', ')||'None selected';document.getElementById('targets').textContent='Companies: '+companies+' • Categories: '+categories;const l=p.learning_preferences||{};document.getElementById('learning').innerHTML='<div>Style: <strong>'+ (l.learning_style||'Mixed') +'</strong></div><div>Hints: <strong>'+ (l.hint_preference||'Guided') +'</strong></div><div>Session: <strong>'+ (l.session_length||'30-60 min') +'</strong></div><div>Feedback: <strong>'+ (l.feedback_preference||'Balanced') +'</strong></div>'}catch(e){const x=document.getElementById('error');x.textContent='Unable to load saved preferences.';x.classList.remove('hidden')}}
+load();
+</script>
+</body>
+</html>

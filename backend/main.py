@@ -45,33 +45,38 @@ def initialize_database() -> None:
     inspector = inspect(engine)
     if inspector.has_table("user_profiles"):
         columns = {column["name"] for column in inspector.get_columns("user_profiles")}
-        new_columns = {
+        new_profile_columns = {
             "bio": "VARCHAR(180)",
             "target_companies": "JSON",
             "preparation_timeline": "VARCHAR(100)",
+            "dsa_familiarity": "JSON",
+            "preferred_languages": "JSON",
+            "target_categories": "JSON",
+            "daily_practice_target": "INTEGER NOT NULL DEFAULT 3",
+            "learning_preferences": "JSON",
             "onboarding_completed": "BOOLEAN NOT NULL DEFAULT 0",
         }
+        added_profile_preference_columns = False
 
         with engine.begin() as connection:
-            for column_name, column_type in new_columns.items():
+            for column_name, column_type in new_profile_columns.items():
                 if column_name not in columns:
                     connection.execute(
                         text(
                             f'ALTER TABLE user_profiles ADD COLUMN "{column_name}" {column_type}'
                         )
                     )
+                    if column_name not in {"bio", "target_companies", "preparation_timeline", "onboarding_completed"}:
+                        added_profile_preference_columns = True
 
-            if "onboarding_completed" not in columns:
+            # Existing users were onboarded against the older, smaller profile
+            # contract. Force one fresh onboarding pass after the expanded
+            # preference fields are introduced instead of silently pretending
+            # those fields were collected.
+            if added_profile_preference_columns:
                 connection.execute(
                     text(
-                        """
-                        UPDATE user_profiles
-                        SET onboarding_completed = 1
-                        WHERE TRIM(COALESCE(full_name, '')) <> ''
-                          AND TRIM(COALESCE(preferred_language, '')) <> ''
-                          AND TRIM(COALESCE(experience_level, '')) <> ''
-                          AND TRIM(COALESCE(target_role, '')) <> ''
-                        """
+                        "UPDATE user_profiles SET onboarding_completed = 0"
                     )
                 )
 
