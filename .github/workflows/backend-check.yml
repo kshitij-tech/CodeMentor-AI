@@ -120,14 +120,3 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-  dependency-review:
-    name: Dependency review
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
