@@ -92,3 +92,39 @@ Useful options:
 The published dataset metadata lists 13,328 training examples, 117 validation examples, and 165 test examples. citeturn657724search0turn657724search5
 
 The existing `backend/sync_ojlab_problem_packages.py` remains available as a small MIT-licensed package-format compatibility source; packages without an English statement are skipped.
+
+
+## Catalogue data contract (2026-10)
+
+A problem is Practice-eligible only after it passes the shared catalogue validator in `backend/problem_catalog.py`. The normalized record contains:
+
+- `slug`: lowercase kebab-case identifier, max 120 characters
+- `title`, `difficulty`, `topics`, `description`, `constraints`
+- `examples`: non-empty structured input/output examples
+- `test_cases`: non-empty executable test definitions
+- `starter_code`: valid starter source for Python, C++, Java, JavaScript, TypeScript, Go, and Rust
+- `execution_mode`: `function` or `stdio`
+- `package_metadata.supported_languages`: the canonical supported-language list
+- `package_metadata.editor_input_schema`: validated stdin parameter schema when applicable
+- `package_metadata.catalog_format_version`: current catalogue contract version
+
+### Canonical taxonomy
+
+The single source of truth is `CANONICAL_TOPICS`. Backend filtering, roadmap topic keys, `/problems/taxonomy`, and dashboard skill labels use the same canonical names. Legacy merged labels such as `Arrays & Strings`, `Stacks & Queues`, `Trees & BST`, and `Graphs (BFS/DFS)` are expanded into their granular canonical topics. Unknown topic names are rejected during import and flagged by audits.
+
+### Import process
+
+JSON imports go through the same normalization and quality checks as seeded data. Package imports additionally require a usable English statement, at least one sample test, constraints, UTF-8 statement data, and supported problem metadata. Code Contests synchronization normalizes tags, extracts constraints, validates the final record, and skips invalid or duplicate records.
+
+The importer rejects duplicate content within the incoming batch and against the existing database. Package and Code Contests imports also reject exact title/description duplicates against existing rows.
+
+### Catalogue health
+
+Run the database audit with:
+
+    python -m backend.audit_catalog
+    python -m backend.audit_catalog --json
+    python -m backend.audit_catalog --fail-on-issues
+
+The audit is linear in the number of catalogue rows. It reports per-problem quality flags, duplicate groups, quality rate, topic/difficulty/language/source distributions, and the number of catalogue-eligible records. Dirty records stay out of the Practice catalogue until repaired and re-imported.
+
