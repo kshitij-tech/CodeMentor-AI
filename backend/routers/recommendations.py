@@ -135,7 +135,7 @@ def next_recommendation(
                 "is_reinforcement": bool(explanation["was_attempted"]),
                 "locked_until_solved": True,
                 "profile_experience": experience,
-                "adaptive_difficulty": state.difficulties,
+                "adaptive_difficulty": explanation["score_breakdown"].get("difficulty_policy"),
                 "explanation": explanation,
             }
 
