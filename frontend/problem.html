@@ -565,7 +565,7 @@ function setLanguageModel(language){
   const model=editor.getModel();
   monaco.editor.setModelLanguage(model,LANG_IDS[language]||'plaintext');
 }
-async async function switchLanguage(next){
+async function switchLanguage(next){
   const current=activeLanguage;
   if(next===current)return;
   if(dirty){
