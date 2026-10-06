@@ -189,6 +189,23 @@ def summarize_learning_state(db: Session, user: User) -> LearningState:
             )
     state.conceptual_risks = risks[:6]
 
+    objectives = []
+    for item in focus[:5]:
+        if item["mastery"] < 75:
+            objectives.append({
+                "topic": item["topic"],
+                "target_mastery": 75,
+                "current_mastery": item["mastery"],
+                "next_action": "Practice one targeted problem and explain the key invariant before coding.",
+            })
+    for mistake in state.recurring_mistakes[:3]:
+        objectives.append({
+            "topic": mistake["topic"],
+            "target": f"Reduce repeated {mistake['pattern']} outcomes",
+            "next_action": "Review the latest failure and write the reason for the failure before attempting another solution.",
+        })
+    state.learning_objectives = objectives[:8]
+
     for attempt, problem in rows[:10]:
         state.recent_activity.append(
             {
@@ -208,5 +225,6 @@ def memory_snapshot(state: LearningState) -> dict[str, Any]:
         "focus_topics": state.focus_topics,
         "recurring_mistakes": state.recurring_mistakes,
         "conceptual_risks": state.conceptual_risks,
+        "learning_objectives": state.learning_objectives,
         "recent_activity": state.recent_activity,
     }
