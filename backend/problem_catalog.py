@@ -939,6 +939,14 @@ def quality_flags(problem: dict[str, Any]) -> list[str]:
     schema = metadata.get("editor_input_schema") if isinstance(metadata, dict) else None
     if schema is not None and not _valid_editor_schema(schema):
         flags.append("invalid_io_definition")
+    if mode == "stdio" and not isinstance(schema, list):
+        flags.append("invalid_io_definition")
+    if mode == "stdio" and isinstance(schema, list) and not schema:
+        description_text = str(problem.get("description") or "")
+        has_input = bool(re.search(r"(?im)^\s*(?:#+\s*)?input\b", description_text))
+        has_output = bool(re.search(r"(?im)^\s*(?:#+\s*)?output\b", description_text))
+        if not has_input or not has_output:
+            flags.append("invalid_io_definition")
     if isinstance(metadata, dict):
         for field in ("input_format", "output_format"):
             if field in metadata and (not isinstance(metadata[field], str) or not normalize_text(metadata[field])):
