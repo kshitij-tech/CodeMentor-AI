@@ -78,7 +78,10 @@ func solve() int { return 0 }
             "test_cases": [{"input": "2 7 9", "expected_output": "0 1"}],
             "starter_code": dict(self.VALID_STARTERS),
             "execution_mode": "stdio",
-            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
+            "package_metadata": {
+                "supported_languages": list(SUPPORTED_LANGUAGES),
+                "editor_input_schema": [{"name": "input", "type": "raw_string"}],
+            },
         }
         self.assertEqual(quality_flags(problem), [])
 
