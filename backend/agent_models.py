@@ -27,6 +27,7 @@ class LearningState:
     focus_topics: list[dict[str, Any]] = field(default_factory=list)
     recurring_mistakes: list[dict[str, Any]] = field(default_factory=list)
     conceptual_risks: list[dict[str, Any]] = field(default_factory=list)
+    learning_objectives: list[dict[str, Any]] = field(default_factory=list)
     recent_activity: list[dict[str, Any]] = field(default_factory=list)
 
 
