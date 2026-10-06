@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
@@ -16,7 +17,12 @@ from backend.routers.mentor import router as mentor_router
 from backend.routers.analytics import router as analytics_router
 from backend.routers.recommendations import router as recommendations_router
 from backend.routers.workspace import router as workspace_router
+<<<<<<< HEAD
 from backend.routers.career import router as career_router
+=======
+from backend.routers.health import router as health_router
+from backend.runtime_config import cors_options
+>>>>>>> origin/feature/devops-deployment
 from backend.problem_seed import seed_problems
 from backend.security import (
     APP_ENV,
@@ -29,12 +35,19 @@ from backend.security import (
 # configuration is invalid.
 validate_security_configuration()
 
+APP_ENV = os.getenv('APP_ENV', 'development').strip().lower()
+PRODUCTION_ENVS = {'prod', 'production'}
+
 
 def initialize_database() -> None:
+<<<<<<< HEAD
     # SQLite development keeps the historical zero-configuration behavior.
     # Production/PostgreSQL is migration-managed and must run Alembic before
     # the application starts.
     if not AUTO_CREATE_SCHEMA:
+=======
+    if APP_ENV in PRODUCTION_ENVS:
+>>>>>>> origin/feature/devops-deployment
         return
 
     Base.metadata.create_all(bind=engine)
@@ -108,7 +121,8 @@ def initialize_database() -> None:
 initialize_database()
 
 with SessionLocal() as db:
-    seed_problems(db)
+    if APP_ENV not in PRODUCTION_ENVS:
+        seed_problems(db)
     # Warm the problem catalogue once at startup so the first Practice request
     # does not have to scan and normalize the full problem dataset.
     prime_problem_catalog(db)
@@ -116,7 +130,7 @@ with SessionLocal() as db:
 
 app = FastAPI(
     title="CodeMentor AI API",
-    version="0.2.0",
+    version=os.getenv("APP_VERSION", "0.2.0"),
     description="Backend API for the CodeMentor AI platform.",
     docs_url="/docs" if APP_ENV != "production" else None,
     redoc_url="/redoc" if APP_ENV != "production" else None,
@@ -125,10 +139,14 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+<<<<<<< HEAD
     allow_origins=get_cors_origins(),
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Accept", "Authorization", "Content-Type", "Origin"],
+=======
+    **cors_options(),
+>>>>>>> origin/feature/devops-deployment
 )
 
 
@@ -162,7 +180,11 @@ app.include_router(mentor_router)
 app.include_router(analytics_router)
 app.include_router(recommendations_router)
 app.include_router(workspace_router)
+<<<<<<< HEAD
 app.include_router(career_router)
+=======
+app.include_router(health_router)
+>>>>>>> origin/feature/devops-deployment
 
 
 @app.get("/")
@@ -175,11 +197,3 @@ def root() -> dict[str, str]:
         payload["docs"] = "/docs"
     return payload
 
-
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "codementor-ai-api",
-        "version": "0.2.0",
-    }

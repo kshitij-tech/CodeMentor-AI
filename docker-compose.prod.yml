@@ -1,0 +1,96 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-codementor}
+      POSTGRES_USER: ${POSTGRES_USER:-codementor}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes:
+      - codementor-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 1G }
+        reservations: { cpus: '0.25', memory: 256M }
+  runner:
+    image: ${EXECUTION_IMAGE:-codementor-multi-runtime:prod}
+    build: { context: docker/multi-runtime, dockerfile: Dockerfile }
+    command: ['sleep', 'infinity']
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 1G }
+        reservations: { cpus: '0.10', memory: 128M }
+  backend:
+    image: ${BACKEND_IMAGE:-codementor-backend:prod}
+    build: { context: ., dockerfile: docker/backend/Dockerfile }
+    environment:
+      APP_ENV: production
+      APP_VERSION: ${APP_VERSION:-0.2.0}
+      DATABASE_HOST: db
+      DATABASE_PORT: '5432'
+      DATABASE_NAME: ${POSTGRES_DB:-codementor}
+      DATABASE_USER: ${POSTGRES_USER:-codementor}
+      DB_PASSWORD_FILE: /run/secrets/db_password
+      JWT_SECRET_KEY_FILE: /run/secrets/jwt_secret_key
+      MISTRAL_API_KEY_FILE: /run/secrets/mistral_api_key
+      CORS_ORIGINS: ${CORS_ORIGINS:?Set CORS_ORIGINS to your HTTPS frontend origin(s)}
+      AI_PROVIDER: ${AI_PROVIDER:-mistral}
+      AI_MODEL: ${AI_MODEL:-mistral-small-latest}
+      AI_FALLBACK_PROVIDER: ${AI_FALLBACK_PROVIDER:-none}
+      AI_FALLBACK_MODEL: ${AI_FALLBACK_MODEL:-}
+      EXECUTION_SANDBOX: docker
+      EXECUTION_DOCKER_IMAGE: ${EXECUTION_IMAGE:-codementor-multi-runtime:prod}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+    secrets: [db_password, jwt_secret_key, mistral_api_key]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - '${DOCKER_GID:-999}'
+    depends_on:
+      db: { condition: service_healthy }
+      runner: { condition: service_started }
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ['/tmp']
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 1G, pids: 256 }
+        reservations: { cpus: '0.25', memory: 256M }
+  frontend:
+    image: ${FRONTEND_IMAGE:-codementor-frontend:prod}
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args: { API_BASE_URL: /api }
+    ports:
+      - '127.0.0.1:${APP_HTTP_PORT:-8080}:80'
+    depends_on:
+      backend: { condition: service_healthy }
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    deploy:
+      resources:
+        limits: { cpus: '0.50', memory: 256M }
+        reservations: { cpus: '0.10', memory: 64M }
+volumes:
+  codementor-postgres:
+secrets:
+  db_password:
+    file: ./deploy/secrets/db_password.txt
+  jwt_secret_key:
+    file: ./deploy/secrets/jwt_secret_key.txt
+  mistral_api_key:
+    file: ./deploy/secrets/mistral_api_key.txt

@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-codementor}
+      POSTGRES_USER: ${POSTGRES_USER:-codementor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-codementor-dev-password}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - codementor-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+  runner:
+    image: codementor-multi-runtime:local
+    build: { context: docker/multi-runtime, dockerfile: Dockerfile }
+    command: ['sleep', 'infinity']
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+  backend:
+    build: { context: ., dockerfile: docker/backend/Dockerfile }
+    environment:
+      APP_ENV: development
+      APP_VERSION: ${APP_VERSION:-0.2.0-dev}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-codementor}:${POSTGRES_PASSWORD:-codementor-dev-password}@db:5432/${POSTGRES_DB:-codementor}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-only-change-me}
+      CORS_ORIGINS: http://localhost:8080,http://127.0.0.1:8080
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      AI_MODEL: ${AI_MODEL:-qwen2.5-coder:3b}
+      AI_FALLBACK_PROVIDER: ${AI_FALLBACK_PROVIDER:-none}
+      AI_FALLBACK_MODEL: ${AI_FALLBACK_MODEL:-}
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      EXECUTION_SANDBOX: docker
+      EXECUTION_DOCKER_IMAGE: codementor-multi-runtime:local
+    command: ['sh', '-c', 'exec uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app/backend']
+    ports:
+      - '127.0.0.1:${BACKEND_PORT:-8000}:8000'
+    volumes:
+      - ./backend:/app/backend:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - '${DOCKER_GID:-999}'
+    depends_on:
+      db: { condition: service_healthy }
+      runner: { condition: service_started }
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    tmpfs: ['/tmp']
+    mem_limit: 1g
+    cpus: '1.0'
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args: { API_BASE_URL: /api }
+    ports:
+      - '127.0.0.1:${FRONTEND_PORT:-8080}:80'
+    depends_on:
+      backend: { condition: service_healthy }
+    restart: unless-stopped
+    security_opt: ['no-new-privileges:true']
+    mem_limit: 256m
+    cpus: '0.50'
+volumes:
+  codementor-postgres:
