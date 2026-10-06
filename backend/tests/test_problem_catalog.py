@@ -11,10 +11,30 @@ from backend.problem_catalog import (
     ensure_starter_code,
     ensure_user_io_starter_code,
     SUPPORTED_LANGUAGES,
+    normalize_problem_record,
 )
 
 
 class ProblemCatalogTests(unittest.TestCase):
+    VALID_STARTERS = {
+        "Python": """def solve(*args):
+    return 0
+""",
+        "C++": """int solve() { return 0; }
+""",
+        "Java": """class Solution { int solve() { return 0; } }
+""",
+        "JavaScript": """function solve() { return 0; }
+""",
+        "TypeScript": """function solve(): any { return 0; }
+""",
+        "Go": """package main
+func solve() int { return 0 }
+""",
+        "Rust": """fn solve() -> i32 { 0 }
+""",
+    }
+
     def test_difficulty_normalization(self):
         self.assertEqual(normalize_difficulty("easy"), "Easy")
         self.assertEqual(normalize_difficulty("INTERMEDIATE"), "Medium")
@@ -25,20 +45,44 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertEqual(normalize_topic("binary_search"), "Binary Search")
         self.assertEqual(normalize_topic("DP"), "Dynamic Programming")
         self.assertEqual(
-            canonicalize_topics(["array", "Arrays & Strings", "binary_search"]),
-            ["Arrays & Strings", "Binary Search"],
+            canonicalize_topics(["array", "Arrays & Strings", "binary_search", "stack", "queue"]),
+            ["Arrays", "Strings", "Binary Search", "Stack", "Queue"],
         )
+
+    def test_invalid_topic_names_are_flagged(self):
+        problem = {
+            "slug": "two-sum",
+            "title": "Two Sum",
+            "description": "Given an array of integers and a target, return the indices of two values that sum to the target.",
+            "difficulty": "Easy",
+            "topics": ["array", "Made Up Topic"],
+            "source": "fixture",
+            "constraints": ["2 <= len(nums) <= 100000"],
+            "examples": [{"input": "nums = [2,7], target = 9", "output": "[0,1]"}],
+            "test_cases": [{"args": [[2,7], 9], "expected": [0,1]}],
+            "starter_code": dict(self.VALID_STARTERS),
+            "execution_mode": "function",
+            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
+        }
+        self.assertIn("invalid_topic_names", quality_flags(problem))
 
     def test_quality_flags(self):
         problem = {
+            "slug": "two-sum",
             "title": "Two Sum",
             "description": "Given an array of integers and a target, return the indices of the two numbers that add up to the target.",
             "difficulty": "Medium",
             "topics": ["array"],
             "source": "fixture",
-            "examples": [{"input": "[2,7,11,15], 9", "output": "[0,1]"}],
+            "constraints": ["2 <= n <= 100000"],
+            "examples": [{"input": "nums = [2,7], target = 9", "output": "[0,1]"}],
             "test_cases": [{"input": "2 7 9", "expected_output": "0 1"}],
-            "starter_code": {"Python": "def solve():\n    pass\n"},
+            "starter_code": dict(self.VALID_STARTERS),
+            "execution_mode": "stdio",
+            "package_metadata": {
+                "supported_languages": list(SUPPORTED_LANGUAGES),
+                "editor_input_schema": [{"name": "input", "type": "raw_string"}],
+            },
         }
         self.assertEqual(quality_flags(problem), [])
 
@@ -59,22 +103,97 @@ class ProblemCatalogTests(unittest.TestCase):
 
     def test_duplicate_audit(self):
         base = {
+            "slug": "two-sum-a",
             "title": "Two Sum",
             "description": "Given an array of integers and a target, return the indices of the two numbers that add up to the target.",
             "difficulty": "Medium",
             "topics": ["array"],
             "source": "fixture",
+            "constraints": ["2 <= n <= 100000"],
             "examples": [{"input": "x", "output": "y"}],
             "test_cases": [{"input": "x", "expected_output": "y"}],
-            "starter_code": {"Python": "def solve():\n    pass\n"},
+            "starter_code": dict(self.VALID_STARTERS),
+            "execution_mode": "stdio",
+            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
         }
         first = {**base, "slug": "two-sum-a", "external_id": None}
         second = {**base, "slug": "two-sum-b", "external_id": None}
         report = audit_problems([first, second])
         self.assertEqual(report["total"], 2)
-        self.assertEqual(report["clean"], 2)
+        self.assertEqual(report["clean"], 0)
         self.assertEqual(len(report["duplicates"]["same_content"]), 1)
+        self.assertTrue(all("duplicate_content" in item["flags"] for item in report["problem_reports"]))
 
+    def test_canonical_topic_catalog_contains_required_topics(self):
+        required = {"Arrays", "Strings", "Hashing", "Stack", "Queue", "Trees", "BST", "Graphs", "DFS", "BFS", "Recursion"}
+        self.assertTrue(required.issubset(set(CANONICAL_TOPICS)))
+
+    def test_quality_detects_broken_starter_and_io_schema(self):
+        problem = {
+            "slug": "valid-catalog-problem",
+            "title": "Valid Catalog Problem",
+            "description": "Given an integer array, return the maximum value after scanning every element exactly once.",
+            "difficulty": "Medium",
+            "topics": ["Arrays"],
+            "source": "fixture",
+            "constraints": ["1 <= n <= 1000"],
+            "examples": [{"input": "nums = [1,4,2]", "output": "4"}],
+            "test_cases": [{"args": [[1,4,2]], "expected": 4}],
+            "execution_mode": "function",
+            "starter_code": dict(self.VALID_STARTERS),
+            "package_metadata": {
+                "supported_languages": list(SUPPORTED_LANGUAGES),
+                "editor_input_schema": [{"name": "input", "type": "not-a-real-type"}],
+            },
+        }
+        problem["starter_code"]["Python"] = "def solve(nums)\n    return 0\n"
+        flags = quality_flags(problem)
+        self.assertIn("broken_starter_code", flags)
+        self.assertIn("invalid_io_definition", flags)
+
+    def test_bundled_seed_catalogue_passes_quality_gate(self):
+        from backend.problem_seed import PROBLEMS
+
+        self.assertGreater(len(PROBLEMS), 0)
+        failures = []
+        for item in PROBLEMS:
+            normalized = normalize_problem_record({**item, "source": "seed"})
+            flags = quality_flags(normalized)
+            if flags:
+                failures.append((item.get("slug"), flags))
+        self.assertEqual(failures, [])
+
+    def test_editor_schema_sanitizes_reserved_identifiers(self):
+        from backend.problem_catalog import _canonicalize_editor_schema
+
+        schema = [
+            {"name": "and", "type": "int"},
+            {"name": "from", "type": "int"},
+            {"name": "values", "type": "int_array", "length_from": "and"},
+        ]
+        sanitized = _canonicalize_editor_schema(schema)
+        self.assertEqual([item["name"] for item in sanitized], ["and_", "from_", "values"])
+        self.assertEqual(sanitized[2]["length_from"], "and_")
+
+    def test_health_report_contains_catalogue_distributions(self):
+        problem = {
+            "slug": "health-problem",
+            "title": "Health Problem",
+            "difficulty": "Easy",
+            "topics": ["Arrays"],
+            "description": "Given an integer array, return the maximum value after scanning every element exactly once.",
+            "source": "fixture",
+            "constraints": ["1 <= n <= 1000"],
+            "examples": [{"input": "nums = [1,4,2]", "output": "4"}],
+            "test_cases": [{"args": [[1,4,2]], "expected": 4}],
+            "starter_code": dict(self.VALID_STARTERS),
+            "execution_mode": "function",
+            "package_metadata": {"supported_languages": list(SUPPORTED_LANGUAGES)},
+        }
+        report = audit_problems([problem])
+        self.assertEqual(report["health"]["difficulty_distribution"], {"Easy": 1})
+        self.assertEqual(report["health"]["topic_distribution"], {"Arrays": 1})
+        self.assertEqual(report["health"]["language_distribution"]["Python"], 1)
 
     def test_strip_duplicated_examples(self):
         description = (
@@ -288,6 +407,18 @@ class ProblemCatalogTests(unittest.TestCase):
         self.assertIn("a", starters["C++"])
         self.assertIn("b", starters["C++"])
         self.assertNotIn("int main()", starters["C++"])
+
+    def test_explicit_stdio_mode_wins_over_solve_wrapper(self):
+        from backend.problem_catalog import infer_execution_mode
+
+        self.assertEqual(
+            infer_execution_mode(
+                "stdio",
+                test_cases=[{"input": "1\n", "expected_output": "1\n"}],
+                starter_code={"Python": "def solve():\n    pass\n"},
+            ),
+            "stdio",
+        )
 
     def test_execution_mode_infers_function_contract(self):
         from backend.problem_catalog import infer_execution_mode
