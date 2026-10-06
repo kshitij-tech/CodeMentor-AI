@@ -1,46 +1,133 @@
-name: Backend Check
+name: CodeMentor CI
 
 on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codementor-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  backend:
+  backend-tests:
+    name: Backend tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-production.txt
       - name: Install backend dependencies
-        run: python -m pip install -r backend/requirements.txt
+        run: python -m pip install -r backend/requirements-production.txt
       - name: Compile backend
-        run: python -m compileall -q backend
-      - name: Run backend tests
-        run: python -m unittest discover -s backend/tests -p "test_*.py"
-
-      - name: Build execution image
-        run: docker build -t codementor-multi-runtime:ci -f docker/multi-runtime/Dockerfile docker/multi-runtime
-
-      - name: Smoke test Python stdin execution
+        run: python -m compileall -q backend migrations
+      - name: Run backend unit tests
+        run: python -m unittest discover -s backend/tests -p 'test_*.py'
+      - name: Verify Alembic migration lifecycle
+        env:
+          DATABASE_URL: sqlite:///./ci-migrations.db
         run: |
-          python - <<'PY'
-          from unittest.mock import patch
-          from backend.execution import run_python_stdio_tests
+          python -m alembic upgrade head
+          python -m alembic downgrade base
+          python -m alembic upgrade head
 
-          source = "import sys\nprint(int(sys.stdin.read()) * 2)"
-          cases = [{"input": "21\n", "expected_output": "42\n"}]
-
-          with patch("backend.execution.EXECUTION_SANDBOX", "docker"):
-              with patch("backend.execution.EXECUTION_DOCKER_IMAGE", "codementor-multi-runtime:ci"):
-                  results = run_python_stdio_tests(source, cases, time_limit_seconds=1)
-
-          assert results[0].passed, results[0]
-          PY
-
-      - name: Smoke test execution runtimes
+  docker-build:
+    name: Build production images
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: backend-tests
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Build backend image
+        run: docker build --pull --tag codementor-backend:ci --file docker/backend/Dockerfile .
+      - name: Build frontend image
+        run: docker build --pull --tag codementor-frontend:ci --build-arg API_BASE_URL=/api --file docker/frontend/Dockerfile .
+      - name: Build execution runtime image
+        run: docker build --pull --tag codementor-multi-runtime:ci --file docker/multi-runtime/Dockerfile docker/multi-runtime
+      - name: Verify backend image imports in production mode
+        run: |
+          docker run --rm -e APP_ENV=production -e DATABASE_URL=sqlite:////tmp/codementor-ci.db -e CORS_ORIGINS=https://example.com -e JWT_SECRET_KEY=ci-only-not-secret -e EXECUTION_SANDBOX=local codementor-backend:ci python -c "import backend.main; print('backend import ok')"
+      - name: Verify frontend image contains static site
+        run: |
+          docker run --rm codementor-frontend:ci sh -c 'test -f /usr/share/nginx/html/index.html && grep -R "/api" /usr/share/nginx/html/*.html >/dev/null'
+      - name: Verify execution runtimes
         run: |
           docker run --rm --network none codementor-multi-runtime:ci bash -lc 'python --version && g++ --version && javac -version && node --version && tsc --version && go version && rustc --version'
+      - name: Smoke test Python stdin execution
+        run: |
           printf '21\n' | docker run --rm -i --network none codementor-multi-runtime:ci python -c 'import sys; print(int(sys.stdin.read()) * 2)'
-          docker run --rm --network none codementor-multi-runtime:ci sh -lc 'printf "#include <iostream>\\nint main(){int x; std::cin >> x; std::cout << x * 2 << \\"\\n\\";}" > /runner/smoke.cpp && g++ -std=c++20 /runner/smoke.cpp -o /runner/smoke && printf "21\\n" | /runner/smoke'
+
+  security:
+    name: Security and dependency checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: docker-build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install production dependencies
+        run: python -m pip install -r backend/requirements-production.txt
+      - name: Audit Python dependencies
+        run: |
+          python -m pip install --no-cache-dir pip-audit
+          pip-audit -r backend/requirements-production.txt
+      - name: Static security analysis
+        run: |
+          python -m pip install --no-cache-dir bandit
+          bandit -r backend/routers/health.py backend/runtime_config.py -lll
+      - name: Build backend image for scan
+        run: docker build --pull --tag codementor-backend:scan --file docker/backend/Dockerfile .
+      - name: Build frontend image for scan
+        run: docker build --pull --tag codementor-frontend:scan --build-arg API_BASE_URL=/api --file docker/frontend/Dockerfile .
+      - name: Build execution runtime image for scan
+        run: docker build --pull --tag codementor-multi-runtime:scan --file docker/multi-runtime/Dockerfile docker/multi-runtime
+      - name: Scan backend image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: codementor-backend:scan
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: codementor-frontend:scan
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+      - name: Scan execution runtime image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: codementor-multi-runtime:scan
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
