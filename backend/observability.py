@@ -210,6 +210,8 @@ def categorize_request(
 
 
 def _safe_error_message(exc: BaseException) -> str:
+    if isinstance(exc, SQLAlchemyError):
+        return "database operation failed"
     message = str(exc).replace("\n", " ")[:500]
     return re.sub(
         r"(?i)(password|secret|token|api[_-]?key|authorization)\s*[:=]\s*[^,;\s]+",
