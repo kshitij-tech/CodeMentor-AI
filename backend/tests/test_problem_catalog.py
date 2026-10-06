@@ -11,6 +11,7 @@ from backend.problem_catalog import (
     ensure_starter_code,
     ensure_user_io_starter_code,
     SUPPORTED_LANGUAGES,
+    normalize_problem_record,
 )
 
 
@@ -149,6 +150,18 @@ func solve() int { return 0 }
         flags = quality_flags(problem)
         self.assertIn("broken_starter_code", flags)
         self.assertIn("invalid_io_definition", flags)
+
+    def test_bundled_seed_catalogue_passes_quality_gate(self):
+        from backend.problem_seed import PROBLEMS
+
+        self.assertGreater(len(PROBLEMS), 0)
+        failures = []
+        for item in PROBLEMS:
+            normalized = normalize_problem_record({**item, "source": "seed"})
+            flags = quality_flags(normalized)
+            if flags:
+                failures.append((item.get("slug"), flags))
+        self.assertEqual(failures, [])
 
     def test_health_report_contains_catalogue_distributions(self):
         problem = {
