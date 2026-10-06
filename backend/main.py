@@ -20,6 +20,11 @@ from backend.security import (
 )
 
 
+# Fail closed before touching the application database if deployment security
+# configuration is invalid.
+validate_security_configuration()
+
+
 def initialize_database() -> None:
     Base.metadata.create_all(bind=engine)
 
@@ -105,9 +110,6 @@ app = FastAPI(
     redoc_url="/redoc" if APP_ENV != "production" else None,
     openapi_url="/openapi.json" if APP_ENV != "production" else None,
 )
-
-# Fail closed before serving requests if deployment security configuration is invalid.
-validate_security_configuration()
 
 app.add_middleware(
     CORSMiddleware,

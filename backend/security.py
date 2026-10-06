@@ -38,7 +38,7 @@ def _configured_secret() -> str:
     configured = os.getenv("JWT_SECRET_KEY", "").strip()
     app_env = os.getenv("APP_ENV", "development").strip().lower()
 
-    if configured in _INSECURE_SECRET_MARKERS:
+    if configured.lower() in _INSECURE_SECRET_MARKERS:
         if app_env == "production":
             raise RuntimeError(
                 "JWT_SECRET_KEY must be set to a unique random value of at least 32 bytes in production."
