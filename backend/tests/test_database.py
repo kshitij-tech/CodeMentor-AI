@@ -218,6 +218,16 @@ class DatabaseSchemaTests(unittest.TestCase):
                 db.commit()
             db.rollback()
 
+    def test_postgresql_url_is_normalized_to_psycopg3(self):
+        self.assertEqual(
+            normalize_database_url("postgres://user:pass@db.example/app"),
+            "postgresql+psycopg://user:pass@db.example/app",
+        )
+        self.assertEqual(
+            normalize_database_url("postgresql://user:pass@db.example/app"),
+            "postgresql+psycopg://user:pass@db.example/app",
+        )
+
     def test_postgresql_uses_jsonb_for_document_columns(self):
         sql = str(CreateTable(Problem.__table__).compile(dialect=postgresql.dialect()))
         self.assertIn("JSONB", sql)
