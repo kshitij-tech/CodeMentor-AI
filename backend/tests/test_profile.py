@@ -158,6 +158,9 @@ class ProfilePreferenceTests(unittest.TestCase):
             self.payload(preferred_languages=["Cobol"])
 
         with self.assertRaises(ValueError):
+            self.payload(preferred_language="Cobol", preferred_languages=[])
+
+        with self.assertRaises(ValueError):
             self.payload(daily_practice_target=0)
 
         with self.assertRaises(ValueError):
