@@ -1,7 +1,8 @@
 import unittest
 
 from backend.execution import run_python_stdio_tests
-from backend.problem_package import package_to_problem
+from backend.problem_package import ProblemPackageError, package_to_problem
+from backend.problem_catalog import SUPPORTED_LANGUAGES
 
 
 class ProblemPackageTests(unittest.TestCase):
@@ -18,7 +19,14 @@ limits:
   memory: 512
 validation: default
 """,
-            "problem.md": b"# Hello Package\n\nRead an integer and print it twice.",
+            "problem.md": b"""# Hello Package
+
+Read an integer and print it twice.
+
+## Constraints
+
+- The input is one integer between 0 and 1000.
+""",
             "data/sample/1.in": b"4\n",
             "data/sample/1.ans": b"8\n",
             "data/secret/1.in": b"7\n",
@@ -29,6 +37,7 @@ validation: default
         self.assertEqual(problem["title"], "Hello Package")
         self.assertEqual(problem["execution_mode"], "stdio")
         self.assertEqual(problem["time_limit_ms"], 1500)
+        self.assertEqual(problem["package_metadata"]["supported_languages"], list(SUPPORTED_LANGUAGES))
         self.assertEqual(problem["memory_limit_mb"], 512)
         self.assertEqual(len(problem["test_cases"]), 2)
         self.assertTrue(problem["package_metadata"]["judge_supported"])
@@ -51,7 +60,14 @@ print(n * 2)
     def test_extracts_dot_ans_files(self):
         files = {
             "problem.yaml": b"name: Answer Mapping Test\ndifficulty: Easy\nkeywords: [strings]\n",
-            "problem.md": b"# Answer Mapping Test\n",
+            "problem.md": b"""# Answer Mapping Test
+
+Read one short word and print its mapped answer.
+
+## Constraints
+
+- The word contains at most 100 characters.
+""",
             "data/sample/0.in": b"hello\n",
             "data/sample/0.ans": b"world\n",
         }
@@ -62,7 +78,14 @@ print(n * 2)
     def test_test_group_validator_flags_are_imported(self):
         files = {
             "problem.yaml": b"name: Validator Flags Test\ndifficulty: Easy\nkeywords: [strings]\n",
-            "problem.md": b"# Validator Flags Test\n",
+            "problem.md": b"""# Validator Flags Test
+
+Read one word and print the same word according to the configured validator.
+
+## Constraints
+
+- The input word contains at most 100 characters.
+""",
             "data/sample/test_group.yaml": b"output_validator_args: [case_sensitive]\n",
             "data/sample/0.in": b"hello\n",
             "data/sample/0.ans": b"HELLO\n",
@@ -82,7 +105,14 @@ keywords: [strings]
 validation: custom
 type: pass-fail
 """,
-            "problem_statement/problem.en.md": b"# Custom Test\n",
+            "problem_statement/problem.en.md": b"""# Custom Test
+
+Read a value and print it unchanged. The custom validator controls acceptance.
+
+## Constraints
+
+- The input contains a single integer from 0 through 100.
+""",
             "output_validator/validate.py": b"print('fixture')\n",
             "data/sample/01.in": b"1\n",
             "data/sample/01.ans": b"1\n",
@@ -95,6 +125,62 @@ type: pass-fail
         self.assertEqual(problem["test_cases"][0]["validator_name"], "output_validator")
         self.assertEqual(problem["test_cases"][1]["group"], "secret/basic")
         self.assertEqual(problem["test_cases"][1]["validator_flags"], ["strict"])
+
+
+    def test_rejects_missing_answer_file(self):
+        files = {
+            "problem.yaml": b"""name: Missing Answer
+difficulty: Easy
+keywords: [arrays]
+constraints: [n <= 10]
+""",
+            "problem.md": b"""# Missing Answer
+
+Read an integer and print it.
+
+## Constraints
+
+- 1 <= n <= 10.
+""",
+            "data/sample/0.in": b"1\n",
+        }
+        with self.assertRaises(ProblemPackageError):
+            package_to_problem(files, "fixture")
+
+    def test_rejects_package_without_sample_tests(self):
+        files = {
+            "problem.yaml": b"""name: No Samples
+difficulty: Easy
+keywords: [arrays]
+constraints: [n <= 10]
+""",
+            "problem.md": b"""# No Samples
+
+Read an integer and print it.
+
+## Constraints
+
+- 1 <= n <= 10.
+""",
+            "data/secret/0.in": b"1\n",
+            "data/secret/0.ans": b"1\n",
+        }
+        with self.assertRaises(ProblemPackageError):
+            package_to_problem(files, "fixture")
+
+    def test_rejects_invalid_utf8_statement(self):
+        files = {
+            "problem.yaml": b"""name: Bad Encoding
+difficulty: Easy
+keywords: [arrays]
+constraints: [n <= 10]
+""",
+            "problem.md": b"# Bad Encoding\n\nThis statement contains enough English text for validation.\n\xff",
+            "data/sample/0.in": b"1\n",
+            "data/sample/0.ans": b"1\n",
+        }
+        with self.assertRaises((ProblemPackageError, UnicodeDecodeError)):
+            package_to_problem(files, "fixture")
 
 
 if __name__ == "__main__":
