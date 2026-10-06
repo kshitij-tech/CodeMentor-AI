@@ -213,9 +213,9 @@ def refresh(
 
 @router.post("/logout")
 def logout(
+    request: Request,
+    response: Response,
     refresh_data: RefreshRequest | None = None,
-    request: Request | None = None,
-    response: Response | None = None,
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ):
     if request is not None:

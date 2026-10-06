@@ -265,9 +265,9 @@ class AuthenticationSecurityTests(unittest.TestCase):
         tokens = self._login("alice@example.com")
 
         logout = auth.logout(
-            auth.RefreshRequest(refresh_token=tokens.refresh_token),
             DummyRequest(),
             Response(),
+            auth.RefreshRequest(refresh_token=tokens.refresh_token),
             self._access_credentials(tokens),
         )
         self.assertTrue(logout["message"])
