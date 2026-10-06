@@ -215,3 +215,103 @@ class MentorMessage(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
+
+
+class CareerSkillProgress(Base):
+    __tablename__ = "career_skill_progress"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "skill_type",
+            "skill_key",
+            name="uq_career_skill_progress_user_type_key",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    skill_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    skill_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="not_started")
+    score: Mapped[int] = mapped_column(nullable=False, default=0)
+    evidence_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class MockInterview(Base):
+    __tablename__ = "mock_interviews"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    role_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    mode: Mapped[str] = mapped_column(String(30), nullable=False, default="mixed")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="in_progress")
+    current_index: Mapped[int] = mapped_column(nullable=False, default=0)
+    total_questions: Mapped[int] = mapped_column(nullable=False, default=0)
+    question_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    score: Mapped[int | None] = mapped_column(nullable=True)
+    feedback: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
+class MockInterviewResponse(Base):
+    __tablename__ = "mock_interview_responses"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    interview_id: Mapped[int] = mapped_column(
+        ForeignKey("mock_interviews.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    question_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    score: Mapped[int | None] = mapped_column(nullable=True)
+    feedback: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class CareerResumeAnalysis(Base):
+    __tablename__ = "career_resume_analyses"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    role_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    matched_skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    missing_skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    recommendations: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    alignment_score: Mapped[int] = mapped_column(nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
