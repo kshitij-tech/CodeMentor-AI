@@ -31,7 +31,7 @@ CodeMentor AI supports local Ollama and LM Studio providers, so the AI Mentor ca
 
 Ollama setup:
 
-    ollama pull qwen3:4b
+    ollama pull qwen2.5-coder:3b
     ollama list
 
 LM Studio alternative:
@@ -46,8 +46,8 @@ Create `backend/.env`.
 For Ollama:
 
     AI_PROVIDER=ollama
-    OLLAMA_BASE_URL=http://localhost:11434
-    AI_MODEL=qwen3:4b
+    OLLAMA_BASE_URL=http://127.0.0.1:11434
+    AI_MODEL=qwen2.5-coder:3b
 
 For LM Studio:
 
