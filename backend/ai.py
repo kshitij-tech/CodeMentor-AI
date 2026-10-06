@@ -107,22 +107,33 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
     if not isinstance(parsed, dict):
         raise AIProviderError("The mentor returned an invalid response structure.")
 
+    # Small local models sometimes use a near-equivalent field name or
+    # return the patch object without an answer. Normalize those harmless
+    # variations instead of turning an otherwise useful suggestion into an error.
     answer = parsed.get("answer")
     if not isinstance(answer, str) or not answer.strip():
-        raise AIProviderError("The mentor response is missing a valid 'answer' field.")
-
-    error_line = parsed.get("error_line")
-    if error_line in (0, "0", "", "null"):
-        error_line = None
-    if error_line is not None:
-        try:
-            error_line = int(error_line)
-        except (TypeError, ValueError):
-            error_line = None
-        if error_line is not None and error_line < 1:
-            error_line = None
+        for alias in ("suggestion", "message", "explanation", "response", "reason"):
+            candidate = parsed.get(alias)
+            if isinstance(candidate, str) and candidate.strip():
+                answer = candidate
+                break
 
     patch = parsed.get("patch")
+    if patch in ({}, None):
+        for alias in ("change", "suggested_change", "code_change", "patch_suggestion"):
+            candidate = parsed.get(alias)
+            if isinstance(candidate, dict):
+                patch = candidate
+                break
+
+    # Some coding models return the patch fields at the top level.
+    if patch is None and all(key in parsed for key in ("start_line", "end_line", "replacement")):
+        patch = {
+            "start_line": parsed.get("start_line"),
+            "end_line": parsed.get("end_line"),
+            "replacement": parsed.get("replacement"),
+        }
+
     if patch in ({}, None):
         patch = None
     if patch is not None:
@@ -148,6 +159,26 @@ def _parse_mentor_response(raw: str) -> dict[str, Any]:
                     }
             except (TypeError, ValueError):
                 patch = None
+
+    if not isinstance(answer, str) or not answer.strip():
+        if patch is not None:
+            answer = (
+                "I found a small local change that may help. "
+                "Review the suggested lines and apply the change only after you understand why it helps."
+            )
+        else:
+            raise AIProviderError("The mentor response is missing a valid 'answer' field.")
+
+    error_line = parsed.get("error_line")
+    if error_line in (0, "0", "", "null"):
+        error_line = None
+    if error_line is not None:
+        try:
+            error_line = int(error_line)
+        except (TypeError, ValueError):
+            error_line = None
+        if error_line is not None and error_line < 1:
+            error_line = None
 
     return {
         "answer": answer.strip(),
