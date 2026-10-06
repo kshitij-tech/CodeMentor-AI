@@ -1,17 +1,99 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>CodeMentor AI — Settings</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"><script src="https://cdn.tailwindcss.com"></script>
-<style>body{font-family:"Plus Jakarta Sans",sans-serif}.mono{font-family:"JetBrains Mono",monospace}</style>  <link rel="stylesheet" href="ui.css">
-  <script src="ui.js" defer></script>
-</head><body class="min-h-screen bg-[#f8f9ff] text-[#0b1c30]">
-<header class="fixed top-0 inset-x-0 z-50 h-16 bg-white/90 backdrop-blur-xl border-b border-slate-200"><div class="h-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-9 h-9 rounded-lg bg-[#4338ca] text-white flex items-center justify-center"><span class="material-symbols-outlined">terminal</span></div><div class="font-bold">CodeMentor <span class="mono text-[#2a14b4] text-xs">AI</span></div></div><nav class="flex items-center gap-2"><button onclick="location.href='dashboard.html?v=20260924'" class="px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100">Dashboard</button><button onclick="location.href='preferences.html?v=20260921'" class="px-3 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100">Preferences</button></nav></div></header>
-<main class="pt-24 pb-12 px-4 sm:px-6 lg:px-8"><div class="max-w-4xl mx-auto"><div class="mb-7"><div class="mono text-[11px] uppercase tracking-wider text-[#2a14b4] font-semibold">Workspace controls</div><h1 class="text-3xl font-bold mt-1">Settings</h1><p class="text-sm text-slate-600 mt-2">Account and application controls are kept separate from your learning preferences.</p></div>
-<div id="message" class="hidden mb-5 rounded-xl px-4 py-3 text-sm border"></div>
-<section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5"><h2 class="text-lg font-bold">Account</h2><div class="mt-5 grid md:grid-cols-2 gap-4"><div class="rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Email</div><div id="email" class="font-semibold mt-1">Loading...</div></div><div class="rounded-xl bg-slate-50 p-4"><div class="mono text-[10px] uppercase tracking-wider text-slate-500">Session</div><div class="font-semibold mt-1">Authenticated</div></div></div></section>
-<section class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 mb-5"><h2 class="text-lg font-bold">Application settings</h2><div class="divide-y divide-slate-100 mt-3">
-<label class="flex items-center justify-between gap-4 py-4 cursor-pointer"><div><div class="font-semibold text-sm">Practice notifications</div><div class="text-xs text-slate-500 mt-1">Keep reminders for practice activity enabled on this browser.</div></div><input id="notifications" type="checkbox" class="w-5 h-5 accent-[#4338ca]"></label>
-<label class="flex items-center justify-between gap-4 py-4 cursor-pointer"><div><div class="font-semibold text-sm">Compact dashboard mode</div><div class="text-xs text-slate-500 mt-1">Reduce spacing in the dashboard interface.</div></div><input id="compact" type="checkbox" class="w-5 h-5 accent-[#4338ca]"></label>
-</div></section>
-<section class="bg-white rounded-2xl shadow-sm border border-rose-100 p-6 sm:p-8"><h2 class="text-lg font-bold text-rose-700">Session</h2><p class="text-sm text-slate-600 mt-1">Sign out from this browser. Your saved server-side profile remains intact.</p><button id="logout" class="mt-4 px-4 py-2.5 rounded-lg bg-rose-600 text-white font-semibold hover:bg-rose-700">Log out</button></section>
-</div></main>
-<script>const KEY='codementor_access_token',API='http://127.0.0.1:8000';function t(){return localStorage.getItem(KEY)}function auth(){if(!t()){location.replace('auth.html');return false}return true}function save(){localStorage.setItem('cm_notifications',document.getElementById('notifications').checked?'1':'0');localStorage.setItem('cm_compact',document.getElementById('compact').checked?'1':'0')}async function load(){if(!auth())return;document.getElementById('notifications').checked=localStorage.getItem('cm_notifications')!=='0';document.getElementById('compact').checked=localStorage.getItem('cm_compact')==='1';try{const r=await fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+t()}});if(r.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}const d=await r.json();document.getElementById('email').textContent=d.email||'Signed in'}catch(e){document.getElementById('email').textContent='Unable to load account'}}</script>
-<script>document.getElementById('notifications').addEventListener('change',save);document.getElementById('compact').addEventListener('change',save);document.getElementById('logout').addEventListener('click',()=>{localStorage.removeItem(KEY);location.replace('auth.html')});load();</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeMentor AI — Settings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Material+Symbols+Outlined:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body{font-family:"Plus Jakarta Sans",sans-serif;background:#f8f9ff}
+    .mono{font-family:"JetBrains Mono",monospace}
+    .option.active{background:#4338ca;color:#fff;border-color:#4338ca}
+  </style>
+</head>
+<body class="min-h-screen text-slate-900">
+<header class="fixed inset-x-0 top-0 z-40 h-16 border-b bg-white/90 backdrop-blur">
+  <div class="mx-auto flex h-full max-w-6xl items-center justify-between px-4">
+    <a href="dashboard.html" class="flex items-center gap-3 font-bold"><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-700 text-white"><span class="material-symbols-outlined">terminal</span></span>CodeMentor <span class="mono text-xs text-indigo-700">AI</span></a>
+    <nav class="flex items-center gap-2 text-sm"><a href="profile.html" class="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">Profile</a><a href="preferences.html" class="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">Preferences</a></nav>
+  </div>
+</header>
+
+<main class="mx-auto max-w-6xl px-4 pb-16 pt-24">
+  <div class="mb-6"><div class="mono text-[11px] font-semibold uppercase tracking-wider text-indigo-700">Account controls</div><h1 class="mt-2 text-3xl font-bold">Settings</h1><p class="mt-2 max-w-2xl text-sm text-slate-600">Edit your saved profile and learning preferences after onboarding. Changing these values does not restart onboarding.</p></div>
+  <div id="message" class="mb-5 hidden rounded-xl border px-4 py-3 text-sm"></div>
+
+  <section class="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b pb-5"><div><h2 class="text-xl font-bold">Profile & learning preferences</h2><p class="mt-1 text-sm text-slate-500">All changes are stored server-side for this account.</p></div><span id="email" class="mono rounded-full bg-slate-100 px-3 py-2 text-xs text-slate-600">Loading...</span></div>
+
+    <div class="mt-7 grid gap-6 lg:grid-cols-2">
+      <label class="block text-sm font-semibold">Full name or developer handle
+        <input id="full-name" maxlength="120" class="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+      </label>
+      <label class="block text-sm font-semibold">LeetCode username <span class="font-normal text-slate-500">(optional)</span>
+        <input id="leetcode" maxlength="100" class="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+      </label>
+    </div>
+
+    <label class="mt-6 block text-sm font-semibold">Short introduction <span class="font-normal text-slate-500">(optional)</span>
+      <textarea id="bio" maxlength="180" rows="3" class="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"></textarea>
+    </label>
+
+    <div class="mt-7 grid gap-6 lg:grid-cols-2">
+      <div><div class="text-sm font-semibold">Experience level</div><div id="experience-options" class="mt-3 grid grid-cols-3 gap-2"></div></div>
+      <div><div class="text-sm font-semibold">Target interview role</div><select id="target-role" class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"></select></div>
+    </div>
+
+    <div class="mt-7"><div class="text-sm font-semibold">DSA familiarity</div><div id="dsa-options" class="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"></div></div>
+    <div class="mt-7"><div class="text-sm font-semibold">Preferred programming languages</div><div id="language-options" class="mt-3 flex flex-wrap gap-2"></div></div>
+
+    <div class="mt-7 grid gap-7 lg:grid-cols-2">
+      <div><div class="text-sm font-semibold">Target companies</div><div id="company-options" class="mt-3 flex flex-wrap gap-2"></div><input id="custom-company" maxlength="50" class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3" placeholder="Add another company"></div>
+      <div><div class="text-sm font-semibold">Target company categories</div><div id="category-options" class="mt-3 flex flex-wrap gap-2"></div></div>
+    </div>
+
+    <div class="mt-7 grid gap-6 lg:grid-cols-2">
+      <label class="block text-sm font-semibold">Daily practice target (problems)
+        <select id="daily-target" class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option><option value="15">15</option><option value="20">20</option></select>
+      </label>
+      <label class="block text-sm font-semibold">Preparation timeline
+        <select id="timeline" class="mt-3 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"><option value="">Flexible</option><option>1 Month Intensive</option><option>3 Months Deep Dive</option><option>6 Months Steady</option><option>Long-term / Flexible</option></select>
+      </label>
+    </div>
+
+    <div class="mt-7 rounded-xl bg-slate-50 p-5"><h3 class="font-semibold">Learning preferences</h3><div class="mt-4 grid gap-5 sm:grid-cols-2">
+      <label class="text-sm font-semibold">Learning style<select id="learning-style" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5"><option>Hands-on</option><option>Explanation-first</option><option>Visual</option><option>Mixed</option></select></label>
+      <label class="text-sm font-semibold">Hint preference<select id="hint-preference" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5"><option>Minimal</option><option>Guided</option><option>Detailed</option></select></label>
+      <label class="text-sm font-semibold">Session length<select id="session-length" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5"><option>15-30 min</option><option>30-60 min</option><option>60-90 min</option><option>90+ min</option></select></label>
+      <label class="text-sm font-semibold">Feedback preference<select id="feedback-preference" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5"><option>Concise</option><option>Balanced</option><option>Detailed</option></select></label>
+    </div></div>
+
+    <div class="mt-7 flex flex-wrap items-center justify-between gap-3 border-t pt-5"><p class="text-xs text-slate-500">Your existing onboarding completion state remains unchanged.</p><button id="save" class="rounded-xl bg-indigo-700 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-800">Save changes</button></div>
+  </section>
+</main>
+
+<script>
+const API='http://127.0.0.1:8000',KEY='codementor_access_token';
+const DSA=['Arrays & Strings','Hashing & Hash Maps','Sorting','Two Pointers','Sliding Window','Binary Search','Stacks & Queues','Linked Lists','Trees & BST','Heaps & Priority Queues','Graphs (BFS/DFS)','Greedy Algorithms','Backtracking','Dynamic Programming','Bit Manipulation','Intervals','Prefix Sum','Math'];
+const LANGUAGES=['Python','C++','Java','JavaScript','TypeScript','Go','Rust'];
+const ROLES=['Software Engineer','Full Stack Engineer','Backend Engineer','Frontend Engineer','Data Scientist','Machine Learning Engineer','DevOps Engineer','Mobile App Developer'];
+const COMPANIES=['Google','Microsoft','Amazon','Meta','Apple','NVIDIA','Stripe','Atlassian'];
+const CATEGORIES=['FAANG / Big Tech','Startups','Fintech','SaaS','AI / ML','Product Companies','Consulting','Remote-first'];
+const s={experience:'',dsa:[],languages:[],role:'Software Engineer',companies:[],categories:[],customCompany:'',learning:{}};
+function token(){return localStorage.getItem(KEY)}
+function message(t,ok){const e=document.getElementById('message');e.textContent=t;e.className='mb-5 rounded-xl border px-4 py-3 text-sm '+(ok?'border-emerald-200 bg-emerald-50 text-emerald-700':'border-rose-200 bg-rose-50 text-rose-700');e.classList.remove('hidden')}
+function buttons(id,values,group,selected){const root=document.getElementById(id);root.innerHTML='';values.forEach(function(v){const b=document.createElement('button');b.type='button';b.textContent=v;b.dataset.group=group;b.dataset.value=v;b.className='option rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm';b.onclick=function(){toggle(group,v)};if(selected.includes(v))b.classList.add('active');root.appendChild(b)})}
+function toggle(group,v){const key=group==='dsa'?'dsa':group==='languages'?'languages':group==='companies'?'companies':'categories';s[key]=s[key].includes(v)?s[key].filter(function(x){return x!==v}):s[key].concat([v]);document.querySelectorAll('[data-group="'+group+'"]').forEach(function(b){if(b.dataset.value===v)b.classList.toggle('active',s[key].includes(v))})}
+function render(){buttons('experience-options',['Beginner','Intermediate','Advanced'],'experience',s.experience?[s.experience]:[]);document.querySelectorAll('[data-group="experience"]').forEach(function(b){b.onclick=function(){s.experience=b.dataset.value;document.querySelectorAll('[data-group="experience"]').forEach(function(x){x.classList.toggle('active',x===b)})}});buttons('dsa-options',DSA,'dsa',s.dsa);buttons('language-options',LANGUAGES,'languages',s.languages);buttons('company-options',COMPANIES,'companies',s.companies);buttons('category-options',CATEGORIES,'categories',s.categories);const role=document.getElementById('target-role');role.innerHTML=ROLES.map(function(v){return'<option value="'+v+'">'+v+'</option>'}).join('');role.value=s.role||ROLES[0]}
+function readForm(){s.role=document.getElementById('target-role').value;s.customCompany=document.getElementById('custom-company').value.trim();s.learning={learning_style:document.getElementById('learning-style').value,hint_preference:document.getElementById('hint-preference').value,session_length:document.getElementById('session-length').value,feedback_preference:document.getElementById('feedback-preference').value}}
+function validate(){readForm();if(!document.getElementById('full-name').value.trim())return'Name cannot be empty.';if(!s.experience)return'Choose an experience level.';if(!s.dsa.length)return'Select at least one DSA topic.';if(!s.languages.length)return'Select at least one programming language.';if(!s.role)return'Choose a target role.';if(!s.companies.length&&!s.categories.length&&!s.customCompany)return'Choose at least one target company or category.';return null}
+async function load(){if(!token()){location.replace('auth.html');return}try{const [p,u]=await Promise.all([fetch(API+'/profile',{headers:{Authorization:'Bearer '+token()}}),fetch(API+'/auth/me',{headers:{Authorization:'Bearer '+token()}})]);if(p.status===401||u.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}const profile=await p.json(),me=await u.json();document.getElementById('email').textContent=me.email||'';if(!profile.onboarding_completed){location.replace('onboarding.html');return}document.getElementById('full-name').value=profile.full_name||'';document.getElementById('leetcode').value=profile.leetcode_username||'';document.getElementById('bio').value=profile.bio||'';s.experience=profile.experience_level||'';s.dsa=Array.isArray(profile.dsa_familiarity)?profile.dsa_familiarity:[];s.languages=Array.isArray(profile.preferred_languages)&&profile.preferred_languages.length?profile.preferred_languages:(profile.preferred_language?[profile.preferred_language]:[]);s.role=profile.target_role||ROLES[0];s.companies=Array.isArray(profile.target_companies)?profile.target_companies:[];s.categories=Array.isArray(profile.target_categories)?profile.target_categories:[];document.getElementById('daily-target').value=String(profile.daily_practice_target||3);document.getElementById('timeline').value=profile.preparation_timeline||'';s.learning=profile.learning_preferences||{};render();document.getElementById('learning-style').value=s.learning.learning_style||'Mixed';document.getElementById('hint-preference').value=s.learning.hint_preference||'Guided';document.getElementById('session-length').value=s.learning.session_length||'30-60 min';document.getElementById('feedback-preference').value=s.learning.feedback_preference||'Balanced'}catch(e){message('Unable to load your settings.',false)}}
+document.getElementById('save').addEventListener('click',async function(){const err=validate();if(err){message(err,false);return}const payload={full_name:document.getElementById('full-name').value.trim(),bio:document.getElementById('bio').value.trim()||null,leetcode_username:document.getElementById('leetcode').value.trim()||null,preferred_languages:s.languages,preferred_language:s.languages[0],experience_level:s.experience,dsa_familiarity:s.dsa,target_role:s.role,target_companies:s.companies.concat(s.customCompany?[s.customCompany]:[]),target_categories:s.categories,daily_practice_target:Number(document.getElementById('daily-target').value),learning_preferences:s.learning,preparation_timeline:document.getElementById('timeline').value||null};const b=document.getElementById('save');b.disabled=true;b.textContent='Saving...';try{const r=await fetch(API+'/profile',{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token()},body:JSON.stringify(payload)});const data=await r.json().catch(function(){return{}});if(r.status===401){localStorage.removeItem(KEY);location.replace('auth.html');return}if(!r.ok)throw new Error(data.detail||'Unable to save settings.');message('Settings saved successfully.',true)}catch(e){message(e.message||'Unable to save settings.',false)}finally{b.disabled=false;b.textContent='Save changes'}});
+load();
+</script>
+</body>
+</html>
