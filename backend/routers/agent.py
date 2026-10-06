@@ -61,7 +61,6 @@ def agent_chat(
         "approval_required": result.approval_required,
         "patch": result.patch,
         "error_line": result.error_line,
-        "plan": _serialize_plan(result),
         "learning_state": {
             "total_attempts": result.learning_state.total_attempts,
             "total_submissions": result.learning_state.total_submissions,
@@ -69,5 +68,6 @@ def agent_chat(
             "focus_topics": result.learning_state.focus_topics,
             "recurring_mistakes": result.learning_state.recurring_mistakes,
             "conceptual_risks": result.learning_state.conceptual_risks,
+            "learning_objectives": result.learning_state.learning_objectives,
         },
     }
