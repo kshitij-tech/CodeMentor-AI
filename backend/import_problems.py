@@ -77,6 +77,16 @@ def import_catalog(path: Path) -> tuple[int, int]:
                     query = db.query(Problem).filter(Problem.id == existing.id)
 
             problem = query.first()
+            content_duplicate = db.query(Problem).filter(
+                Problem.title == item["title"],
+                Problem.description == item["description"],
+            ).first()
+            if content_duplicate is not None and (problem is None or content_duplicate.id != problem.id):
+                raise ValueError(
+                    f"Problem {index} duplicates existing catalogue problem "
+                    f"'{content_duplicate.slug}' by normalized title/description."
+                )
+
             values = {
                 "slug": slug,
                 "title": item["title"],
