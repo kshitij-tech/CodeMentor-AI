@@ -27,21 +27,36 @@ The repository is being built incrementally. Each stage is manually tested befor
 
 ## Local AI Mentor setup
 
-CodeMentor AI uses Ollama locally by default, so the AI Mentor does not depend on a hosted API quota.
+CodeMentor AI supports local Ollama and LM Studio providers, so the AI Mentor can run without a hosted API quota.
 
-Install Ollama, then pull the default mentor model:
+Ollama setup:
 
     ollama pull qwen3:4b
-
-Verify Ollama is running:
-
     ollama list
 
-Create `backend/.env`:
+LM Studio alternative:
+
+1. Install LM Studio for Windows.
+2. Download a small instruct model such as `mistralai/ministral-3-3b`.
+3. In Developer, start the local server on port 1234.
+4. Use the model identifier shown by LM Studio.
+
+Create `backend/.env`.
+
+For Ollama:
 
     AI_PROVIDER=ollama
     OLLAMA_BASE_URL=http://localhost:11434
     AI_MODEL=qwen3:4b
+
+For LM Studio:
+
+    AI_PROVIDER=lmstudio
+    LMSTUDIO_BASE_URL=http://localhost:1234
+    AI_MODEL=mistralai/ministral-3-3b
+
+For either local provider:
+
     AI_FALLBACK_PROVIDER=none
     AI_FALLBACK_MODEL=
     MISTRAL_API_KEY=
