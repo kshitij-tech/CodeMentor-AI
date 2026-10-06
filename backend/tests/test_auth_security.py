@@ -50,15 +50,6 @@ class AuthenticationSecurityTests(unittest.TestCase):
             autocommit=False,
         )
         Base.metadata.create_all(bind=self.engine)
-        recommendations._catalog_cache.update(
-            {
-                "loaded_at": 0.0,
-                "rows": [],
-                "topics": [],
-                "difficulties": [],
-                "total": 0,
-            }
-        )
 
     def tearDown(self):
         reset_security_state_for_tests()
