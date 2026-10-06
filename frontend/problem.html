@@ -304,6 +304,9 @@ let modalCode='';
 let mentorMaximized=false;
 let mentorMinimized=false;
 let running=false;
+let activeLanguage='Python';
+let serverSynced=true;
+let suppressDirty=false;
 
 const $=id=>document.getElementById(id);
 const token=()=>localStorage.getItem(TOKEN_KEY);
@@ -431,7 +434,9 @@ function persistLocalDraft(){
   localStorage.setItem(localDraftKey($('language').value),editor.getValue());
 }
 function markDirty(){
+  if(suppressDirty)return;
   dirty=true;
+  serverSynced=false;
   persistLocalDraft();
   $('save-status').textContent='Unsaved changes';
   clearTimeout(saveTimer);
@@ -439,10 +444,11 @@ function markDirty(){
 }
 function setSavedStatus(label){
   dirty=false;
+  serverSynced=true;
   $('save-status').textContent=label;
 }
 async function saveWorkspace(){
-  if(!editor||!problem||running)return;
+  if(!editor||!problem||running)return false;
   const revision=++saveRevision;
   const language=$('language').value;
   const code=editor.getValue();
@@ -455,20 +461,24 @@ async function saveWorkspace(){
       body:JSON.stringify({problem_slug:problem.slug,language,code})
     });
     const data=await res.json().catch(()=>({}));
-    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return;}
+    if(res.status===401){localStorage.removeItem(TOKEN_KEY);location.replace('auth.html');return false;}
     if(!res.ok)throw new Error(data.detail||'Workspace save failed.');
     if(revision===saveRevision)setSavedStatus('Saved remotely');
+    return true;
   }catch(err){
     if(revision===saveRevision){
-      dirty=false;
-      $('save-status').textContent='Saved locally · server retry pending';
+      dirty=true;
+      serverSynced=false;
+      $('save-status').textContent='Saved locally · retry pending';
       console.warn('Workspace save failed:',err);
     }
+    return false;
   }
 }
 async function loadWorkspace(language){
   if(!editor||!problem)return;
   const request=++workspaceLoadId;
+  suppressDirty=true;
   $('save-status').textContent='Loading…';
   const key=localDraftKey(language);
   try{
@@ -488,6 +498,8 @@ async function loadWorkspace(language){
     editor.setValue(code);
     localStorage.setItem(key,code);
     dirty=false;
+    serverSynced=source==='server';
+    suppressDirty=false;
     $('save-status').textContent=source==='server'?'Saved remotely':source==='local'?'Local draft':'Starter';
     scheduleSyntaxValidation();
   }catch(err){
@@ -497,10 +509,14 @@ async function loadWorkspace(language){
     editor.setValue(code);
     localStorage.setItem(key,code);
     dirty=false;
-    $('save-status').textContent='Local draft';
+    serverSynced=false;
+    suppressDirty=false;
+    $('save-status').textContent='Local draft · server retry pending';
     toast('Server workspace unavailable; using local draft.');
     console.warn('Workspace load failed:',err);
     scheduleSyntaxValidation();
+  }finally{
+    suppressDirty=false;
   }
 }
 function setupMonaco(){
@@ -549,16 +565,19 @@ function setLanguageModel(language){
   const model=editor.getModel();
   monaco.editor.setModelLanguage(model,LANG_IDS[language]||'plaintext');
 }
-async function switchLanguage(next){
-  const current=$('language').value;
+async async function switchLanguage(next){
+  const current=activeLanguage;
   if(next===current)return;
   if(dirty){
     const ok=confirm('You have unsaved changes in '+current+'. Switch languages anyway? Your latest local draft is already preserved.');
     if(!ok){$('language').value=current;return;}
   }
+  activeLanguage=next;
+  suppressDirty=true;
   $('language').value=next;
   setLanguageModel(next);
   await loadWorkspace(next);
+  suppressDirty=false;
 }
 function showSyntax(diagnostic){
   if(!editor)return;
@@ -695,7 +714,8 @@ async function execute(mode){
     running=false;
     $('run-btn').disabled=!editor||!problem;
     $('submit-btn').disabled=!editor||!problem;
-    if(!dirty)$('save-status').textContent='Saved remotely';
+    if(!dirty&&serverSynced)$('save-status').textContent='Saved remotely';
+    else if(!serverSynced)$('save-status').textContent='Saved locally · server retry pending';
   }
 }
 function formatDate(value){
@@ -1004,10 +1024,11 @@ async function boot(){
     problem=await fetchProblem();
     renderProblem();
     await setupMonaco();
-    setLanguageModel($('language').value);
+    activeLanguage=$('language').value;
+    setLanguageModel(activeLanguage);
     $('run-btn').disabled=false;$('submit-btn').disabled=false;
     setupSplitters();
-    await loadWorkspace($('language').value);
+    await loadWorkspace(activeLanguage);
     await Promise.all([loadHistory(),loadMentorHistory()]);
   }catch(err){
     showProblemError(err.message||'Unable to load this problem.');
