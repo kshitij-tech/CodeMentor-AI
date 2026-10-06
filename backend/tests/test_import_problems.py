@@ -14,22 +14,13 @@ class ImportProblemValidationTests(unittest.TestCase):
         "examples": [{"input": "nums = [2,7], target = 9", "output": "[0,1]"}],
         "test_cases": [{"args": [[2, 7], 9], "expected": [0, 1]}],
         "starter_code": {
-            "Python": "def solve(nums, target):
-    return [0, 1]
-",
-            "C++": "int solve(vector<int> nums, int target) { return 0; }
-",
-            "Java": "class Solution { int solve(int[] nums, int target) { return 0; } }
-",
-            "JavaScript": "function solve(nums, target) { return [0, 1]; }
-",
-            "TypeScript": "function solve(nums: any[], target: number): any[] { return [0, 1]; }
-",
-            "Go": "package main
-func solve(nums []int, target int) []int { return []int{0,1} }
-",
-            "Rust": "fn solve(nums: &[i32], target: i32) -> Vec<i32> { vec![0,1] }
-",
+            "Python": "def solve(nums, target):\n    return [0, 1]\n",
+            "C++": "int solve(vector<int> nums, int target) { return 0; }\n",
+            "Java": "class Solution { int solve(int[] nums, int target) { return 0; } }\n",
+            "JavaScript": "function solve(nums, target) { return [0, 1]; }\n",
+            "TypeScript": "function solve(nums: any[], target: number): any[] { return [0, 1]; }\n",
+            "Go": "package main\nfunc solve(nums []int, target int) []int { return []int{0,1} }\n",
+            "Rust": "fn solve(nums: &[i32], target: i32) -> Vec<i32> { vec![0,1] }\n",
         },
         "execution_mode": "function",
     }
