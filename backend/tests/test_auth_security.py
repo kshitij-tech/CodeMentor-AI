@@ -228,7 +228,7 @@ class AuthenticationSecurityTests(unittest.TestCase):
         tokens = self._login("alice@example.com")
 
         with self.assertRaises(HTTPException) as missing:
-            auth.refresh(None, DummyRequest(), Response(), None)
+            auth.refresh(auth.RefreshRequest(), DummyRequest(), Response(), None)
         self.assertEqual(missing.exception.status_code, 401)
 
         with self.Session() as db:
