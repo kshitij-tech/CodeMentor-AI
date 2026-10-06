@@ -2,7 +2,7 @@ import unittest
 
 from backend.execution import run_python_stdio_tests
 from backend.problem_package import ProblemPackageError, package_to_problem
-from backend.problem_catalog import SUPPORTED_LANGUAGES
+from backend.problem_catalog import SUPPORTED_LANGUAGES, _starter_syntax_valid
 
 
 class ProblemPackageTests(unittest.TestCase):
@@ -41,6 +41,34 @@ Read an integer and print it twice.
         self.assertEqual(problem["memory_limit_mb"], 512)
         self.assertEqual(len(problem["test_cases"]), 2)
         self.assertTrue(problem["package_metadata"]["judge_supported"])
+
+    def test_package_generates_syntax_valid_starters_for_all_languages(self):
+        files = {
+            "problem.yaml": b"""name: Starter Contract
+difficulty: Easy
+keywords: [strings]
+constraints: [1 <= length <= 100]
+""",
+            "problem.md": b"""# Starter Contract
+
+Read one short word and print the same word.
+
+## Constraints
+
+- The word contains at most 100 characters.
+""",
+            "data/sample/0.in": b"hello\n",
+            "data/sample/0.ans": b"hello\n",
+        }
+        problem = package_to_problem(files, "starter-contract")
+        self.assertEqual(set(problem["starter_code"]), set(SUPPORTED_LANGUAGES))
+        for language, source in problem["starter_code"].items():
+            with self.subTest(language=language):
+                self.assertTrue(
+                    _starter_syntax_valid(language, source, problem["execution_mode"]),
+                    source,
+                )
+
 
     def test_stdio_execution(self):
         source = """import sys
