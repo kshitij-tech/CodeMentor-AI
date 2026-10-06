@@ -49,8 +49,16 @@ class UserProfile(Base):
         String(50),
         nullable=True,
     )
+    preferred_languages: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
     experience_level: Mapped[str | None] = mapped_column(
         String(50),
+        nullable=True,
+    )
+    dsa_familiarity: Mapped[list[str] | None] = mapped_column(
+        JSON,
         nullable=True,
     )
     target_role: Mapped[str | None] = mapped_column(
@@ -62,6 +70,18 @@ class UserProfile(Base):
         nullable=True,
     )
     target_companies: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    target_categories: Mapped[list[str] | None] = mapped_column(
+        JSON,
+        nullable=True,
+    )
+    daily_practice_target: Mapped[int] = mapped_column(
+        default=3,
+        nullable=False,
+    )
+    learning_preferences: Mapped[dict | None] = mapped_column(
         JSON,
         nullable=True,
     )
