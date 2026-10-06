@@ -109,7 +109,7 @@ class ObservabilityTests(unittest.TestCase):
             route="/execution/run",
             status_code="200",
         )
-        self.assertGreaterEqual(latency._sum.get(), 0)
+        self.assertGreater(latency._sum.get(), 0)
 
     def test_ai_failure_is_counted(self):
         response = self.client.get("/mentor/chat")
