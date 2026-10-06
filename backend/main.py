@@ -2,9 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
-from backend.database import SessionLocal
-
-from backend.database import Base, engine
+from backend.database import AUTO_CREATE_SCHEMA, SessionLocal, Base, engine
 from backend.routers.auth import router as auth_router
 from backend.routers.profile import router as profile_router
 from backend.routers.problems import router as problems_router, prime_problem_catalog
@@ -17,6 +15,12 @@ from backend.problem_seed import seed_problems
 
 
 def initialize_database() -> None:
+    # SQLite development keeps the historical zero-configuration behavior.
+    # Production/PostgreSQL is migration-managed and must run Alembic before
+    # the application starts.
+    if not AUTO_CREATE_SCHEMA:
+        return
+
     Base.metadata.create_all(bind=engine)
 
     # Development-only schema upgrade for the existing SQLite database.
@@ -56,9 +60,6 @@ def initialize_database() -> None:
                     )
                 )
 
-    if inspector.has_table("coding_attempts"):
-        pass
-
     if inspector.has_table("problems"):
         problem_columns = {column["name"] for column in inspector.get_columns("problems")}
         problem_migrations = {
@@ -81,7 +82,6 @@ def initialize_database() -> None:
                         )
                     )
 
-    return
 
 initialize_database()
 
