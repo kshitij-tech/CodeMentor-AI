@@ -805,7 +805,7 @@ def _starter_syntax_valid(language: str, source: Any, execution_mode: str = "fun
             return True
         except (SyntaxError, ValueError, TypeError):
             return False
-    if any(source.count(opening) != source.count(closing) for opening, closing in (("(", ")"), ("[", "]"), ("{", "}"))):
+    if source.count("{") != source.count("}"):
         return False
     if language == "C++":
         return bool(re.search(r"\bsolve\s*\(", source) or re.search(r"\bint\s+main\s*\(", source))
