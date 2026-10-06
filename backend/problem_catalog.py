@@ -742,7 +742,7 @@ def is_english_problem(title: Any, description: Any) -> bool:
     if ascii_letters < 8 or ascii_letters / max(all_letters, 1) < 0.88:
         return False
     tokens = set(re.findall(r"[a-z]+", text.lower()))
-    markers = {"the","given","find","return","input","output","where","each","array","integer","number","string","maximum","minimum","print","write","calculate","determine","contains","must","for","you"}
+    markers = {"the","given","find","return","input","output","where","each","array","arrays","integer","number","string","strings","list","value","values","read","maximum","minimum","print","write","calculate","determine","contains","must","for","you","answer","problem","word","twice","permutation"}
     return len(tokens & markers) >= 2
 
 
