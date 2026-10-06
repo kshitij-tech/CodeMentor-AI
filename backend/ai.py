@@ -8,11 +8,11 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-OLLAMA_CHAT_URL = "http://localhost:11434/api/chat"
+OLLAMA_CHAT_URL = "http://127.0.0.1:11434/api/chat"
 LMSTUDIO_CHAT_URL = "http://localhost:1234/v1/chat/completions"
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 DEFAULT_PROVIDER = "ollama"
-DEFAULT_MODEL = "qwen3:4b"
+DEFAULT_MODEL = "qwen2.5-coder:3b"
 DEFAULT_LMSTUDIO_MODEL = "mistralai/ministral-3-3b"
 DEFAULT_FALLBACK_MODEL = ""
 
@@ -177,7 +177,7 @@ def _normalize_model(model: str, provider: str) -> str:
 
 
 def _ollama_url() -> str:
-    base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").strip().rstrip("/")
+    base = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434").strip().rstrip("/")
     if base.endswith("/api"):
         return base + "/chat"
     return base + "/api/chat"
