@@ -11,6 +11,7 @@ from uuid import uuid4
 import jwt
 from dotenv import load_dotenv
 from pwdlib import PasswordHash
+from pwdlib.exceptions import UnknownHashError
 
 
 BACKEND_DIR = Path(__file__).resolve().parent
@@ -103,7 +104,7 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, password_hash_value: str) -> bool:
     try:
         return password_hash.verify(password, password_hash_value)
-    except (ValueError, TypeError):
+    except (UnknownHashError, ValueError, TypeError):
         return False
 
 

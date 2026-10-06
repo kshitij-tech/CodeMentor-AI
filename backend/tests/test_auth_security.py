@@ -150,6 +150,25 @@ class AuthenticationSecurityTests(unittest.TestCase):
         )
         self.assertEqual(invalid_email.status_code, 422)
 
+    def test_malformed_stored_password_hash_returns_401(self):
+        with self.Session() as db:
+            db.add(
+                User(
+                    email="broken@example.com",
+                    password_hash="not-a-supported-password-hash",
+                )
+            )
+            db.commit()
+
+        response = self.client.post(
+            "/auth/login",
+            json={
+                "email": "broken@example.com",
+                "password": "StrongPassword!2026",
+            },
+        )
+        self.assertEqual(response.status_code, 401)
+
     def test_missing_invalid_and_expired_tokens_are_rejected(self):
         self._register("alice@example.com")
         tokens = self._login("alice@example.com")
