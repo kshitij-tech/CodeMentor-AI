@@ -40,6 +40,13 @@ class AIProviderConfigurationTests(unittest.TestCase):
         self.assertEqual(_normalize_provider("ollama"), "ollama")
         self.assertEqual(_normalize_provider("local"), "ollama")
 
+    def test_lmstudio_provider_is_supported(self):
+        self.assertEqual(_normalize_provider("lmstudio"), "lmstudio")
+        self.assertEqual(
+            _normalize_model("", "lmstudio"),
+            "mistralai/ministral-3-3b",
+        )
+
     def test_mistral_provider_is_still_supported(self):
         self.assertEqual(_normalize_provider("mistral"), "mistral")
         self.assertEqual(_normalize_model("mistral-small-latest", "mistral"), "mistral-small-latest")
