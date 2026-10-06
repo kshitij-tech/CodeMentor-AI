@@ -158,7 +158,7 @@ def _statement_from_files(files: dict[str, bytes]) -> tuple[str, str | None]:
             continue
         raw = files[candidate].decode("utf-8")
         raw = _strip_html(raw) if candidate.endswith(".html") else raw.strip()
-        if raw and not _contains_cjk(raw):
+        if raw and is_english_problem("", raw):
             return raw, candidate
 
     raise ProblemPackageError("No English problem statement was found.")
