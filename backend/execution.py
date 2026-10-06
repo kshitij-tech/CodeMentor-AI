@@ -1,713 +1,60 @@
 from __future__ import annotations
 
-from backend.custom_validator import CustomValidatorError, run_custom_validator
-from backend.validator import UnsupportedValidatorError, validate_default_output
-
 import ast
-import base64
-import json
+import math
 import os
 import re
+import shlex
 import shutil
-import signal
 import subprocess
-import sys
 import tempfile
+import threading
 import time
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+from backend.validator import UnsupportedValidatorError, validate_default_output
 
 MAX_CODE_LENGTH = 40_000
 TIMEOUT_SECONDS = 2.0
 MAX_TIMEOUT_SECONDS = 10.0
 MAX_COMPILE_SECONDS = 10.0
+MIN_MEMORY_MB = 64
+DEFAULT_MEMORY_MB = 256
 MAX_MEMORY_MB = 1024
 MAX_OUTPUT_LENGTH = 12_000
+MAX_OUTPUT_BYTES = 64 * 1024
+MAX_STDERR_BYTES = 32 * 1024
+MAX_TEST_CASES = 200
+MAX_INPUT_BYTES = 8 * 1024 * 1024
+MAX_TOTAL_EXECUTION_SECONDS = 120.0
+DOCKER_STARTUP_GRACE_SECONDS = 8.0
+DOCKER_STOP_GRACE_SECONDS = 3.0
+MAX_FILE_BYTES = 64 * 1024 * 1024
+MAX_PIDS = 64
+MAX_NOFILE = 256
 
+SUPPORTED_LANGUAGES = {"Python", "C++", "Java", "JavaScript", "TypeScript", "Go", "Rust"}
 LANGUAGE_EXTENSIONS = {
-    "Python": ".py",
-    "C++": ".cpp",
-    "Java": ".java",
-    "JavaScript": ".js",
-    "TypeScript": ".ts",
-    "Go": ".go",
-    "Rust": ".rs",
+    "Python": ".py", "C++": ".cpp", "Java": ".java", "JavaScript": ".js",
+    "TypeScript": ".ts", "Go": ".go", "Rust": ".rs",
 }
-
 COMPILED_LANGUAGES = {"C++", "Java", "TypeScript", "Go", "Rust"}
 
-BLOCKED_IMPORTS = {
-    "os",
-    "sys",
-    "subprocess",
-    "socket",
-    "requests",
-    "urllib",
-    "http",
-    "pathlib",
-    "shutil",
-    "ctypes",
-    "multiprocessing",
-    "threading",
-    "importlib",
-}
-BLOCKED_CALLS = {"open", "eval", "exec", "compile", "__import__", "input"}
-
-
-class CodeRejectedError(ValueError):
-    pass
-
-
-def syntax_diagnostic(source: str) -> dict[str, object]:
-    """Return a JSON-safe syntax diagnostic without executing user code."""
-    if len(source) > MAX_CODE_LENGTH:
-        return {
-            "valid": False,
-            "message": f"Code exceeds the {MAX_CODE_LENGTH} character limit.",
-            "line": 1,
-            "column": 1,
-            "end_line": 1,
-            "end_column": 2,
-        }
-
-    try:
-        ast.parse(source)
-    except SyntaxError as exc:
-        line = max(1, int(exc.lineno or 1))
-        column = max(1, int(exc.offset or 1))
-        end_line = max(line, int(getattr(exc, "end_lineno", None) or line))
-        end_offset = getattr(exc, "end_offset", None)
-        end_column = max(
-            column + 1,
-            int(end_offset) if end_offset is not None else column + 1,
-        )
-
-        # Python sometimes points at a single character for an invalid token
-        # and sometimes only gives a caret position. Expand to the nearest
-        # token so Monaco visibly marks the offending word/token.
-        source_lines = source.splitlines()
-        if 1 <= line <= len(source_lines):
-            line_text = source_lines[line - 1]
-            if end_line == line:
-                start_index = min(len(line_text), column - 1)
-                end_index = min(len(line_text), max(start_index + 1, end_column - 1))
-                if start_index < len(line_text):
-                    if line_text[start_index].isspace():
-                        left = start_index
-                        while left > 0 and not line_text[left - 1].isspace():
-                            left -= 1
-                        right = start_index
-                        while right < len(line_text) and not line_text[right].isspace():
-                            right += 1
-                        if left != right:
-                            column = left + 1
-                            end_column = right + 1
-
-        return {
-            "valid": False,
-            "message": exc.msg or "Syntax error.",
-            "line": line,
-            "column": column,
-            "end_line": end_line,
-            "end_column": end_column,
-        }
-
-    return {
-        "valid": True,
-        "message": None,
-        "line": None,
-        "column": None,
-        "end_line": None,
-        "end_column": None,
-    }
-
-
-EXECUTION_SANDBOX = os.getenv("EXECUTION_SANDBOX", "local").strip().lower()
-EXECUTION_DOCKER_IMAGE = os.getenv(
-    "EXECUTION_DOCKER_IMAGE",
-    "codementor-multi-runtime:latest",
-).strip()
+EXECUTION_SANDBOX = os.getenv("EXECUTION_SANDBOX", "docker").strip().lower()
+EXECUTION_DOCKER_IMAGE = os.getenv("EXECUTION_DOCKER_IMAGE", "codementor-multi-runtime:latest").strip()
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 PRODUCTION_ENVS = {"prod", "production"}
 
 
-def _sandbox_mode() -> str:
-    if EXECUTION_SANDBOX not in {"local", "docker"}:
-        raise CodeRejectedError(
-            "Invalid EXECUTION_SANDBOX. Use 'docker' or 'local'."
-        )
-
-    if APP_ENV in PRODUCTION_ENVS and EXECUTION_SANDBOX != "docker":
-        raise CodeRejectedError(
-            "Production execution requires EXECUTION_SANDBOX=docker."
-        )
-
-    if EXECUTION_SANDBOX != "docker":
-        return EXECUTION_SANDBOX
-
-    if not shutil.which("docker"):
-        raise CodeRejectedError(
-            "Docker execution is enabled, but the Docker CLI was not found. "
-            "Install/start Docker Desktop and ensure 'docker' is on PATH."
-        )
-
-    try:
-        daemon = subprocess.run(
-            ["docker", "info"],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise CodeRejectedError(
-            "Docker CLI is installed, but the Docker daemon did not respond. "
-            "Start Docker Desktop and try again."
-        ) from exc
-
-    if daemon.returncode != 0:
-        detail = (daemon.stderr or daemon.stdout or "").strip()
-        detail = _truncate(detail) if detail else "Docker daemon is unavailable."
-        raise CodeRejectedError(f"Docker daemon is unavailable: {detail}")
-
-    image = subprocess.run(
-        ["docker", "image", "inspect", EXECUTION_DOCKER_IMAGE],
-        capture_output=True,
-        text=True,
-        timeout=5,
-        check=False,
-    )
-    if image.returncode != 0:
-        raise CodeRejectedError(
-            f"Docker image '{EXECUTION_DOCKER_IMAGE}' was not found. "
-            "Build it with: "
-            "docker build -t codementor-multi-runtime:latest "
-            "-f docker/multi-runtime/Dockerfile docker/multi-runtime"
-        )
-
-    return EXECUTION_SANDBOX
+class CodeRejectedError(ValueError):
+    """Submission/configuration is not valid for the execution service."""
 
 
-def _docker_base_command(
-    workdir: str,
-    *,
-    memory_limit_mb: int | None,
-    docker_name: str,
-) -> list[str]:
-    mounted_workdir = os.path.abspath(workdir)
-    return [
-        "docker",
-        "run",
-        "--rm",
-        # Keep STDIN attached so submitted programs using input()/cin/Scanner/
-        # fs.readFileSync(0) receive the test input supplied by the judge.
-        "-i",
-        "--name",
-        docker_name,
-        "--network",
-        "none",
-        "--cpus",
-        "1",
-        "--memory",
-        f"{memory_limit_mb or 256}m",
-        "--pids-limit",
-        "64",
-        "--read-only",
-        "--tmpfs",
-        "/tmp:rw,noexec,nosuid,size=64m",
-        # Compiled C++/Go/Rust binaries are created in /runner and must be
-        # executable. Keep /tmp noexec, but explicitly allow execution on the
-        # isolated runner tmpfs.
-        "--tmpfs",
-        "/runner:rw,nosuid,exec,size=64m",
-        "--cap-drop",
-        "ALL",
-        "--security-opt",
-        "no-new-privileges",
-        "--user",
-        "65532:65532",
-        "-v",
-        f"{mounted_workdir}:/workspace:ro",
-        "-w",
-        "/workspace",
-    ]
-
-
-def _run_python_process(
-    script_path: str,
-    workdir: str,
-    *,
-    input_data: str | None,
-    timeout_seconds: float,
-    memory_limit_mb: int | None = None,
-    env: dict[str, str] | None,
-):
-    mode = _sandbox_mode()
-    timeout_seconds = min(MAX_TIMEOUT_SECONDS, max(0.1, float(timeout_seconds)))
-    memory_limit = (
-        None
-        if memory_limit_mb is None
-        else min(MAX_MEMORY_MB, max(64, int(memory_limit_mb)))
-    )
-    docker_name = None
-
-    if mode == "local":
-        creationflags = 0
-        start_new_session = False
-        if os.name == "nt":
-            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        else:
-            start_new_session = True
-
-        command = [sys.executable, "-I", "-B", script_path]
-        process = subprocess.Popen(
-            command,
-            cwd=workdir,
-            env=env,
-            stdin=subprocess.PIPE if input_data is not None else subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            creationflags=creationflags,
-            start_new_session=start_new_session,
-        )
-        try:
-            stdout, stderr = process.communicate(
-                input=input_data,
-                timeout=timeout_seconds,
-            )
-        except subprocess.TimeoutExpired as exc:
-            if os.name == "nt":
-                subprocess.run(
-                    ["taskkill", "/T", "/F", "/PID", str(process.pid)],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                )
-            else:
-                try:
-                    os.killpg(process.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-
-            stdout, stderr = process.communicate()
-            raise subprocess.TimeoutExpired(
-                command,
-                timeout_seconds,
-                output=stdout,
-                stderr=stderr,
-            ) from exc
-
-        return subprocess.CompletedProcess(
-            command,
-            process.returncode,
-            stdout,
-            stderr,
-        )
-
-    docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
-    script_name = os.path.basename(script_path)
-    # Enforce the user's time limit inside the container. The outer
-    # subprocess timeout includes Docker Desktop/container startup overhead,
-    # which can be larger than a 1-second competitive-programming limit.
-    inner_limit = min(MAX_TIMEOUT_SECONDS, max(0.1, float(timeout_seconds)))
-    command = _docker_base_command(
-        workdir,
-        memory_limit_mb=memory_limit,
-        docker_name=docker_name,
-    ) + [
-        EXECUTION_DOCKER_IMAGE,
-        "timeout",
-        "--signal=KILL",
-        f"{inner_limit:.3f}s",
-        "python",
-        "-I",
-        "-B",
-        f"/workspace/{script_name}",
-    ]
-
-    try:
-        return subprocess.run(
-            command,
-            input=input_data,
-            capture_output=True,
-            text=True,
-            timeout=inner_limit + 5.0,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        subprocess.run(
-            ["docker", "rm", "-f", docker_name],
-            capture_output=True,
-            text=True,
-            timeout=5,
-            check=False,
-        )
-        raise
-
-
-def _language_commands(
-    language: str,
-    source_path: str,
-    workdir: str,
-) -> tuple[list[str] | None, list[str], list[str] | None]:
-    """Return compile command, run command, and Docker shell command pieces."""
-    source_name = os.path.basename(source_path)
-    if language == "Python":
-        return None, [sys.executable, "-I", "-B", source_path], None
-    if language == "C++":
-        return [
-            "g++", "-std=c++20", "-O2", "-pipe", "-s",
-            source_path, "-o", os.path.join(workdir, "codementor_program"),
-        ], [os.path.join(workdir, "codementor_program")], [
-            "g++ -std=c++20 -O2 -pipe -s /workspace/"+source_name+" -o /runner/codementor_program && echo __CODEMENTOR_COMPILE_OK__ && /runner/codementor_program"
-        ]
-    if language == "Java":
-        return [
-            "javac", "-encoding", "UTF-8", "-d", workdir, source_path
-        ], ["java", "-cp", workdir, "Main"], [
-            "mkdir -p /runner/classes && javac -encoding UTF-8 -d /runner/classes /workspace/"+source_name+" && echo __CODEMENTOR_COMPILE_OK__ && java -cp /runner/classes Main"
-        ]
-    if language == "JavaScript":
-        return None, ["node", "--use-strict", source_path], None
-    if language == "TypeScript":
-        return [
-            "tsc", "--target", "ES2022", "--module", "commonjs",
-            "--strict", "false", "--outDir", os.path.join(workdir, "tsc"),
-            source_path,
-        ], ["node", os.path.join(workdir, "tsc", "solution.js")], [
-            "mkdir -p /runner/tsc && tsc --target ES2022 --module commonjs --strict false --outDir /runner/tsc /workspace/"+source_name+" && echo __CODEMENTOR_COMPILE_OK__ && node /runner/tsc/"+os.path.splitext(source_name)[0]+".js"
-        ]
-    if language == "Go":
-        return [
-            "go", "build", "-o", os.path.join(workdir, "codementor_program"), source_path
-        ], [os.path.join(workdir, "codementor_program")], [
-            "GOCACHE=/tmp/go-cache go build -o /runner/codementor_program /workspace/"+source_name+" && echo __CODEMENTOR_COMPILE_OK__ && /runner/codementor_program"
-        ]
-    if language == "Rust":
-        return [
-            "rustc", "-O", source_path, "-o", os.path.join(workdir, "codementor_program")
-        ], [os.path.join(workdir, "codementor_program")], [
-            "rustc -O /workspace/"+source_name+" -o /runner/codementor_program && echo __CODEMENTOR_COMPILE_OK__ && /runner/codementor_program"
-        ]
-    raise CodeRejectedError(f"Unsupported language runtime: {language}.")
-
-
-def _docker_language_script(
-    language: str,
-    source_name: str,
-    test_cases: list[dict[str, Any]],
-    time_limit_seconds: float,
-    token: str,
-) -> str:
-    run_commands = {
-        "C++": "/runner/codementor_program",
-        "Java": "java -cp /runner/classes Main",
-        "JavaScript": "node --use-strict /workspace/solution.js",
-        "TypeScript": "node /runner/tsc/solution.js",
-        "Go": "/runner/codementor_program",
-        "Rust": "/runner/codementor_program",
-    }
-    compile_commands = {
-        "C++": (
-            "g++ -std=c++20 -O2 -pipe -s "
-            f"/workspace/{source_name} -o /runner/codementor_program"
-        ),
-        "Java": (
-            "mkdir -p /runner/classes && "
-            f"javac -encoding UTF-8 -d /runner/classes /workspace/{source_name}"
-        ),
-        "TypeScript": (
-            "mkdir -p /runner/tsc && "
-            f"tsc --target ES2022 --module commonjs --strict false "
-            f"--outDir /runner/tsc /workspace/{source_name}"
-        ),
-        "Go": (
-            "GOCACHE=/tmp/go-cache "
-            f"go build -o /runner/codementor_program /workspace/{source_name}"
-        ),
-        "Rust": (
-            f"rustc -O /workspace/{source_name} -o /runner/codementor_program"
-        ),
-    }
-
-    # Keep this script POSIX-sh compatible. The image uses Ubuntu, but invoking
-    # /bin/sh avoids relying on shell-specific options such as "pipefail".
-    lines = [
-        "#!/bin/sh",
-        f"COMPILE_MARKER='__CODEMENTOR_{token}_COMPILE_OK__'",
-    ]
-
-    if language in compile_commands:
-        lines.append(compile_commands[language])
-        lines.append("compile_rc=$?")
-        lines.append('if [ "$compile_rc" -ne 0 ]; then exit "$compile_rc"; fi')
-        lines.append('printf "%s\\n" "$COMPILE_MARKER"')
-
-    run_command = run_commands[language]
-    limit = f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.3f}s"
-
-    for index, case in enumerate(test_cases, start=1):
-        input_b64 = base64.b64encode(
-            str(case.get("input", "")).encode("utf-8")
-        ).decode("ascii")
-        stdout_marker = f"__CODEMENTOR_{token}_TEST_{index}__"
-        input_path = f"/runner/input_{index}.txt"
-        output_path = f"/runner/output_{index}.txt"
-        stderr_path = f"/runner/stderr_{index}.txt"
-        lines.extend([
-            f"INPUT_B64='{input_b64}'",
-            f"INPUT_PATH='{input_path}'",
-            f"OUTPUT_PATH='{output_path}'",
-            f"STDERR_PATH='{stderr_path}'",
-            'printf "%s" "$INPUT_B64" | base64 -d > "$INPUT_PATH"',
-            ': > "$OUTPUT_PATH"',
-            ': > "$STDERR_PATH"',
-            (
-                f'timeout --signal=KILL {limit} {run_command} '
-                f'<"$INPUT_PATH" >"$OUTPUT_PATH" 2>"$STDERR_PATH"'
-            ),
-            "RC=$?",
-            'OUTPUT_B64="$(base64 -w 0 "$OUTPUT_PATH" 2>/dev/null || true)"',
-            'ERROR_B64="$(base64 -w 0 "$STDERR_PATH" 2>/dev/null || true)"',
-            (
-                f'printf "%s|%s|%s|%s\\n" "{stdout_marker}" "$RC" "$OUTPUT_B64" "$ERROR_B64"'
-            ),
-        ])
-
-    return "\n".join(lines) + "\n"
-
-
-def _decode_b64(value: str) -> str:
-    try:
-        return base64.b64decode(value.encode("ascii"), validate=True).decode(
-            "utf-8",
-            errors="replace",
-        )
-    except (ValueError, UnicodeError):
-        return ""
-
-
-def run_language_stdio_tests(
-    source: str,
-    language: str,
-    test_cases: list[dict[str, Any]],
-    time_limit_seconds: float = 2.0,
-    *,
-    memory_limit_mb: int | None = None,
-) -> list[TestOutcome]:
-    if language not in LANGUAGE_EXTENSIONS:
-        raise CodeRejectedError(f"Unsupported language runtime: {language}.")
-
-    if len(source) > MAX_CODE_LENGTH:
-        raise CodeRejectedError(f"Code exceeds the {MAX_CODE_LENGTH} character limit.")
-
-    if language != "Python" and _sandbox_mode() != "docker":
-        raise CodeRejectedError(
-            "Docker sandbox is required for non-Python execution. "
-            "Set EXECUTION_SANDBOX=docker and restart FastAPI."
-        )
-
-    outcomes: list[TestOutcome] = []
-    extension = LANGUAGE_EXTENSIONS[language]
-    file_name = "Main.java" if language == "Java" else "solution"+extension
-
-    with tempfile.TemporaryDirectory(prefix="codementor-lang-") as workdir:
-        source_path = os.path.join(workdir, file_name)
-        with open(source_path, "w", encoding="utf-8") as source_file:
-            source_file.write(source)
-
-        token = uuid.uuid4().hex[:16]
-        script_path = os.path.join(workdir, "run_tests.sh")
-        script = _docker_language_script(
-            language=language,
-            source_name=file_name,
-            test_cases=test_cases,
-            time_limit_seconds=time_limit_seconds,
-            token=token,
-        )
-        # Docker executes this file in Linux. Force LF line endings so a
-        # Windows-hosted FastAPI process cannot generate a CRLF shell script.
-        with open(script_path, "w", encoding="utf-8", newline="\n") as script_file:
-            script_file.write(script)
-
-        docker_name = f"codementor-run-{uuid.uuid4().hex[:16]}"
-        docker_cmd = _docker_base_command(
-            workdir,
-            memory_limit_mb=memory_limit_mb,
-            docker_name=docker_name,
-        ) + [
-            EXECUTION_DOCKER_IMAGE,
-            "/bin/sh",
-            "/workspace/run_tests.sh",
-        ]
-
-        started = time.perf_counter()
-        per_test_timeout = min(
-            MAX_TIMEOUT_SECONDS,
-            max(0.1, float(time_limit_seconds)),
-        )
-        overall_timeout = min(
-            120.0,
-            MAX_COMPILE_SECONDS + per_test_timeout * max(1, len(test_cases)) + 5.0,
-        )
-        try:
-            completed = subprocess.run(
-                docker_cmd,
-                input=None,
-                capture_output=True,
-                text=True,
-                timeout=overall_timeout,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            subprocess.run(
-                ["docker", "rm", "-f", docker_name],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-            return [
-                TestOutcome(
-                    index=index,
-                    passed=False,
-                    status="Time Limit Exceeded",
-                    expected=str(case.get("expected_output", "")),
-                    actual=None,
-                    runtime_ms=int(MAX_TIMEOUT_SECONDS * 1000),
-                    message="The execution container exceeded the overall safety limit.",
-                )
-                for index, case in enumerate(test_cases, start=1)
-            ]
-
-        total_runtime_ms = int((time.perf_counter() - started) * 1000)
-        stdout = completed.stdout or ""
-        stderr = _truncate((completed.stderr or "").strip())
-        lines = stdout.splitlines()
-
-        compile_marker = f"__CODEMENTOR_{token}_COMPILE_OK__"
-        if language in COMPILED_LANGUAGES and compile_marker not in lines:
-            message = stderr or stdout.strip() or "Compilation failed."
-            return [
-                TestOutcome(
-                    index=1,
-                    passed=False,
-                    status="Compile Error",
-                    expected=str(test_cases[0].get("expected_output", "")) if test_cases else "",
-                    actual=None,
-                    runtime_ms=total_runtime_ms,
-                    message=message,
-                )
-            ]
-
-        parsed: dict[int, tuple[int, str, str]] = {}
-        pattern = re.compile(
-            rf"^__CODEMENTOR_{re.escape(token)}_TEST_(\d+)__\|(-?\d+)\|([^|]*)\|([^|]*)$"
-        )
-        for line in lines:
-            match = pattern.match(line)
-            if not match:
-                continue
-            parsed[int(match.group(1))] = (
-                int(match.group(2)),
-                _decode_b64(match.group(3)),
-                _decode_b64(match.group(4)),
-            )
-
-        per_test_cap_ms = int(
-            min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000
-        )
-        for index, case in enumerate(test_cases, start=1):
-            expected = str(case.get("expected_output", ""))
-            item = parsed.get(index)
-            if item is None:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Runtime Error",
-                        expected=expected,
-                        actual=None,
-                        runtime_ms=per_test_cap_ms,
-                        message=(
-                            "The sandbox did not return a result for this test case."
-                        ),
-                    )
-                )
-                continue
-
-            rc, actual, error_text = item
-            if rc == 124:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Time Limit Exceeded",
-                        expected=expected,
-                        actual=None,
-                        runtime_ms=per_test_cap_ms,
-                        message=(
-                            f"Test exceeded the "
-                            f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s "
-                            "execution limit."
-                        ),
-                    )
-                )
-                continue
-
-            if rc != 0:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Runtime Error",
-                        expected=expected,
-                        actual=actual,
-                        runtime_ms=per_test_cap_ms,
-                        message=error_text or f"Program exited with status {rc}.",
-                    )
-                )
-                continue
-
-            if len(actual) > MAX_OUTPUT_LENGTH:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Output Limit Exceeded",
-                        expected=expected,
-                        actual=_truncate(actual),
-                        runtime_ms=per_test_cap_ms,
-                        message=f"Program output exceeded {MAX_OUTPUT_LENGTH} characters.",
-                    )
-                )
-                continue
-
-            try:
-                validation = validate_default_output(
-                    actual,
-                    expected,
-                    case.get("validator_flags"),
-                )
-            except UnsupportedValidatorError as exc:
-                raise CodeRejectedError(str(exc)) from exc
-
-            outcomes.append(
-                TestOutcome(
-                    index=index,
-                    passed=validation.passed,
-                    status="Passed" if validation.passed else "Wrong Answer",
-                    expected=expected,
-                    actual=actual,
-                    runtime_ms=per_test_cap_ms,
-                    message=None if validation.passed else validation.message,
-                )
-            )
-
-    return outcomes
+class SandboxUnavailableError(RuntimeError):
+    """The required Docker sandbox is unavailable."""
 
 
 @dataclass
@@ -721,76 +68,196 @@ class TestOutcome:
     message: str | None = None
 
 
-def validate_code(source: str, *, stdio: bool = False) -> None:
+@dataclass(frozen=True)
+class _ContainerResult:
+    stdout: str
+    stderr: str
+    returncode: int
+    timed_out: bool
+    oom_killed: bool
+    output_limit_exceeded: bool = False
+    runtime_ms: int = 0
+
+
+def _truncate(value: str, limit: int = MAX_OUTPUT_LENGTH) -> str:
+    return value if len(value) <= limit else value[:limit] + "\n[output truncated]"
+
+
+def _normalize_time_limit(value: float | int | None) -> float:
+    if value is None:
+        value = TIMEOUT_SECONDS
+    try:
+        value = float(value)
+    except (TypeError, ValueError) as exc:
+        raise CodeRejectedError("Invalid execution time limit.") from exc
+    if not math.isfinite(value) or value <= 0:
+        raise CodeRejectedError("Execution time limit must be a positive finite number.")
+    return min(MAX_TIMEOUT_SECONDS, max(0.1, value))
+
+
+def _normalize_memory_limit(value: int | None) -> int:
+    if value is None:
+        return DEFAULT_MEMORY_MB
+    try:
+        value = int(value)
+    except (TypeError, ValueError) as exc:
+        raise CodeRejectedError("Invalid execution memory limit.") from exc
+    if value <= 0:
+        raise CodeRejectedError("Execution memory limit must be positive.")
+    return min(MAX_MEMORY_MB, max(MIN_MEMORY_MB, value))
+
+
+def syntax_diagnostic(source: str) -> dict[str, object]:
+    if len(source) > MAX_CODE_LENGTH:
+        return {
+            "valid": False,
+            "message": f"Code exceeds the {MAX_CODE_LENGTH} character limit.",
+            "line": 1,
+            "column": 1,
+            "end_line": 1,
+            "end_column": 2,
+        }
+    try:
+        ast.parse(source)
+    except SyntaxError as exc:
+        line = max(1, int(exc.lineno or 1))
+        column = max(1, int(exc.offset or 1))
+        end_line = max(line, int(getattr(exc, "end_lineno", None) or line))
+        end_offset = getattr(exc, "end_offset", None)
+        end_column = max(column + 1, int(end_offset) if end_offset is not None else column + 1)
+        return {
+            "valid": False, "message": exc.msg or "Syntax error.", "line": line,
+            "column": column, "end_line": end_line, "end_column": end_column,
+        }
+    return {
+        "valid": True, "message": None, "line": None, "column": None,
+        "end_line": None, "end_column": None,
+    }
+
+
+def _sandbox_mode() -> str:
+    if EXECUTION_SANDBOX != "docker":
+        raise SandboxUnavailableError(
+            "Code execution requires EXECUTION_SANDBOX=docker. Host-native execution is disabled."
+        )
+    return "docker"
+
+
+def _ensure_docker_available() -> None:
+    _sandbox_mode()
+    if not shutil.which("docker"):
+        raise SandboxUnavailableError(
+            "Docker CLI was not found. Install/start Docker Desktop on Windows or Docker Engine on Linux."
+        )
+    try:
+        info = subprocess.run(
+            ["docker", "info"], capture_output=True, text=True, timeout=5, check=False
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SandboxUnavailableError("Docker daemon did not respond.") from exc
+    except OSError as exc:
+        raise SandboxUnavailableError(f"Could not start Docker: {exc}") from exc
+    if info.returncode != 0:
+        detail = _truncate((info.stderr or info.stdout or "").strip())
+        raise SandboxUnavailableError(
+            f"Docker daemon is unavailable: {detail or 'unknown Docker error'}"
+        )
+    image = subprocess.run(
+        ["docker", "image", "inspect", EXECUTION_DOCKER_IMAGE],
+        capture_output=True, text=True, timeout=5, check=False,
+    )
+    if image.returncode != 0:
+        raise SandboxUnavailableError(
+            f"Docker image '{EXECUTION_DOCKER_IMAGE}' was not found. Build it with: "
+            "docker build -t codementor-multi-runtime:latest "
+            "-f docker/multi-runtime/Dockerfile docker/multi-runtime"
+        )
+
+
+def _docker_base_command(workdir: str, *, memory_limit_mb: int, docker_name: str) -> list[str]:
+    return [
+        "docker", "run", "--name", docker_name, "--init", "--network", "none", "--pid", "private",
+        "--cpus", "1.0", "--cpu-period", "100000", "--cpu-quota", "100000",
+        "--memory", f"{memory_limit_mb}m", "--memory-swap", f"{memory_limit_mb}m",
+        "--pids-limit", str(MAX_PIDS), "--ipc", "private", "--shm-size", "16m", "--read-only",
+        "--tmpfs", "/tmp:rw,noexec,nosuid,nodev,size=64m",
+        "--tmpfs", "/runner:rw,nosuid,nodev,exec,size=256m",
+        "--cap-drop", "ALL", "--security-opt", "no-new-privileges", "--security-opt", "seccomp=default",
+        "--ulimit", f"nproc={MAX_PIDS}:{MAX_PIDS}", "--ulimit", f"nofile={MAX_NOFILE}:{MAX_NOFILE}",
+        "--ulimit", f"fsize={MAX_FILE_BYTES}:{MAX_FILE_BYTES}", "--ulimit", "core=0:0",
+        "--mount", f"type=bind,source={os.path.abspath(workdir)},target=/workspace,readonly",
+        "--workdir", "/workspace", "--user", "65532:65532",
+        "--env", "PATH=/opt/codementor/node_modules/.bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "--env", "HOME=/tmp", "--env", "TMPDIR=/tmp", "--env", "LANG=C.UTF-8", "--env", "LC_ALL=C.UTF-8",
+        "--env", "TZ=UTC", "--env", "PYTHONDONTWRITEBYTECODE=1", "--env", "PYTHONUNBUFFERED=1",
+        "--env", "PYTHONHASHSEED=0", "--env", "GOCACHE=/tmp/go-cache", "--env", "GOMODCACHE=/tmp/go-mod-cache",
+        "--env", "GOMAXPROCS=1", "--env", "RUST_BACKTRACE=0",
+    ]
+
+
+def _language_commands(
+    language: str, source_path: str, workdir: str
+) -> tuple[list[str] | None, list[str], None]:
+    del workdir
+    source_name = os.path.basename(source_path)
+    source = shlex.quote(f"/workspace/{source_name}")
+    if language == "Python":
+        return None, ["python3", "-I", "-B", f"/workspace/{source_name}"], None
+    if language == "C++":
+        return [
+            "sh", "-c",
+            f"mkdir -p /runner/artifacts && g++ -std=c++20 -O2 -pipe -s {source} -o /runner/artifacts/program",
+        ], ["/workspace/build/program"], None
+    if language == "Java":
+        return [
+            "sh", "-c",
+            f"mkdir -p /runner/artifacts/classes && javac -encoding UTF-8 -d /runner/artifacts/classes {source}",
+        ], ["java", "-Djava.io.tmpdir=/tmp", "-cp", "/workspace/build/classes", "Main"], None
+    if language == "JavaScript":
+        return None, ["node", "--use-strict", f"/workspace/{source_name}"], None
+    if language == "TypeScript":
+        return [
+            "tsc", "--target", "ES2022", "--module", "commonjs", "--strict", "false", "--skipLibCheck",
+            "--types", "node", "--typeRoots", "/opt/codementor/node_modules/@types",
+            "--outDir", "/runner/artifacts/tsc", f"/workspace/{source_name}",
+        ], ["node", "/workspace/build/tsc/solution.js"], None
+    if language == "Go":
+        return [
+            "sh", "-c",
+            f"mkdir -p /runner/artifacts && go build -o /runner/artifacts/program {source}",
+        ], ["/workspace/build/program"], None
+    if language == "Rust":
+        return [
+            "sh", "-c",
+            f"mkdir -p /runner/artifacts && rustc -O {source} -o /runner/artifacts/program",
+        ], ["/workspace/build/program"], None
+    raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+
+
+def validate_code(source: str, *, stdio: bool = True) -> None:
+    del stdio
     if len(source) > MAX_CODE_LENGTH:
         raise CodeRejectedError(f"Code exceeds the {MAX_CODE_LENGTH} character limit.")
-
     try:
-        tree = ast.parse(source)
+        ast.parse(source)
     except SyntaxError as exc:
-        raise CodeRejectedError(
-            f"Syntax Error: {exc.msg} (line {exc.lineno})."
-        ) from exc
-
-    blocked_imports = set(BLOCKED_IMPORTS)
-    blocked_calls = set(BLOCKED_CALLS)
-    if stdio:
-        # Standard contest programs commonly use sys.stdin/stdout and input().
-        blocked_imports.discard("sys")
-        blocked_calls.discard("input")
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                root = alias.name.split(".")[0]
-                if root in blocked_imports:
-                    raise CodeRejectedError(f"Import '{root}' is not allowed in the local runner.")
-        elif isinstance(node, ast.ImportFrom):
-            root = (node.module or "").split(".")[0]
-            if root in blocked_imports:
-                raise CodeRejectedError(f"Import '{root}' is not allowed in the local runner.")
-        elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in blocked_calls:
-                raise CodeRejectedError(f"Call '{node.func.id}' is not allowed in the local runner.")
+        raise CodeRejectedError(f"Syntax Error: {exc.msg} (line {exc.lineno}).") from exc
 
 
 def extract_error_location(message: str | None) -> tuple[int, int | None] | None:
     if not message:
         return None
-
     patterns = [
-        (
-            r'(?:Main\.java|solution\.[A-Za-z0-9]+)\((\d+),(\d+)\)',
-            True,
-        ),
-        (
-            r'(?:Main\.java|solution\.[A-Za-z0-9]+):(\d+)(?::(\d+))?',
-            True,
-        ),
-        (
-            r"<user_code>[^,]*,\s*line\s+(\d+)",
-            False,
-        ),
-        (
-            r'<user_code>.*?line\s+(\d+)',
-            False,
-        ),
-        (
-            r'line\s+(\d+)\b',
-            False,
-        ),
+        (r"(?:Main\.java|solution\.[A-Za-z0-9_]+)\((\d+),(\d+)\)", True),
+        (r"(?:Main\.java|solution\.[A-Za-z0-9_]+):(\d+):(\d+)", True),
+        (r"(?:Main\.java|solution\.[A-Za-z0-9_]+):(\d+)\b", False),
+        (r"<user_code>[^,]*,\s*line\s+(\d+)", False),
+        (r"line\s+(\d+)\b", False),
     ]
-
     for pattern, has_column in patterns:
         match = re.search(pattern, message)
-        if not match:
-            continue
-        if has_column:
-            line = int(match.group(1))
-            column = int(match.group(2)) if match.group(2) else None
-            return line, column
-        return int(match.group(1)), None
-
+        if match:
+            return int(match.group(1)), int(match.group(2)) if has_column else None
     return None
 
 
@@ -799,829 +266,411 @@ def extract_error_line(message: str | None) -> int | None:
     return location[0] if location else None
 
 
-def _runner_source(user_code: str, args: list[Any]) -> str:
-    encoded_code = base64.b64encode(user_code.encode("utf-8")).decode("ascii")
-    encoded_args = base64.b64encode(
-        json.dumps(args, separators=(",", ":")).encode("utf-8")
-    ).decode("ascii")
-
-    return f"""
-import base64
-import json
-
-source = base64.b64decode({encoded_code!r}).decode("utf-8")
-args = json.loads(base64.b64decode({encoded_args!r}).decode("utf-8"))
-
-namespace = {{}}
-exec(compile(source, "<user_code>", "exec"), namespace)
-
-solve = namespace.get("solve")
-if not callable(solve):
-    raise RuntimeError("Define a callable solve(...) function in your solution.")
-
-result = solve(*args)
-print("__CODEMENTOR_RESULT__" + json.dumps(result, separators=(",", ":")))
-"""
+def _output_reader(stream, buffer: bytearray, limit: int, exceeded: threading.Event) -> None:
+    try:
+        while True:
+            chunk = stream.read(8192)
+            if not chunk:
+                return
+            room = limit + 1 - len(buffer)
+            if room > 0:
+                buffer.extend(chunk[:room])
+            if len(buffer) > limit:
+                exceeded.set()
+                return
+    except OSError:
+        return
 
 
-def _normalize_function_args(args: Any, parameter_count: int | None) -> list[Any]:
-    if not isinstance(args, list):
-        raise CodeRejectedError("Function test-case args must be a list.")
-    normalized = list(args)
-    if (
-        parameter_count
-        and parameter_count > 1
-        and len(normalized) == 1
-        and isinstance(normalized[0], list)
-        and len(normalized[0]) == parameter_count
-    ):
-        normalized = list(normalized[0])
-    if parameter_count is not None and len(normalized) != parameter_count:
-        raise CodeRejectedError(
-            f"Expected {parameter_count} function arguments, got {len(normalized)}."
+def _kill_container(name: str) -> None:
+    try:
+        subprocess.run(
+            ["docker", "kill", "--signal", "KILL", name],
+            capture_output=True, text=True, timeout=5, check=False,
         )
-    return normalized
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
-def _hint_from_value(value: Any) -> tuple:
-    if isinstance(value, bool):
-        return ("bool",)
-    if isinstance(value, int):
-        return ("int",)
-    if isinstance(value, float):
-        return ("float",)
-    if isinstance(value, str):
-        return ("string",)
-    if isinstance(value, list):
-        for item in value:
-            if item is not None:
-                return ("list", _hint_from_value(item))
-        return ("list", None)
-    return ("string",)
+def _remove_container(name: str) -> None:
+    try:
+        subprocess.run(
+            ["docker", "rm", "-f", name],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
-def _representative_argument_hints(
-    test_cases: list[dict[str, Any]],
-    parameter_count: int | None,
-) -> list[tuple]:
-    if parameter_count is None or parameter_count <= 0:
-        return []
-    hints: list[tuple | None] = [None] * parameter_count
-    for case in test_cases:
+def _inspect_container_oom(name: str) -> bool:
+    try:
+        result = subprocess.run(
+            ["docker", "inspect", "--format", "{{.State.OOMKilled}}", name],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return result.returncode == 0 and result.stdout.strip().lower() == "true"
+
+
+def _wrap_with_timeout(command: list[str], timeout_seconds: float) -> list[str]:
+    timeout_token = f"__CODEMENTOR_TIMEOUT_{uuid.uuid4().hex}__"
+    oom_token = f"__CODEMENTOR_OOM_{uuid.uuid4().hex}__"
+    quoted = shlex.join(command)
+    shell = (
+        "set +e; "
+        "cm_oom_count() { value=$(grep -E '^oom_kill[[:space:]]+' /sys/fs/cgroup/memory.events 2>/dev/null | awk '{print $2}'); if [ -z \"$value\" ]; then value=0; fi; printf '%s' \"$value\"; }; "
+        "oom_before=$(cm_oom_count); "
+        f"timeout --signal=TERM --kill-after=0.2s {timeout_seconds:.3f}s {quoted}; rc=$?; "
+        "oom_after=$(cm_oom_count); "
+        f"[ \"$rc\" -eq 124 ] && printf '%s\\n' {shlex.quote(timeout_token)} >&2; "
+        f"[ \"$oom_after\" -gt \"$oom_before\" ] 2>/dev/null && printf '%s\\n' {shlex.quote(oom_token)} >&2; "
+        "exit $rc"
+    )
+    return ["/bin/sh", "-c", shell]
+
+
+def _run_docker_command(
+    workdir: str, command: list[str], *, input_data: str | None, memory_limit_mb: int,
+    timeout_seconds: float, output_limit_bytes: int, stderr_limit_bytes: int,
+    outer_timeout_seconds: float | None = None,
+) -> _ContainerResult:
+    name = f"codementor-run-{uuid.uuid4().hex[:20]}"
+    docker_command = _docker_base_command(
+        workdir, memory_limit_mb=memory_limit_mb, docker_name=name
+    ) + [EXECUTION_DOCKER_IMAGE, *_wrap_with_timeout(command, timeout_seconds)]
+    started = time.perf_counter()
+    process = subprocess.Popen(
+        docker_command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    stdout_buffer = bytearray()
+    stderr_buffer = bytearray()
+    exceeded = threading.Event()
+    threads = [
+        threading.Thread(
+            target=_output_reader,
+            args=(process.stdout, stdout_buffer, output_limit_bytes, exceeded),
+            daemon=True,
+        ),
+        threading.Thread(
+            target=_output_reader,
+            args=(process.stderr, stderr_buffer, stderr_limit_bytes, exceeded),
+            daemon=True,
+        ),
+    ]
+    for thread in threads:
+        thread.start()
+    payload = (input_data or "").encode("utf-8")
+
+    def feed() -> None:
         try:
-            values = _normalize_function_args(case.get("args", []), parameter_count)
-        except CodeRejectedError:
-            continue
-        for index, value in enumerate(values):
-            candidate = _hint_from_value(value)
-            if hints[index] is None:
-                hints[index] = candidate
-            elif hints[index][0] == "list" and hints[index][1] is None and candidate[0] == "list":
-                hints[index] = candidate
-    return [hint or ("string",) for hint in hints]
+            if process.stdin:
+                process.stdin.write(payload)
+                process.stdin.close()
+        except (BrokenPipeError, OSError):
+            try:
+                if process.stdin:
+                    process.stdin.close()
+            except OSError:
+                pass
 
-
-def _type_name_cxx(hint: tuple) -> str:
-    kind = hint[0]
-    if kind == "bool":
-        return "bool"
-    if kind == "int":
-        return "long long"
-    if kind == "float":
-        return "double"
-    if kind == "string":
-        return "string"
-    if kind == "list":
-        return f"vector<{_type_name_cxx(hint[1] or ('int',))}>"
-    return "string"
-
-
-def _type_name_java(hint: tuple) -> str:
-    kind = hint[0]
-    if kind == "bool":
-        return "boolean"
-    if kind == "int":
-        return "long"
-    if kind == "float":
-        return "double"
-    if kind == "string":
-        return "String"
-    if kind == "list":
-        return f"{_type_name_java(hint[1] or ('int',))}[]"
-    return "String"
-
-
-def _type_name_go(hint: tuple) -> str:
-    kind = hint[0]
-    if kind == "bool":
-        return "bool"
-    if kind == "int":
-        return "int64"
-    if kind == "float":
-        return "float64"
-    if kind == "string":
-        return "string"
-    if kind == "list":
-        return f"[]{_type_name_go(hint[1] or ('int',))}"
-    return "string"
-
-
-def _type_name_rust(hint: tuple) -> str:
-    kind = hint[0]
-    if kind == "bool":
-        return "bool"
-    if kind == "int":
-        return "i64"
-    if kind == "float":
-        return "f64"
-    if kind == "string":
-        return "String"
-    if kind == "list":
-        return f"Vec<{_type_name_rust(hint[1] or ('int',))}>"
-    return "String"
-
-
-def _cxx_literal(value: Any, hint: tuple) -> str:
-    if hint[0] == "list":
-        inner = hint[1] or ("int",)
-        return f"{_type_name_cxx(hint)}{{{', '.join(_cxx_literal(item, inner) for item in value)}}}"
-    if hint[0] == "bool":
-        return "true" if value else "false"
-    if hint[0] == "int":
-        return str(int(value))
-    if hint[0] == "float":
-        return repr(float(value))
-    return json.dumps(str(value), ensure_ascii=True)
-
-
-def _java_literal(value: Any, hint: tuple) -> str:
-    if hint[0] == "list":
-        inner = hint[1] or ("int",)
-        return f"new {_type_name_java(hint)}{{{', '.join(_java_literal(item, inner) for item in value)}}}"
-    if hint[0] == "bool":
-        return "true" if value else "false"
-    if hint[0] == "int":
-        return str(int(value)) + "L"
-    if hint[0] == "float":
-        return repr(float(value))
-    return json.dumps(str(value), ensure_ascii=True)
-
-
-def _go_literal(value: Any, hint: tuple) -> str:
-    if hint[0] == "list":
-        inner = hint[1] or ("int",)
-        return f"{_type_name_go(hint)}{{{', '.join(_go_literal(item, inner) for item in value)}}}"
-    if hint[0] == "bool":
-        return "true" if value else "false"
-    if hint[0] == "int":
-        return str(int(value))
-    if hint[0] == "float":
-        return repr(float(value))
-    return json.dumps(str(value), ensure_ascii=True)
-
-
-def _rust_literal(value: Any, hint: tuple) -> str:
-    if hint[0] == "list":
-        inner = hint[1] or ("int",)
-        return f"vec![{', '.join(_rust_literal(item, inner) for item in value)}]"
-    if hint[0] == "bool":
-        return "true" if value else "false"
-    if hint[0] == "int":
-        return str(int(value)) + "i64"
-    if hint[0] == "float":
-        return repr(float(value)) + "f64"
-    return f"String::from({json.dumps(str(value), ensure_ascii=True)})"
-
-
-_CXX_JSON_HELPER = r"""
-static void __cm_json(std::ostream& out, const std::string& value) {
-    out << std::quoted(value);
-}
-
-template <typename T, std::enable_if_t<std::is_integral_v<T>, int> = 0>
-static void __cm_json(std::ostream& out, T value) {
-    if constexpr (std::is_same_v<T, bool>) out << (value ? "true" : "false");
-    else out << value;
-}
-
-template <typename T, std::enable_if_t<std::is_floating_point_v<T>, int> = 0>
-static void __cm_json(std::ostream& out, T value) {
-    out << std::setprecision(17) << value;
-}
-
-template <typename T>
-static void __cm_json(std::ostream& out, const std::vector<T>& value) {
-    out << '[';
-    for (size_t i = 0; i < value.size(); ++i) {
-        if (i) out << ',';
-        __cm_json(out, value[i]);
-    }
-    out << ']';
-}
-"""
-
-
-_JAVA_JSON_HELPER = r"""
-    static String __cmQuote(String value) {
-        return "\"" + value
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
-            .replace("\t", "\\t")
-            + "\"";
-    }
-
-    static String __cmJson(Object value) {
-        if (value == null) return "null";
-        if (value instanceof String || value instanceof Character) return __cmQuote(String.valueOf(value));
-        if (value instanceof Boolean || value instanceof Number) return String.valueOf(value);
-        if (value.getClass().isArray()) {
-            int n = java.lang.reflect.Array.getLength(value);
-            StringBuilder out = new StringBuilder("[");
-            for (int i = 0; i < n; i++) {
-                if (i > 0) out.append(',');
-                out.append(__cmJson(java.lang.reflect.Array.get(value, i)));
-            }
-            return out.append(']').toString();
-        }
-        return __cmQuote(String.valueOf(value));
-    }
-"""
-
-
-def _build_function_driver_source(
-    source: str,
-    language: str,
-    args: list[Any],
-    parameter_hints: list[tuple],
-) -> str:
-    if len(args) != len(parameter_hints):
-        raise CodeRejectedError(
-            f"Function argument count mismatch: expected {len(parameter_hints)}, got {len(args)}."
+    feeder = threading.Thread(target=feed, daemon=True)
+    feeder.start()
+    timed_out = False
+    try:
+        deadline = time.monotonic() + (
+            outer_timeout_seconds
+            or (timeout_seconds + DOCKER_STARTUP_GRACE_SECONDS)
         )
-
-    literal_builders = {
-        "C++": _cxx_literal,
-        "Java": _java_literal,
-        "Go": _go_literal,
-        "Rust": _rust_literal,
-    }
-    if language in literal_builders:
-        call_args = ", ".join(
-            literal_builders[language](value, hint)
-            for value, hint in zip(args, parameter_hints)
+        while process.poll() is None:
+            if exceeded.is_set():
+                _kill_container(name)
+                break
+            if time.monotonic() >= deadline:
+                timed_out = True
+                _kill_container(name)
+                break
+            time.sleep(0.02)
+        try:
+            process.wait(timeout=DOCKER_STOP_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            _kill_container(name)
+            process.kill()
+            process.wait(timeout=1)
+        feeder.join(timeout=1)
+        for thread in threads:
+            thread.join(timeout=1)
+        stdout = bytes(stdout_buffer[:output_limit_bytes]).decode("utf-8", errors="replace")
+        stderr = bytes(stderr_buffer[:stderr_limit_bytes]).decode("utf-8", errors="replace")
+        oom = _inspect_container_oom(name)
+        timeout_marker = re.search(r"__CODEMENTOR_TIMEOUT_[0-9a-f]+__", stderr) is not None
+        oom_marker = re.search(r"__CODEMENTOR_OOM_[0-9a-f]+__", stderr) is not None
+        return _ContainerResult(
+            stdout=stdout,
+            stderr=stderr,
+            returncode=int(process.returncode if process.returncode is not None else -1),
+            timed_out=timed_out or timeout_marker,
+            oom_killed=oom or oom_marker,
+            output_limit_exceeded=exceeded.is_set(),
+            runtime_ms=int((time.perf_counter() - started) * 1000),
         )
-    elif language in {"JavaScript", "TypeScript"}:
-        call_args = ", ".join(
-            json.dumps(value, ensure_ascii=True, separators=(",", ":"))
-            for value in args
+    finally:
+        _remove_container(name)
+
+
+def _compile_submission(
+    source: str, language: str, workdir: Path
+) -> tuple[bool, str | None, int]:
+    if language not in COMPILED_LANGUAGES:
+        return True, None, 0
+    source_name = (
+        "Main.java"
+        if language == "Java"
+        else f"solution{LANGUAGE_EXTENSIONS[language]}"
+    )
+    compile_argv, _, _ = _language_commands(language, source_name, str(workdir))
+    assert compile_argv is not None
+    build_dir = workdir / "build"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    result_name = f"codementor-compile-{uuid.uuid4().hex[:20]}"
+    cmd = _docker_base_command(
+        str(workdir), memory_limit_mb=MAX_MEMORY_MB, docker_name=result_name
+    ) + [EXECUTION_DOCKER_IMAGE, *_wrap_with_timeout(compile_argv, MAX_COMPILE_SECONDS)]
+    started = time.perf_counter()
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        stdout, stderr = process.communicate(
+            timeout=MAX_COMPILE_SECONDS + DOCKER_STARTUP_GRACE_SECONDS
         )
-    else:
-        raise CodeRejectedError(f"Unsupported language runtime: {language}.")
-
-    if language == "C++":
-        return source.rstrip() + "\n\n" + _CXX_JSON_HELPER + f"""
-int main() {{
-    auto __cm_result = solve({call_args});
-    __cm_json(std::cout, __cm_result);
-    std::cout << '\\n';
-    return 0;
-}}
-"""
-    if language == "Java":
-        return source.rstrip() + "\n\npublic class Main {\n" + _JAVA_JSON_HELPER + f"""
-    public static void main(String[] args) {{
-        Object __cmResult = new Solution().solve({call_args});
-        System.out.println(__cmJson(__cmResult));
-    }}
-}}
-"""
-    if language in {"JavaScript", "TypeScript"}:
-        return source.rstrip() + f"""
-
-const __cmResult = solve({call_args});
-const __cmJson = JSON.stringify(__cmResult === undefined ? null : __cmResult);
-process.stdout.write((__cmJson === undefined ? 'null' : __cmJson) + '\\n');
-"""
-    if language == "Go":
-        user_imports: list[str] = []
-        block = re.search(r"(?ms)^\s*import\s*\((.*?)^\)\s*", source)
-        if block:
-            user_imports.extend(
-                line.strip()
-                for line in block.group(1).splitlines()
-                if line.strip() and not line.strip().startswith("//")
-            )
-        user_imports.extend(
-            line.strip()
-            for line in re.findall(r'(?m)^\s*import\s+([^\n]+)$', source)
-            if line.strip()
+    except subprocess.TimeoutExpired:
+        _kill_container(result_name)
+        return False, "Compilation exceeded the 10.00s compilation limit.", int(
+            (time.perf_counter() - started) * 1000
         )
-
-        json_import = next(
-            (
-                spec for spec in user_imports
-                if re.search(r'"encoding/json"\s*$', spec)
-            ),
-            None,
+    runtime_ms = int((time.perf_counter() - started) * 1000)
+    try:
+        stdout = stdout or b""
+        stderr = stderr or b""
+        if process.returncode is None or process.returncode != 0:
+            text = (stderr or stdout).decode("utf-8", errors="replace")
+            if b"__CODEMENTOR_TIMEOUT_" in stderr:
+                return False, "Compilation exceeded the 10.00s compilation limit.", runtime_ms
+            if _inspect_container_oom(result_name):
+                return False, "Compiler exceeded the execution service memory limit.", runtime_ms
+            return False, _truncate(text.strip() or "Compilation failed."), runtime_ms
+        cp = subprocess.run(
+            ["docker", "cp", f"{result_name}:/runner/artifacts/.", str(build_dir)],
+            capture_output=True, text=True, timeout=15, check=False,
         )
-        json_name = "json"
-        if json_import:
-            match = re.match(
-                r'^([A-Za-z_][A-Za-z0-9_]*)\s+"encoding/json"$',
-                json_import,
-            )
-            if match:
-                json_name = match.group(1)
+        if cp.returncode != 0:
+            return False, "Compiler artifacts could not be retrieved from Docker.", runtime_ms
+        required = (
+            build_dir / "classes" / "Main.class"
+            if language == "Java"
+            else build_dir / "tsc" / "solution.js"
+            if language == "TypeScript"
+            else build_dir / "program"
+        )
+        if not required.exists():
+            return False, "Compiler produced no executable artifact.", runtime_ms
+        return True, None, runtime_ms
+    finally:
+        _remove_container(result_name)
 
-        body = re.sub(r"(?m)^\s*package\s+main\s*\n?", "", source, count=1)
-        body = re.sub(r"(?ms)^\s*import\s*\((.*?)^\)\s*\n?", "", body, count=1)
-        body = re.sub(r'(?m)^\s*import\s+"[^"]+"\s*\n?', "", body, count=1)
 
-        merged_imports: list[str] = []
-        seen_import_paths: set[str] = set()
-        for spec in ([json_import] if json_import else ['"encoding/json"']) + user_imports:
-            if not spec:
-                continue
-            match = re.search(r'"([^"]+)"', spec)
-            import_path = match.group(1) if match else spec
-            if import_path in seen_import_paths:
-                continue
-            seen_import_paths.add(import_path)
-            merged_imports.append(spec)
-
-        import_block = "\n".join(f"    {spec}" for spec in merged_imports)
+def _status_from_runtime(
+    result: _ContainerResult,
+) -> tuple[str, str | None]:
+    if result.oom_killed:
+        return "Memory Limit Exceeded", "The process exceeded the container memory limit."
+    if result.timed_out:
+        return "Time Limit Exceeded", "The process exceeded its time limit."
+    if result.output_limit_exceeded:
+        return "Runtime Error", f"Program output exceeded the {MAX_OUTPUT_BYTES} byte output limit."
+    if result.returncode != 0:
         return (
-            "package main\n\nimport (\n"
-            + import_block
-            + "\n)\n\n"
-            + body.strip()
-            + f"""
-
-func main() {{
-    __cmResult := solve({call_args})
-    __cmJSON, err := {json_name}.Marshal(__cmResult)
-    if err != nil {{
-        panic(err)
-    }}
-    println(string(__cmJSON))
-}}
-"""
+            "Runtime Error",
+            result.stderr.strip()
+            or result.stdout.strip()
+            or f"Process exited with status {result.returncode}.",
         )
-    if language == "Rust":
-        return source.rstrip() + f"""
-
-fn main() {{
-    let __cm_result = solve({call_args});
-    println!("{{:?}}", __cm_result);
-}}
-"""
-    raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+    return "Passed", None
 
 
-def run_language_function_tests(
+def overall_status(outcomes: list[TestOutcome]) -> str:
+    if not outcomes:
+        return "System Error"
+    statuses = {outcome.status for outcome in outcomes}
+    for status in (
+        "Compilation Error", "Memory Limit Exceeded", "Time Limit Exceeded",
+        "Runtime Error", "System Error"
+    ):
+        if status in statuses:
+            return status
+    return "Accepted" if all(outcome.passed for outcome in outcomes) else "Wrong Answer"
+
+
+def _execute_submission(
     source: str,
     language: str,
     test_cases: list[dict[str, Any]],
-    parameter_count: int | None,
-    time_limit_seconds: float = 2.0,
+    time_limit_seconds: float,
+    *,
+    memory_limit_mb: int | None,
+) -> list[TestOutcome]:
+    if language not in SUPPORTED_LANGUAGES:
+        raise CodeRejectedError(f"Unsupported language runtime: {language}.")
+    if len(source) > MAX_CODE_LENGTH:
+        raise CodeRejectedError(
+            f"Code exceeds the {MAX_CODE_LENGTH} character limit."
+        )
+    if not test_cases:
+        raise CodeRejectedError("The problem contains no executable test cases.")
+    if len(test_cases) > MAX_TEST_CASES:
+        raise CodeRejectedError(
+            f"Too many test cases. Maximum supported is {MAX_TEST_CASES}."
+        )
+    limit = _normalize_time_limit(time_limit_seconds)
+    memory = _normalize_memory_limit(memory_limit_mb)
+    for index, case in enumerate(test_cases, start=1):
+        if len(str(case.get("input", "")).encode("utf-8")) > MAX_INPUT_BYTES:
+            raise CodeRejectedError(
+                f"Test input {index} exceeds the {MAX_INPUT_BYTES} byte limit."
+            )
+    _ensure_docker_available()
+
+    if language == "Python":
+        diagnostic = syntax_diagnostic(source)
+        if not diagnostic["valid"]:
+            message = str(
+                diagnostic["message"] or "Python compilation failed."
+            )
+            return [
+                TestOutcome(
+                    i, False, "Compilation Error",
+                    str(c.get("expected_output", "")), None, 0,
+                    f"{message} (line {diagnostic['line']}).",
+                )
+                for i, c in enumerate(test_cases, 1)
+            ]
+
+    source_name = (
+        "Main.java"
+        if language == "Java"
+        else f"solution{LANGUAGE_EXTENSIONS[language]}"
+    )
+    _, run_argv, _ = _language_commands(language, source_name, "")
+    with tempfile.TemporaryDirectory(prefix="codementor-exec-") as temp:
+        workdir = Path(temp)
+        source_path = workdir / source_name
+        source_path.write_text(source, encoding="utf-8", newline="\n")
+        if os.name != "nt":
+            os.chmod(workdir, 0o755)
+            os.chmod(source_path, 0o644)
+
+        compiled, message, compile_ms = _compile_submission(
+            source, language, workdir
+        )
+        if not compiled:
+            status = (
+                "Time Limit Exceeded"
+                if message and message.startswith("Compilation exceeded")
+                else "Compilation Error"
+            )
+            return [
+                TestOutcome(
+                    i, False, status,
+                    str(c.get("expected_output", "")), None, compile_ms, message
+                )
+                for i, c in enumerate(test_cases, 1)
+            ]
+
+        outcomes: list[TestOutcome] = []
+        started_all = time.monotonic()
+        for index, case in enumerate(test_cases, start=1):
+            remaining = MAX_TOTAL_EXECUTION_SECONDS - (
+                time.monotonic() - started_all
+            )
+            expected = str(case.get("expected_output", ""))
+            if remaining <= 0:
+                outcomes.append(
+                    TestOutcome(
+                        index, False, "Time Limit Exceeded", expected, None, 0,
+                        "The submission exceeded the global execution safety limit.",
+                    )
+                )
+                continue
+            result = _run_docker_command(
+                str(workdir),
+                run_argv,
+                input_data=str(case.get("input", "")),
+                memory_limit_mb=memory,
+                timeout_seconds=min(limit, remaining),
+                output_limit_bytes=MAX_OUTPUT_BYTES,
+                stderr_limit_bytes=MAX_STDERR_BYTES,
+                outer_timeout_seconds=min(limit, remaining)
+                + DOCKER_STARTUP_GRACE_SECONDS,
+            )
+            status, detail = _status_from_runtime(result)
+            actual = result.stdout
+            if status == "Passed":
+                try:
+                    validation = validate_default_output(
+                        actual, expected, case.get("validator_flags")
+                    )
+                except UnsupportedValidatorError as exc:
+                    outcomes.append(
+                        TestOutcome(
+                            index, False, "System Error", expected, actual,
+                            result.runtime_ms, str(exc),
+                        )
+                    )
+                    continue
+                outcomes.append(
+                    TestOutcome(
+                        index, validation.passed,
+                        "Passed" if validation.passed else "Wrong Answer",
+                        expected, actual, result.runtime_ms,
+                        None if validation.passed else validation.message,
+                    )
+                )
+            else:
+                outcomes.append(
+                    TestOutcome(
+                        index, False, status, expected,
+                        _truncate(actual), result.runtime_ms,
+                        _truncate(detail or status),
+                    )
+                )
+        return outcomes
+
+
+def run_language_stdio_tests(
+    source: str,
+    language: str,
+    test_cases: list[dict[str, Any]],
+    time_limit_seconds: float = TIMEOUT_SECONDS,
     *,
     memory_limit_mb: int | None = None,
 ) -> list[TestOutcome]:
-    """Execute callable solve(...) problems across all supported runtimes."""
-    if language not in LANGUAGE_EXTENSIONS:
-        raise CodeRejectedError(f"Unsupported language runtime: {language}.")
-    if language == "Python":
-        raise CodeRejectedError("Use the Python function runner for Python problems.")
-    if len(source) > MAX_CODE_LENGTH:
-        raise CodeRejectedError(f"Code exceeds the {MAX_CODE_LENGTH} character limit.")
-    if _sandbox_mode() != "docker":
-        raise CodeRejectedError(
-            "Docker sandbox is required for non-Python execution. "
-            "Set EXECUTION_SANDBOX=docker and restart FastAPI."
-        )
-
-    entrypoints = {
-        "C++": r"\b(?:int|signed)\s+main\s*\(",
-        "Java": r"\bstatic\s+void\s+main\s*\(",
-        "JavaScript": r"\bprocess\.stdout\.write\s*\(",
-        "TypeScript": r"\bprocess\.stdout\.write\s*\(",
-        "Go": r"(?m)^\s*func\s+main\s*\(",
-        "Rust": r"(?m)^\s*fn\s+main\s*\(",
-    }
-    if re.search(entrypoints.get(language, r"$^"), source):
-        raise CodeRejectedError(
-            "Implement solve(...) only. CodeMentor supplies the program entry point."
-        )
-
-    hints = _representative_argument_hints(test_cases, parameter_count)
-    outcomes: list[TestOutcome] = []
-
-    for index, case in enumerate(test_cases, start=1):
-        expected = case.get("expected")
-        try:
-            args = _normalize_function_args(case.get("args", []), parameter_count)
-            driver = _build_function_driver_source(source, language, args, hints)
-            raw = run_language_stdio_tests(
-                driver,
-                language,
-                [{
-                    "input": "",
-                    "expected_output": json.dumps(
-                        expected,
-                        ensure_ascii=True,
-                        separators=(",", ":"),
-                    ),
-                }],
-                time_limit_seconds=time_limit_seconds,
-                memory_limit_mb=memory_limit_mb,
-            )[0]
-        except (ValueError, TypeError, CodeRejectedError) as exc:
-            outcomes.append(
-                TestOutcome(
-                    index=index,
-                    passed=False,
-                    status="Rejected",
-                    expected=expected,
-                    actual=None,
-                    runtime_ms=0,
-                    message=str(exc),
-                )
-            )
-            continue
-
-        if raw.status in {"Compile Error", "Runtime Error", "Time Limit Exceeded", "Output Limit Exceeded", "Judge Error", "Rejected"}:
-            outcomes.append(
-                TestOutcome(
-                    index=index,
-                    passed=False,
-                    status=raw.status,
-                    expected=expected,
-                    actual=raw.actual,
-                    runtime_ms=raw.runtime_ms,
-                    message=raw.message,
-                )
-            )
-            continue
-
-        actual_text = str(raw.actual or "").strip()
-        try:
-            actual_value = json.loads(actual_text)
-        except (TypeError, json.JSONDecodeError):
-            outcomes.append(
-                TestOutcome(
-                    index=index,
-                    passed=False,
-                    status="Wrong Answer",
-                    expected=expected,
-                    actual=actual_text,
-                    runtime_ms=raw.runtime_ms,
-                    message="solve(...) must return a JSON-serializable value.",
-                )
-            )
-            continue
-
-        passed = actual_value == expected
-        outcomes.append(
-            TestOutcome(
-                index=index,
-                passed=passed,
-                status="Passed" if passed else "Wrong Answer",
-                expected=expected,
-                actual=actual_value,
-                runtime_ms=raw.runtime_ms,
-                message=None if passed else f"Expected {expected!r}, got {actual_value!r}.",
-            )
-        )
-
-    return outcomes
-
-
-def _truncate(value: str) -> str:
-    return value if len(value) <= MAX_OUTPUT_LENGTH else value[:MAX_OUTPUT_LENGTH] + "\n[output truncated]"
-
-
-
-
-def _normalize_output(value: str) -> str:
-    return " ".join(value.strip().split())
+    return _execute_submission(
+        source, language, test_cases, time_limit_seconds,
+        memory_limit_mb=memory_limit_mb,
+    )
 
 
 def run_python_stdio_tests(
     source: str,
     test_cases: list[dict[str, Any]],
-    time_limit_seconds: float = 2.0,
+    time_limit_seconds: float = TIMEOUT_SECONDS,
     *,
     memory_limit_mb: int | None = None,
     package_root: str | None = None,
     validation_time_seconds: float = 60.0,
     validation_output_bytes: int = 8 * 1024 * 1024,
 ) -> list[TestOutcome]:
-    validate_code(source, stdio=True)
-    outcomes: list[TestOutcome] = []
-
-    with tempfile.TemporaryDirectory(prefix="codementor-stdio-") as workdir:
-        # Docker executes as uid 65532, so the bind-mounted workspace must be
-        # traversable even though the temporary directory defaults to 0700.
-        if os.name != "nt":
-            os.chmod(workdir, 0o755)
-        script_path = os.path.join(workdir, "solution.py")
-        with open(script_path, "w", encoding="utf-8") as script:
-            script.write(source)
-
-        # Docker runs submitted programs as the unprivileged runner user.
-        # Make the read-only bind-mounted source readable inside the container.
-        if os.name != "nt":
-            os.chmod(script_path, 0o644)
-
-        env = {
-            "PYTHONIOENCODING": "utf-8",
-            "PYTHONDONTWRITEBYTECODE": "1",
-            "PATH": os.environ.get("PATH", ""),
-        }
-
-        for index, case in enumerate(test_cases, start=1):
-            input_data = str(case.get("input", ""))
-            expected = str(case.get("expected_output", ""))
-            started = time.perf_counter()
-
-            try:
-                completed = _run_python_process(
-                    script_path,
-                    workdir,
-                    input_data=input_data,
-                    timeout_seconds=min(
-                        MAX_TIMEOUT_SECONDS,
-                        max(0.1, float(time_limit_seconds)),
-                    ),
-                    memory_limit_mb=memory_limit_mb,
-                    env=env,
-                )
-                runtime_ms = int((time.perf_counter() - started) * 1000)
-            except subprocess.TimeoutExpired:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Time Limit Exceeded",
-                        expected=expected,
-                        actual=None,
-                        runtime_ms=int(
-                            min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000
-                        ),
-                        message=(
-                            f"Test exceeded the "
-                            f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s "
-                            "execution limit."
-                        ),
-                    )
-                )
-                continue
-
-            stderr = _truncate((completed.stderr or "").strip())
-            stdout_raw = completed.stdout or ""
-            stdout = _truncate(stdout_raw)
-
-            if len(stdout_raw) > MAX_OUTPUT_LENGTH:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Output Limit Exceeded",
-                        expected=expected,
-                        actual=stdout,
-                        runtime_ms=runtime_ms,
-                        message=f"Program output exceeded {MAX_OUTPUT_LENGTH} characters.",
-                    )
-                )
-                continue
-
-            if completed.returncode == 124:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Time Limit Exceeded",
-                        expected=expected,
-                        actual=stdout,
-                        runtime_ms=int(
-                            min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))) * 1000
-                        ),
-                        message=(
-                            f"Test exceeded the "
-                            f"{min(MAX_TIMEOUT_SECONDS, max(0.1, float(time_limit_seconds))):.2f}s "
-                            "execution limit."
-                        ),
-                    )
-                )
-                continue
-
-            if completed.returncode != 0:
-                message = stderr or stdout or "Program exited with a non-zero status."
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Runtime Error",
-                        expected=expected,
-                        actual=stdout,
-                        runtime_ms=runtime_ms,
-                        message=message,
-                    )
-                )
-                continue
-
-            validator_name = case.get("validator_name")
-
-            if validator_name:
-                if not package_root:
-                    outcomes.append(
-                        TestOutcome(
-                            index=index,
-                            passed=False,
-                            status="Judge Error",
-                            expected=expected,
-                            actual=stdout,
-                            runtime_ms=runtime_ms,
-                            message="The imported package has no persisted validator files.",
-                        )
-                    )
-                    continue
-
-                try:
-                    validation = run_custom_validator(
-                        package_root=package_root,
-                        validator_name=str(validator_name),
-                        input_data=input_data,
-                        answer_data=expected,
-                        team_output=stdout,
-                        validator_args=case.get("validator_flags") or [],
-                        timeout_seconds=validation_time_seconds,
-                        output_limit_bytes=validation_output_bytes,
-                    )
-                except CustomValidatorError as exc:
-                    outcomes.append(
-                        TestOutcome(
-                            index=index,
-                            passed=False,
-                            status="Judge Error",
-                            expected=expected,
-                            actual=stdout,
-                            runtime_ms=runtime_ms,
-                            message=str(exc),
-                        )
-                    )
-                    continue
-
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=validation.passed,
-                        status=validation.status,
-                        expected=expected,
-                        actual=stdout,
-                        runtime_ms=runtime_ms,
-                        message=validation.message,
-                    )
-                )
-            else:
-                try:
-                    validation = validate_default_output(
-                        stdout,
-                        expected,
-                        case.get("validator_flags"),
-                    )
-                except UnsupportedValidatorError as exc:
-                    raise CodeRejectedError(str(exc)) from exc
-
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=validation.passed,
-                        status="Passed" if validation.passed else "Wrong Answer",
-                        expected=expected,
-                        actual=stdout,
-                        runtime_ms=runtime_ms,
-                        message=None if validation.passed else validation.message,
-                    )
-                )
-
-    return outcomes
-
-
-def run_python_tests(
-    source: str,
-    test_cases: list[dict[str, Any]],
-    time_limit_seconds: float = TIMEOUT_SECONDS,
-    *,
-    memory_limit_mb: int | None = None,
-) -> list[TestOutcome]:
-    validate_code(source)
-    time_limit_seconds = min(
-        MAX_TIMEOUT_SECONDS,
-        max(0.1, float(time_limit_seconds)),
+    del package_root, validation_time_seconds, validation_output_bytes
+    return run_language_stdio_tests(
+        source, "Python", test_cases,
+        time_limit_seconds, memory_limit_mb=memory_limit_mb,
     )
-
-    outcomes: list[TestOutcome] = []
-
-    with tempfile.TemporaryDirectory(prefix="codementor-run-") as workdir:
-        if os.name != "nt":
-            os.chmod(workdir, 0o755)
-        script_path = os.path.join(workdir, "runner.py")
-
-        for index, case in enumerate(test_cases, start=1):
-            args = case.get("args", [])
-            expected = case.get("expected")
-
-            with open(script_path, "w", encoding="utf-8") as script:
-                script.write(_runner_source(source, args))
-            if os.name != "nt":
-                os.chmod(script_path, 0o644)
-
-            env = {
-                "PYTHONIOENCODING": "utf-8",
-                "PYTHONDONTWRITEBYTECODE": "1",
-                "PATH": os.environ.get("PATH", ""),
-            }
-
-            try:
-                completed = _run_python_process(
-                    script_path,
-                    workdir,
-                    input_data=None,
-                    timeout_seconds=time_limit_seconds,
-                    memory_limit_mb=memory_limit_mb,
-                    env=env,
-                )
-            except subprocess.TimeoutExpired:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Time Limit Exceeded",
-                        expected=expected,
-                        actual=None,
-                        runtime_ms=int(time_limit_seconds * 1000),
-                        message=f"Test exceeded the {time_limit_seconds:.1f}s execution limit.",
-                    )
-                )
-                continue
-
-            stderr = _truncate((completed.stderr or "").strip())
-            stdout = _truncate((completed.stdout or "").strip())
-
-            marker = "__CODEMENTOR_RESULT__"
-            result_line = next(
-                (line for line in stdout.splitlines() if line.startswith(marker)),
-                None,
-            )
-
-            if completed.returncode != 0:
-                message = stderr or stdout or "Program exited with a non-zero status."
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Runtime Error",
-                        expected=expected,
-                        actual=None,
-                        runtime_ms=0,
-                        message=message,
-                    )
-                )
-                continue
-
-            if result_line is None:
-                outcomes.append(
-                    TestOutcome(
-                        index=index,
-                        passed=False,
-                        status="Invalid Output",
-                        expected=expected,
-                        actual=None,
-                        runtime_ms=0,
-                        message="The solve(...) function did not return a JSON-serializable result.",
-                    )
-                )
-                continue
-
-            try:
-                actual = json.loads(result_line[len(marker):])
-            except json.JSONDecodeError:
-                actual = result_line[len(marker):]
-
-            passed = actual == expected
-            outcomes.append(
-                TestOutcome(
-                    index=index,
-                    passed=passed,
-                    status="Passed" if passed else "Wrong Answer",
-                    expected=expected,
-                    actual=actual,
-                    runtime_ms=0,
-                    message=None if passed else f"Expected {expected!r}, got {actual!r}.",
-                )
-            )
-
-    return outcomes
