@@ -1,7 +1,11 @@
 import unittest
 from unittest.mock import patch
 
-from backend.database import Base, SessionLocal, engine
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+from backend.database import Base
 from backend.models import MentorMessage, MentorSession, Problem, User
 from backend.routers.mentor import (
     CreateSessionRequest,
@@ -16,12 +20,21 @@ from backend.routers.mentor import (
 
 
 class MentorSessionPersistenceTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        Base.metadata.create_all(engine)
-
     def setUp(self):
-        self.db = SessionLocal()
+        # Never run persistence tests against the configured developer database.
+        # A fresh in-memory database keeps tests isolated and prevents destructive cleanup.
+        self.engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        Base.metadata.create_all(bind=self.engine)
+        self.session_factory = sessionmaker(
+            bind=self.engine,
+            autoflush=False,
+            expire_on_commit=False,
+        )
+        self.db = self.session_factory()
         self.user = User(email="test@example.com", password_hash="hash")
         self.other = User(email="other@example.com", password_hash="hash")
         self.problem = Problem(
@@ -42,12 +55,9 @@ class MentorSessionPersistenceTests(unittest.TestCase):
         self.db.refresh(self.problem)
 
     def tearDown(self):
-        self.db.query(MentorMessage).delete()
-        self.db.query(MentorSession).delete()
-        self.db.query(Problem).delete()
-        self.db.query(User).delete()
-        self.db.commit()
         self.db.close()
+        Base.metadata.drop_all(bind=self.engine)
+        self.engine.dispose()
 
     def test_create_session_always_creates_new_chat(self):
         first = create_session(
