@@ -206,12 +206,12 @@ def _language_commands(
     if language == "C++":
         return [
             "sh", "-c",
-            f"mkdir -p /runner/artifacts && g++ -std=c++20 -O2 -pipe -s {source} -o /runner/artifacts/program",
+            f"mkdir -p /runner/artifacts && g++ -std=c++20 -O2 -pipe -s {source} -o /workspace/build/program",
         ], ["/workspace/build/program"], None
     if language == "Java":
         return [
             "sh", "-c",
-            f"mkdir -p /runner/artifacts/classes && javac -encoding UTF-8 -d /runner/artifacts/classes {source}",
+            f"mkdir -p /workspace/build/classes && javac -encoding UTF-8 -d /workspace/build/classes {source}",
         ], ["java", "-Djava.io.tmpdir=/tmp", "-cp", "/workspace/build/classes", "Main"], None
     if language == "JavaScript":
         return None, ["node", "--use-strict", f"/workspace/{source_name}"], None
@@ -219,17 +219,17 @@ def _language_commands(
         return [
             "tsc", "--target", "ES2022", "--module", "commonjs", "--strict", "false", "--skipLibCheck",
             "--types", "node", "--typeRoots", "/opt/codementor/node_modules/@types",
-            "--outDir", "/runner/artifacts/tsc", f"/workspace/{source_name}",
+            "--outDir", "/workspace/build/tsc", f"/workspace/{source_name}",
         ], ["node", "/workspace/build/tsc/solution.js"], None
     if language == "Go":
         return [
             "sh", "-c",
-            f"mkdir -p /runner/artifacts && go build -o /runner/artifacts/program {source}",
+            f"mkdir -p /runner/artifacts && go build -o /workspace/build/program {source}",
         ], ["/workspace/build/program"], None
     if language == "Rust":
         return [
             "sh", "-c",
-            f"mkdir -p /runner/artifacts && rustc -O {source} -o /runner/artifacts/program",
+            f"mkdir -p /runner/artifacts && rustc -O {source} -o /workspace/build/program",
         ], ["/workspace/build/program"], None
     raise CodeRejectedError(f"Unsupported language runtime: {language}.")
 
@@ -432,10 +432,28 @@ def _compile_submission(
     assert compile_argv is not None
     build_dir = workdir / "build"
     build_dir.mkdir(parents=True, exist_ok=True)
+    # Compilation runs as uid 65532. Artifacts must persist in this disposable
+    # host workspace so the later, read-only run container can execute them.
+    try:
+        os.chmod(build_dir, 0o777)
+    except OSError:
+        pass
+
     result_name = f"codementor-compile-{uuid.uuid4().hex[:20]}"
     cmd = _docker_base_command(
         str(workdir), memory_limit_mb=MAX_MEMORY_MB, docker_name=result_name
     ) + [EXECUTION_DOCKER_IMAGE, *_wrap_with_timeout(compile_argv, MAX_COMPILE_SECONDS)]
+    # Compilation is the only phase allowed to write to the temporary workspace.
+    mount_index = next(
+        (
+            index + 1
+            for index, argument in enumerate(cmd)
+            if argument == "--mount"
+        ),
+        None,
+    )
+    if mount_index is not None and cmd[mount_index].endswith(",readonly"):
+        cmd[mount_index] = cmd[mount_index][:-len(",readonly")]
     started = time.perf_counter()
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
