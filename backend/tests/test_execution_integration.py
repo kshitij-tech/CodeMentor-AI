@@ -42,6 +42,8 @@ class DockerExecutionIntegrationTests(unittest.TestCase):
                     "build",
                     "-t",
                     DOCKER_IMAGE,
+                    "-t",
+                    "codementor-multi-runtime:latest",
                     "-f",
                     str(root / "docker" / "multi-runtime" / "Dockerfile"),
                     str(root / "docker" / "multi-runtime"),
