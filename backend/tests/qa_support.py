@@ -209,7 +209,7 @@ def reset_catalog_cache() -> None:
 def add_user(
     db: Session,
     email: str,
-    password: str = "password123",
+    password: str = "password1234",
 ) -> User:
     user = User(
         email=email.strip().lower(),
