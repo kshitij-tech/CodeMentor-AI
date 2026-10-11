@@ -70,7 +70,7 @@ if IS_SQLITE:
         sqlite_path = DATABASE_URL[len("sqlite:///") :]
         is_absolute = (
             sqlite_path.startswith("/")
-            or sqlite_path.startswith("\")
+            or sqlite_path.startswith("\\")
             or (len(sqlite_path) >= 2 and sqlite_path[1] == ":")
         )
         if sqlite_path not in {":memory:", ""} and not is_absolute:
