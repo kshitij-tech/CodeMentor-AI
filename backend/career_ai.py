@@ -1,18 +1,9 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
-from backend.ai import (
-    AIProviderError,
-    _extract_message_text,
-    _normalize_model,
-    _normalize_provider,
-    _request_lmstudio,
-    _request_mistral,
-    _request_ollama,
-)
+from backend.ai import AIProviderError, MentorAIConfig, MENTOR_PROVIDERS
 
 
 _JSON_SCHEMA = {
@@ -36,8 +27,7 @@ def _parse_feedback(raw: str) -> dict[str, Any]:
             lines = lines[1:]
         if lines and lines[-1].strip() == fence:
             lines = lines[:-1]
-        text = "
-".join(lines).strip()
+        text = "\n".join(lines).strip()
     try:
         parsed = json.loads(text)
     except json.JSONDecodeError:
@@ -69,10 +59,17 @@ def _parse_feedback(raw: str) -> dict[str, Any]:
     }
 
 
-def generate_interview_feedback(*, question: str, answer: str, rubric: list[str], question_type: str) -> dict[str, Any]:
-    """Use the existing AI provider transport without changing the AI Mentor module."""
-    provider = _normalize_provider(os.getenv("AI_PROVIDER", "ollama"))
-    model = _normalize_model(os.getenv("AI_MODEL", ""), provider)
+def generate_interview_feedback(
+    *,
+    question: str,
+    answer: str,
+    rubric: list[str],
+    question_type: str,
+) -> dict[str, Any]:
+    """Evaluate an interview answer through the shared hardened AI provider layer."""
+    config = MentorAIConfig.from_env()
+    provider = MENTOR_PROVIDERS[config.provider]
+
     system = (
         "You are CodeMentor AI's career interview evaluator. "
         "Evaluate the candidate's answer, not their grammar alone. "
@@ -85,26 +82,18 @@ def generate_interview_feedback(*, question: str, answer: str, rubric: list[str]
         "candidate_answer": answer,
         "evaluation_rubric": rubric,
     }
-    body: dict[str, Any] = {
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
-        ],
-        "format": _JSON_SCHEMA,
-    }
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": json.dumps(user, ensure_ascii=False)},
+    ]
 
-    if provider == "ollama":
-        payload = _request_ollama(model=model, body=body, max_retries=1)
-    elif provider == "lmstudio":
-        payload = _request_lmstudio(model=model, body=body)
-    else:
-        api_key = os.getenv("MISTRAL_API_KEY", "").strip()
-        if not api_key:
-            raise AIProviderError("MISTRAL_API_KEY is not configured.")
-        mistral_body = {"messages": body["messages"]}
-        payload = _request_mistral(model=model, api_key=api_key, body=mistral_body, max_retries=1)
-
-    return _parse_feedback(_extract_message_text(payload, provider))
+    raw = provider.complete(
+        model=config.model,
+        messages=messages,
+        response_schema=_JSON_SCHEMA,
+        config=config,
+    )
+    return _parse_feedback(raw)
 
 
 def heuristic_interview_feedback(*, question: str, answer: str, rubric: list[str], question_type: str) -> dict[str, Any]:
