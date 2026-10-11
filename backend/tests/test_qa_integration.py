@@ -48,7 +48,7 @@ class ApiIntegrationTests(unittest.TestCase):
         registered = self.client.request(
             "POST",
             "/auth/register",
-            json_body={"email": "New@Example.COM", "password": "password123"},
+            json_body={"email": "New@Example.COM", "password": "password1234"},
         )
         self.assertEqual(registered.status_code, 201)
         self.assertEqual(registered.json["email"], "new@example.com")
@@ -56,14 +56,14 @@ class ApiIntegrationTests(unittest.TestCase):
         duplicate = self.client.request(
             "POST",
             "/auth/register",
-            json_body={"email": " NEW@example.com ", "password": "password123"},
+            json_body={"email": " NEW@example.com ", "password": "password1234"},
         )
         self.assertEqual(duplicate.status_code, 409)
 
         login = self.client.request(
             "POST",
             "/auth/login",
-            json_body={"email": "NEW@example.com", "password": "password123"},
+            json_body={"email": "NEW@example.com", "password": "password1234"},
         )
         self.assertEqual(login.status_code, 200)
         token = login.json["access_token"]
