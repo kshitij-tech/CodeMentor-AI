@@ -48,11 +48,20 @@ class DockerExecutionIntegrationTests(unittest.TestCase):
                     str(root / "docker" / "multi-runtime" / "Dockerfile"),
                     str(root / "docker" / "multi-runtime"),
                 ],
+                capture_output=True,
+                text=True,
                 timeout=900,
                 check=False,
             )
             if built.returncode != 0:
-                raise RuntimeError("Could not build the multi-runtime execution image.")
+                detail = (built.stderr or built.stdout or "").strip()
+                if len(detail) > 6000:
+                    detail = detail[-6000:]
+                raise RuntimeError(
+                    "Could not build the multi-runtime execution image. "
+                    "Run the same docker build command manually for full logs."
+                    + (f"\n{detail}" if detail else "")
+                )
         cls.previous_image = execution.EXECUTION_DOCKER_IMAGE
         execution.EXECUTION_DOCKER_IMAGE = DOCKER_IMAGE
 
