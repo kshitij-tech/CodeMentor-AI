@@ -423,13 +423,35 @@ def _mentor_parse_response(raw: str) -> dict[str, Any]:
                 "Review it first and make sure you understand why it helps."
             )
         else:
-            raise AIProviderError("The mentor response is missing a valid answer.")
+            raise AIProviderError("The mentor response is missing a valid 'answer' field.")
 
     return {
         "answer": _mentor_plain_text(answer),
         "error_line": _mentor_error_line_value(parsed.get("error_line")),
         "patch": _mentor_patch_normalize(patch),
     }
+
+
+# Compatibility names retained for career preparation and legacy tests.
+
+def _normalize_provider(provider: str) -> str:
+    return _mentor_normalize_provider(provider)
+
+
+def _normalize_model(model: str, provider: str) -> str:
+    return _mentor_normalize_model(model, provider)
+
+
+def _strip_visible_thinking(text: str) -> str:
+    return _mentor_strip_thinking(text)
+
+
+def _extract_message_text(payload: dict[str, Any], provider: str) -> str:
+    return _mentor_extract_text(payload, provider)
+
+
+def _parse_mentor_response(raw: str) -> dict[str, Any]:
+    return _mentor_parse_response(raw)
 
 
 def _mentor_execution_error_line(execution: Any) -> int | None:
