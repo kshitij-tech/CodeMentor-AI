@@ -14,7 +14,13 @@ MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 DEFAULT_PROVIDER = "ollama"
 DEFAULT_MODEL = "qwen2.5-coder:3b"
 DEFAULT_LMSTUDIO_MODEL = "mistralai/ministral-3-3b"
+DEFAULT_MISTRAL_MODEL = "mistral-small-latest"
 DEFAULT_FALLBACK_MODEL = ""
+
+MAX_CODE_CHARS = 18_000
+MAX_EXECUTION_CHARS = 5_000
+MAX_HISTORY_MESSAGES = 8
+MAX_HISTORY_CHARS = 1_200
 
 class AIProviderError(RuntimeError):
     def __init__(
