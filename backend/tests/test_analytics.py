@@ -134,7 +134,7 @@ class AnalyticsCalculationTests(unittest.TestCase):
             (attempt(3, 3, now, status="Accepted"), problem(3, topics=["Binary Search"])),
         ]
         payload = build_analytics(rows, now=now)
-        self.assertEqual(payload["weakest_topics"][0]["topic"], "Arrays & Strings")
+        self.assertEqual(payload["weakest_topics"][0]["topic"], "Arrays")
         self.assertEqual(payload["strongest_topics"][0]["topic"], "Binary Search")
         self.assertTrue(all(item["attempted_problems"] > 0 for item in payload["weakest_topics"]))
 
