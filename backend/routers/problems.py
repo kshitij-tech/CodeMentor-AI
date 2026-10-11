@@ -24,6 +24,8 @@ from backend.problem_catalog import (
     normalize_difficulty,
     normalize_topic,
     strip_examples_from_description,
+    quality_flags,
+    SUPPORTED_LANGUAGES,
 )
 from backend.stdio_adapter import editor_schema_from_metadata
 
@@ -57,6 +59,11 @@ def _build_catalog_cache(db: Session) -> None:
             Problem.external_id,
             Problem.external_url,
             Problem.description,
+            Problem.constraints,
+            Problem.examples,
+            Problem.test_cases,
+            Problem.starter_code,
+            Problem.package_metadata,
             Problem.execution_mode,
         )
         .filter(Problem.difficulty.isnot(None))
@@ -69,9 +76,23 @@ def _build_catalog_cache(db: Session) -> None:
     difficulty_counts: Counter[str] = Counter()
 
     for row in rows:
-        if not is_english_problem(row.title, row.description):
-            continue
-        if normalize_difficulty(row.difficulty) is None:
+        record = {
+            "slug": row.slug,
+            "title": row.title,
+            "difficulty": row.difficulty,
+            "topics": row.topics or [],
+            "description": row.description,
+            "constraints": row.constraints or [],
+            "examples": row.examples or [],
+            "test_cases": row.test_cases or [],
+            "starter_code": row.starter_code or {},
+            "source": row.source,
+            "external_id": row.external_id,
+            "external_url": row.external_url,
+            "execution_mode": row.execution_mode,
+            "package_metadata": row.package_metadata or {},
+        }
+        if quality_flags(record):
             continue
 
         normalized_difficulty = normalize_difficulty(row.difficulty)
@@ -179,6 +200,7 @@ def serialize(problem: Problem) -> dict:
         "memory_limit_mb": problem.memory_limit_mb,
         "validation": problem.validation,
         "package_metadata": package_metadata,
+        "supported_languages": package_metadata.get("supported_languages", list(SUPPORTED_LANGUAGES)),
     }
 
 
@@ -296,10 +318,25 @@ def get_problem(
     db: Session = Depends(get_db),
 ):
     problem = db.query(Problem).filter(Problem.slug == slug).first()
-    if (
-        problem is None
-        or not is_english_problem(problem.title, problem.description)
-        or normalize_difficulty(problem.difficulty) is None
-    ):
+    if problem is None:
+        raise HTTPException(status_code=404, detail="Problem not found.")
+
+    record = {
+        "slug": problem.slug,
+        "title": problem.title,
+        "difficulty": problem.difficulty,
+        "topics": problem.topics or [],
+        "description": problem.description,
+        "constraints": problem.constraints or [],
+        "examples": problem.examples or [],
+        "test_cases": problem.test_cases or [],
+        "starter_code": problem.starter_code or {},
+        "source": problem.source,
+        "external_id": problem.external_id,
+        "external_url": problem.external_url,
+        "execution_mode": problem.execution_mode,
+        "package_metadata": problem.package_metadata or {},
+    }
+    if quality_flags(record):
         raise HTTPException(status_code=404, detail="Problem not found.")
     return serialize(problem)

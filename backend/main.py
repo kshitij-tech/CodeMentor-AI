@@ -1,22 +1,44 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import inspect, text
 
-from backend.database import SessionLocal
-
-from backend.database import Base, engine
-from backend.routers.auth import router as auth_router
-from backend.routers.profile import router as profile_router
-from backend.routers.problems import router as problems_router, prime_problem_catalog
-from backend.routers.execution import router as execution_router
-from backend.routers.mentor import router as mentor_router
+from backend.database import AUTO_CREATE_SCHEMA, SessionLocal, Base, engine
+from backend.observability import install_observability
+from backend.problem_seed import seed_problems
 from backend.routers.analytics import router as analytics_router
+from backend.routers.auth import router as auth_router
+from backend.routers.execution import router as execution_router
+from backend.routers.health import router as health_router
+from backend.routers.mentor import router as mentor_router
+from backend.routers.agent import router as agent_router
+from backend.routers.problems import (
+    prime_problem_catalog,
+    router as problems_router,
+)
+from backend.routers.profile import router as profile_router
 from backend.routers.recommendations import router as recommendations_router
 from backend.routers.workspace import router as workspace_router
-from backend.problem_seed import seed_problems
+from backend.security import (
+    APP_ENV,
+    get_cors_origins,
+    validate_security_configuration,
+)
+
+
+# Fail closed before touching the application database if deployment security
+# configuration is invalid.
+validate_security_configuration()
 
 
 def initialize_database() -> None:
+    # SQLite development keeps the historical zero-configuration behavior.
+    # Production/PostgreSQL is migration-managed and must run Alembic before
+    # the application starts.
+    if not AUTO_CREATE_SCHEMA:
+        return
+
     Base.metadata.create_all(bind=engine)
 
     # Development-only schema upgrade for the existing SQLite database.
@@ -24,8 +46,13 @@ def initialize_database() -> None:
         return
 
     inspector = inspect(engine)
+
     if inspector.has_table("user_profiles"):
-        columns = {column["name"] for column in inspector.get_columns("user_profiles")}
+        columns = {
+            column["name"]
+            for column in inspector.get_columns("user_profiles")
+        }
+
         new_columns = {
             "bio": "VARCHAR(180)",
             "target_companies": "JSON",
@@ -56,11 +83,12 @@ def initialize_database() -> None:
                     )
                 )
 
-    if inspector.has_table("coding_attempts"):
-        pass
-
     if inspector.has_table("problems"):
-        problem_columns = {column["name"] for column in inspector.get_columns("problems")}
+        problem_columns = {
+            column["name"]
+            for column in inspector.get_columns("problems")
+        }
+
         problem_migrations = {
             "test_cases": "JSON",
             "source": "VARCHAR(40) NOT NULL DEFAULT 'local'",
@@ -72,6 +100,7 @@ def initialize_database() -> None:
             "validation": "VARCHAR(30) NOT NULL DEFAULT 'default'",
             "package_metadata": "JSON",
         }
+
         with engine.begin() as connection:
             for column_name, column_type in problem_migrations.items():
                 if column_name not in problem_columns:
@@ -81,12 +110,16 @@ def initialize_database() -> None:
                         )
                     )
 
-    return
 
 initialize_database()
 
 with SessionLocal() as db:
-    seed_problems(db)
+    # Production/PostgreSQL is migration-managed and should not seed data
+    # during application startup. Local SQLite retains the historical seeding
+    # behavior.
+    if AUTO_CREATE_SCHEMA:
+        seed_problems(db)
+
     # Warm the problem catalogue once at startup so the first Practice request
     # does not have to scan and normalize the full problem dataset.
     prime_problem_catalog(db)
@@ -94,18 +127,56 @@ with SessionLocal() as db:
 
 app = FastAPI(
     title="CodeMentor AI API",
-    version="0.2.0",
+    version=os.getenv("APP_VERSION", "0.2.0"),
     description="Backend API for the CodeMentor AI platform.",
+    docs_url="/docs" if APP_ENV != "production" else None,
+    redoc_url="/redoc" if APP_ENV != "production" else None,
+    openapi_url="/openapi.json" if APP_ENV != "production" else None,
 )
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:5500", "http://127.0.0.1:5500", "null"],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
+    allow_origins=get_cors_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+        "OPTIONS",
+    ],
+    allow_headers=[
+        "Accept",
+        "Authorization",
+        "Content-Type",
+        "Origin",
+    ],
 )
+
+
+@app.middleware("http")
+async def security_headers(request, call_next):
+    response = await call_next(request)
+
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=()"
+    )
+
+    if request.url.path.startswith("/auth/"):
+        response.headers["Cache-Control"] = "no-store"
+
+    if APP_ENV == "production":
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
+
+    return response
+
 
 app.include_router(auth_router)
 app.include_router(profile_router)
@@ -117,19 +188,21 @@ app.include_router(recommendations_router)
 app.include_router(workspace_router)
 
 
+# DevOps health endpoints.
+app.include_router(health_router)
+app.include_router(agent_router)
+# Central observability middleware, metrics, request IDs, and diagnostics.
+install_observability(app)
+
+
 @app.get("/")
 def root() -> dict[str, str]:
-    return {
+    payload = {
         "message": "CodeMentor AI API is running.",
-        "docs": "/docs",
         "health": "/health",
     }
 
+    if APP_ENV != "production":
+        payload["docs"] = "/docs"
 
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "codementor-ai-api",
-        "version": "0.2.0",
-    }
+    return payload

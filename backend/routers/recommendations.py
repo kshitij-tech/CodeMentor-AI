@@ -1,86 +1,85 @@
-from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from collections.abc import Iterable
+from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.problem_catalog import (
-    CANONICAL_TOPICS,
-    canonicalize_topics,
-    is_english_problem,
-    normalize_difficulty,
-)
 from backend.models import CodingAttempt, Problem, User, UserProfile
+from backend.problem_catalog import canonicalize_topics
 from backend.routers.auth import get_current_user
 from backend.routers.problems import _catalog_rows
-
-
-_VALID_DIFFICULTIES = {"Easy", "Medium", "Hard"}
+from roadmap.adaptive_learning import (
+    build_learning_state,
+    build_roadmap,
+    explain_recommendation,
+    mastered_topics,
+    recommend_problem,
+    skills_payload,
+    weak_topics,
+)
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
-TOPICS = CANONICAL_TOPICS
 
-# A learning dependency graph for the roadmap. The graph is intentionally
-# limited to the topics that can actually appear in the Practice catalogue.
-# Missing prerequisites are ignored, so a small catalogue does not create
-# impossible locks.
-ROADMAP_PREREQUISITES = {
-    "Arrays & Strings": [],
-    "Hashing & Hash Maps": ["Arrays & Strings"],
-    "Sorting": ["Arrays & Strings"],
-    "Prefix Sum": ["Arrays & Strings"],
-    "Two Pointers": ["Arrays & Strings", "Sorting"],
-    "Sliding Window": ["Arrays & Strings", "Two Pointers"],
-    "Binary Search": ["Arrays & Strings", "Sorting"],
-    "Stacks & Queues": ["Arrays & Strings"],
-    "Linked Lists": ["Arrays & Strings"],
-    "Intervals": ["Arrays & Strings", "Sorting"],
-    "Trees & BST": ["Stacks & Queues"],
-    "Heaps & Priority Queues": ["Trees & BST"],
-    "Backtracking": ["Trees & BST"],
-    "Greedy Algorithms": ["Sorting", "Prefix Sum"],
-    "Bit Manipulation": ["Arrays & Strings"],
-    "Graphs (BFS/DFS)": ["Trees & BST"],
-    "Dynamic Programming": ["Arrays & Strings", "Prefix Sum"],
-    "Math": ["Arrays & Strings"],
-}
-
-ROADMAP_TIER = {
-    "Arrays & Strings": 1,
-    "Hashing & Hash Maps": 1,
-    "Sorting": 1,
-    "Prefix Sum": 1,
-    "Math": 1,
-    "Two Pointers": 2,
-    "Sliding Window": 2,
-    "Binary Search": 2,
-    "Stacks & Queues": 2,
-    "Linked Lists": 2,
-    "Intervals": 2,
-    "Bit Manipulation": 2,
-    "Trees & BST": 3,
-    "Heaps & Priority Queues": 3,
-    "Backtracking": 3,
-    "Greedy Algorithms": 3,
-    "Graphs (BFS/DFS)": 4,
-    "Dynamic Programming": 4,
-}
-
-EXPERIENCE_TARGET_TIER = {
-    "Beginner": 1,
-    "Intermediate": 2,
-    "Advanced": 3,
-}
-
-ROADMAP_MASTERY_UNLOCK = 60
-ROADMAP_MIN_EVIDENCE = 3
-ROADMAP_MASTERED = 75
+def _attempts(db: Session, user_id: int) -> list[CodingAttempt]:
+    return (
+        db.query(CodingAttempt)
+        .filter(CodingAttempt.user_id == user_id)
+        .order_by(CodingAttempt.created_at.asc(), CodingAttempt.id.asc())
+        .all()
+    )
 
 
-def _naive_utc(value: datetime) -> datetime:
-    return value.replace(tzinfo=None) if value.tzinfo else value
+def _catalog(db: Session) -> list[dict[str, Any]]:
+    # The Practice catalogue is the single source of truth for normalized,
+    # English-only problems and canonical topic names.
+    return _catalog_rows(db)
+
+
+def _profile_experience(db: Session, user_id: int) -> str:
+    profile = (
+        db.query(UserProfile)
+        .filter(UserProfile.user_id == user_id)
+        .first()
+    )
+    return (profile.experience_level if profile else None) or "Beginner"
+
+
+def _problem_payload(problem: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": int(problem["id"]),
+        "slug": problem.get("slug"),
+        "title": problem.get("title"),
+        "difficulty": problem.get("difficulty"),
+        "topics": canonicalize_topics(problem.get("topics")),
+    }
+
+
+def _build_state(
+    db: Session,
+    current_user: User,
+    catalog: Iterable[dict[str, Any]],
+):
+    return build_learning_state(
+        catalog,
+        _attempts(db, current_user.id),
+    )
+
+
+@router.get("/skills")
+def learning_skills(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return confidence-aware topic/difficulty skill telemetry for visualizations."""
+    catalog = _catalog(db)
+    state = _build_state(db, current_user, catalog)
+    return skills_payload(
+        state,
+        experience_level=_profile_experience(db, current_user.id),
+    )
+
 
 @router.get("/next")
 def next_recommendation(
@@ -88,397 +87,211 @@ def next_recommendation(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-
-    # Use the exact same cleaned catalogue as Practice: English problems,
-    # supported difficulty, canonical topic names.
-    catalog = _catalog_rows(db)
+    """Return the next deterministic adaptive problem."""
+    catalog = _catalog(db)
+    state = _build_state(db, current_user, catalog)
+    experience = _profile_experience(db, current_user.id)
     catalog_by_id = {int(row["id"]): row for row in catalog}
 
-    attempts = (
-        db.query(CodingAttempt, Problem)
-        .join(Problem, CodingAttempt.problem_id == Problem.id)
-        .filter(CodingAttempt.user_id == current_user.id)
-        .all()
-    )
-
-    solved_ids = {
-        attempt.problem_id
-        for attempt, _problem in attempts
-        if attempt.problem_id in catalog_by_id
-        and attempt.mode == "submit"
-        and attempt.status == "Accepted"
-    }
-
-    recent_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
-    recent_ids = {
-        attempt.problem_id
-        for attempt, _problem in attempts
-        if attempt.problem_id in catalog_by_id
-        and _naive_utc(attempt.created_at) >= _naive_utc(recent_cutoff)
-    }
-
-    topic_stats = defaultdict(lambda: {"attempted": 0, "accepted": 0, "failures": 0})
-    for attempt, problem in attempts:
-        catalog_problem = catalog_by_id.get(problem.id)
-        if not catalog_problem:
-            continue
-        for topic in catalog_problem["topics"]:
-            topic_stats[topic]["attempted"] += 1
-            if attempt.mode == "submit" and attempt.status == "Accepted":
-                topic_stats[topic]["accepted"] += 1
-            elif attempt.mode == "submit":
-                topic_stats[topic]["failures"] += 1
-
-    def topic_health(topic: str) -> float:
-        stat = topic_stats[topic]
-        if not stat["attempted"]:
-            return 0.55
-        acceptance = stat["accepted"] / max(stat["attempted"], 1)
-        failure_pressure = min(stat["failures"] / max(stat["attempted"], 1), 1.0)
-        return max(0.0, min(1.0, 0.7 - acceptance * 0.45 + failure_pressure * 0.35))
-
-    experience = (profile.experience_level if profile else "Beginner") or "Beginner"
-    preferred_difficulty = {
-        "Beginner": "Easy",
-        "Intermediate": "Medium",
-        "Advanced": "Medium",
-    }.get(experience, "Medium")
-
-    # Keep the active recommendation stable until that exact problem is solved.
+    # Preserve the active-learning UX: an unsolved active problem stays in
+    # place until it is accepted, while the adaptive engine plans what follows.
     if current_problem_id is not None:
-        current_problem = catalog_by_id.get(current_problem_id)
-        if current_problem is not None and current_problem_id not in solved_ids:
-            current_topics = list(current_problem["topics"])
-            current_weak_topic = min(
-                current_topics,
-                key=lambda topic: topic_health(topic),
-                default=current_topics[0] if current_topics else "General DSA",
+        current = catalog_by_id.get(int(current_problem_id))
+        if current is not None and int(current_problem_id) not in state.solved_ids:
+            explanation = explain_recommendation(
+                current,
+                state,
+                experience_level=experience,
+                candidate_count=len(catalog_by_id),
+            )
+            focus_topic = (current.get("topics") or [None])[0]
+            topic_metrics = [
+                state.topics.get(topic)
+                for topic in current.get("topics") or []
+                if state.topics.get(topic) is not None
+            ]
+            if topic_metrics:
+                focus_topic = min(topic_metrics, key=lambda metric: metric.mastery).key
+            topic_health = (
+                round(
+                    min(
+                        metric.mastery
+                        for metric in topic_metrics
+                    ) / 100.0,
+                    3,
+                )
+                if topic_metrics
+                else None
             )
             return {
-                "problem": {
-                    "id": current_problem["id"],
-                    "slug": current_problem["slug"],
-                    "title": current_problem["title"],
-                    "difficulty": current_problem["difficulty"],
-                    "topics": current_topics,
-                },
+                "problem": _problem_payload(current),
                 "reason": (
-                    "Keep working on this problem. A new recommendation will appear after you solve it."
-                    if not current_topics
-                    else f"Keep working on this problem to strengthen {current_weak_topic}. "
-                         "A new recommendation will appear after you solve it."
+                    "Keep working on this problem. A new recommendation will "
+                    "appear after you solve it."
                 ),
-                "focus_topic": current_weak_topic,
-                "score": None,
-                "topic_health": round(topic_health(current_weak_topic), 3),
-                "is_reinforcement": False,
+                "focus_topic": focus_topic,
+                "score": explanation["score_breakdown"].get("score"),
+                "topic_health": topic_health,
+                "is_reinforcement": bool(explanation["was_attempted"]),
                 "locked_until_solved": True,
                 "profile_experience": experience,
+                "adaptive_difficulty": explanation["score_breakdown"].get("difficulty_policy"),
+                "explanation": explanation,
             }
 
-    scored = []
-    for problem in catalog:
-        problem_id = int(problem["id"])
-        if problem_id in solved_ids:
-            continue
-
-        topics = list(problem["topics"])
-        weakness = sum(topic_health(topic) for topic in topics) / max(len(topics), 1)
-        difficulty = problem["difficulty"]
-        difficulty_bonus = 1.0 if difficulty == preferred_difficulty else 0.35
-        recent_penalty = 0.45 if problem_id in recent_ids else 0.0
-        exploration_bonus = 0.25 if not any(topic in topic_stats for topic in topics) else 0.0
-        score = weakness * 5.0 + difficulty_bonus * 2.0 + 3.0 + exploration_bonus - recent_penalty
-        scored.append((score, problem, weakness))
-
-    if not scored:
+    problem, breakdown = recommend_problem(
+        catalog,
+        state,
+        experience_level=experience,
+    )
+    if problem is None:
         return {
             "problem": None,
-            "reason": "You have solved every currently available problem.",
+            "reason": "You have solved every currently eligible problem.",
             "focus_topic": None,
             "score": None,
             "topic_health": None,
             "is_reinforcement": False,
             "locked_until_solved": False,
             "profile_experience": experience,
+            "adaptive_difficulty": (
+                breakdown["difficulty_policy"] if breakdown else None
+            ),
         }
 
-    scored.sort(key=lambda item: (-item[0], int(item[1]["id"])))
-    chosen_score, chosen, chosen_weakness = scored[0]
-    chosen_topics = list(chosen["topics"])
-    weak_topic = min(
-        chosen_topics,
-        key=lambda topic: topic_health(topic),
-        default=chosen_topics[0] if chosen_topics else "General DSA",
+    explanation = explain_recommendation(
+        problem,
+        state,
+        experience_level=experience,
+        candidate_count=max(1, len(catalog)),
     )
-
-    reason = (
-        f"Recommended because {weak_topic} is currently one of your less-practiced or less-stable areas."
-        if chosen_topics
-        else "Recommended as a fresh problem from the current Practice library."
+    topics = list(problem.get("topics") or [])
+    metrics = [
+        state.topics[topic]
+        for topic in topics
+        if topic in state.topics
+    ]
+    focus_metric = min(
+        metrics,
+        key=lambda metric: metric.mastery,
+        default=None,
     )
 
     return {
-        "problem": {
-            "id": chosen["id"],
-            "slug": chosen["slug"],
-            "title": chosen["title"],
-            "difficulty": chosen["difficulty"],
-            "topics": chosen_topics,
-        },
-        "reason": reason,
-        "focus_topic": weak_topic,
-        "score": round(chosen_score, 3),
-        "topic_health": round(chosen_weakness, 3),
-        "is_reinforcement": False,
+        "problem": _problem_payload(problem),
+        "reason": explanation["why"],
+        "focus_topic": focus_metric.key if focus_metric else (topics[0] if topics else None),
+        "score": breakdown.get("score") if breakdown else None,
+        "topic_health": (
+            round(focus_metric.mastery / 100.0, 3)
+            if focus_metric
+            else None
+        ),
+        "is_reinforcement": bool(
+            breakdown and breakdown.get("recent_mistake_signal", 0) > 0
+        ),
         "locked_until_solved": False,
         "profile_experience": experience,
+        "adaptive_difficulty": (
+            breakdown.get("difficulty_policy") if breakdown else None
+        ),
+        "explanation": explanation,
     }
+
+
+@router.get("/why/{problem_id}")
+def why_problem(
+    problem_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Explain the adaptive score for one problem using the same policy as /next."""
+    catalog = _catalog(db)
+    catalog_by_id = {int(row["id"]): row for row in catalog}
+    problem = catalog_by_id.get(problem_id)
+    if problem is None:
+        raise HTTPException(status_code=404, detail="Problem not found.")
+
+    state = _build_state(db, current_user, catalog)
+    experience = _profile_experience(db, current_user.id)
+    explanation = explain_recommendation(
+        problem,
+        state,
+        experience_level=experience,
+        candidate_count=max(1, len(catalog)),
+    )
+    return {
+        **explanation,
+        "problem": _problem_payload(problem),
+    }
+
 
 @router.get("/roadmap")
 def learning_roadmap(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Build an evidence-driven prerequisite roadmap from the real Practice catalogue."""
-    profile = db.query(UserProfile).filter(UserProfile.user_id == current_user.id).first()
-    experience = (profile.experience_level if profile else "Beginner") or "Beginner"
-    target_tier = EXPERIENCE_TARGET_TIER.get(experience, 1)
-
-    catalog = _catalog_rows(db)
-    catalog_by_id = {int(row["id"]): row for row in catalog}
-
-    available_topic_counts = defaultdict(int)
-    difficulty_counts = defaultdict(lambda: defaultdict(int))
-    for row in catalog:
-        for topic in row["topics"]:
-            available_topic_counts[topic] += 1
-            difficulty_counts[topic][row["difficulty"]] += 1
-
-    available_topics = [
-        topic for topic in TOPICS
-        if available_topic_counts[topic] > 0
-    ]
-    available_set = set(available_topics)
-
-    attempts = (
-        db.query(CodingAttempt, Problem)
-        .join(Problem, CodingAttempt.problem_id == Problem.id)
-        .filter(CodingAttempt.user_id == current_user.id)
-        .all()
+    """Build the personalized prerequisite roadmap from the real catalogue."""
+    catalog = _catalog(db)
+    state = _build_state(db, current_user, catalog)
+    return build_roadmap(
+        catalog,
+        state,
+        experience_level=_profile_experience(db, current_user.id),
     )
 
-    stats = defaultdict(lambda: {
-        "problem_ids": set(),
-        "solved_problem_ids": set(),
-        "submissions": 0,
-        "accepted": 0,
-    })
-    for attempt, problem in attempts:
-        catalog_problem = catalog_by_id.get(problem.id)
-        if not catalog_problem:
-            continue
-        for topic in catalog_problem["topics"]:
-            stats[topic]["problem_ids"].add(problem.id)
-            if attempt.mode == "submit":
-                stats[topic]["submissions"] += 1
-                if attempt.status == "Accepted":
-                    stats[topic]["accepted"] += 1
-                    stats[topic]["solved_problem_ids"].add(problem.id)
-
-    def topic_mastery(topic: str) -> int:
-        stat = stats[topic]
-        attempted = len(stat["problem_ids"])
-        solved = len(stat["solved_problem_ids"])
-        if not attempted:
-            return 0
-        evidence = min(1.0, attempted / 10.0)
-        solve_rate = solved / attempted
-        acceptance = stat["accepted"] / max(stat["submissions"], 1)
-        return round((0.70 * solve_rate + 0.30 * acceptance) * evidence * 100)
-
-    def is_mastered(topic: str) -> bool:
-        stat = stats[topic]
-        return (
-            topic_mastery(topic) >= ROADMAP_MASTERED
-            and len(stat["problem_ids"]) >= ROADMAP_MIN_EVIDENCE
-        )
-
-    def prerequisite_topics(topic: str) -> list[str]:
-        # Only catalogue topics matter. A prerequisite that is absent from
-        # Practice cannot reasonably block a learner.
-        return [
-            item for item in ROADMAP_PREREQUISITES.get(topic, [])
-            if item in available_set
-        ]
-
-    def prerequisites_met(topic: str) -> bool:
-        return all(
-            is_mastered(prerequisite)
-            for prerequisite in prerequisite_topics(topic)
-        )
-
-    def recommended_difficulty(topic: str) -> str | None:
-        counts = difficulty_counts[topic]
-        mastery = topic_mastery(topic)
-        if mastery < 40:
-            preferred = ["Easy", "Medium", "Hard"]
-        elif mastery < ROADMAP_MASTERED:
-            preferred = ["Medium", "Easy", "Hard"]
-        else:
-            preferred = ["Hard", "Medium", "Easy"]
-        return next((level for level in preferred if counts[level] > 0), None)
-
-    rows = []
-    for topic in available_topics:
-        stat = stats[topic]
-        mastery = topic_mastery(topic)
-        attempted = len(stat["problem_ids"])
-        solved = len(stat["solved_problem_ids"])
-        mastered = is_mastered(topic)
-        prereqs = prerequisite_topics(topic)
-        unmet = [item for item in prereqs if not is_mastered(item)]
-        unlocked = not unmet
-        tier = ROADMAP_TIER.get(topic, 2)
-        status = "mastered" if mastered else ("available" if unlocked else "locked")
-
-        if mastered:
-            why = "Mastery evidence is established for this topic."
-        elif unmet:
-            why = "Complete the prerequisite topic(s) first: " + ", ".join(unmet) + "."
-        elif tier < target_tier:
-            why = (
-                f"Foundation topic kept in the path before the {experience.lower()} "
-                "starting tier."
-            )
-        elif attempted:
-            why = "This topic is available and your current evidence shows room to improve."
-        else:
-            why = "This topic is available and ready to enter your current learning path."
-
-        rows.append({
-            "topic": topic,
-            "status": status,
-            "mastery": mastery,
-            "attempted_problems": attempted,
-            "solved_problems": solved,
-            "available_problems": available_topic_counts[topic],
-            "available_easy": difficulty_counts[topic]["Easy"],
-            "available_medium": difficulty_counts[topic]["Medium"],
-            "available_hard": difficulty_counts[topic]["Hard"],
-            "recommended_difficulty": recommended_difficulty(topic),
-            "acceptance_rate": round(
-                stat["accepted"] / stat["submissions"] * 100
-            ) if stat["submissions"] else 0,
-            "tier": tier,
-            "prerequisites": prereqs,
-            "unmet_prerequisites": unmet,
-            "unlocked": unlocked,
-            "why": why,
-        })
-
-    # Choose the current focus from unlocked, non-mastered topics. The target
-    # experience tier influences where we enter the graph, but prerequisites
-    # always win, so an Advanced profile cannot silently skip foundations.
-    candidates = [
-        row for row in rows
-        if row["unlocked"] and row["status"] != "mastered"
-    ]
-    candidates.sort(
-        key=lambda row: (
-            abs(row["tier"] - target_tier),
-            row["mastery"],
-            -row["available_problems"],
-            row["topic"],
-        )
-    )
-    current_topic = candidates[0]["topic"] if candidates else None
-
-    roadmap = []
-    for row in rows:
-        if row["status"] == "mastered":
-            position = "completed"
-        elif row["topic"] == current_topic:
-            position = "current"
-        elif row["unlocked"]:
-            position = "up_next"
-        else:
-            position = "locked"
-
-        roadmap.append({
-            **row,
-            "position": position,
-        })
-
-    # Keep the UI focused: show completed milestones, the current focus, the
-    # next few unlocked topics, and a small preview of locked prerequisites.
-    completed = sorted(
-        [row for row in roadmap if row["position"] == "completed"],
-        key=lambda row: (-row["mastery"], row["topic"]),
-    )[:3]
-    current = [row for row in roadmap if row["position"] == "current"]
-    up_next = sorted(
-        [row for row in roadmap if row["position"] == "up_next"],
-        key=lambda row: (
-            abs(row["tier"] - target_tier),
-            row["mastery"],
-            row["topic"],
-        ),
-    )[:5]
-    locked = sorted(
-        [row for row in roadmap if row["position"] == "locked"],
-        key=lambda row: (row["tier"], row["topic"]),
-    )[:3]
-
-    visible = completed[::-1] + current + up_next + locked
-
-    return {
-        "items": visible,
-        "current_topic": current_topic,
-        "available_topic_count": len(available_topics),
-        "experience_level": experience,
-        "target_tier": target_tier,
-        "unlock_mastery": ROADMAP_MASTERY_UNLOCK,
-        "unlock_evidence": ROADMAP_MIN_EVIDENCE,
-        "mastery_threshold": ROADMAP_MASTERED,
-    }
 
 @router.get("/weak")
-def weak_topics(
+def weak_topic_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    attempts = (
-        db.query(CodingAttempt, Problem)
-        .join(Problem, CodingAttempt.problem_id == Problem.id)
-        .filter(CodingAttempt.user_id == current_user.id)
-        .all()
-    )
-    stats = defaultdict(lambda: {"attempted": 0, "accepted": 0, "failures": 0})
-    for attempt, problem in attempts:
-        if attempt.mode != "submit":
-            continue
-        for topic in problem.topics or []:
-            stats[topic]["attempted"] += 1
-            if attempt.status == "Accepted":
-                stats[topic]["accepted"] += 1
-            else:
-                stats[topic]["failures"] += 1
-
-    result = []
-    for topic in TOPICS:
-        stat = stats[topic]
-        if not stat["attempted"]:
-            continue
-        acceptance = round(stat["accepted"] / stat["attempted"] * 100)
-        result.append({
-            "topic": topic,
-            "submissions": stat["attempted"],
-            "accepted": stat["accepted"],
-            "failures": stat["failures"],
-            "acceptance_rate": acceptance,
-            "priority": round(100 - acceptance),
+    """Return evidence-backed weak topics with gaps and recent mistake pressure."""
+    catalog = _catalog(db)
+    state = _build_state(db, current_user, catalog)
+    items = []
+    for metric in weak_topics(state, limit=5):
+        items.append({
+            "topic": metric.key,
+            "skill_score": metric.skill_score,
+            "mastery": metric.mastery,
+            "confidence": metric.confidence,
+            "gap": metric.gap,
+            "attempted_problems": metric.attempted_problems,
+            "solved_problems": metric.solved_problems,
+            "submissions": metric.submissions,
+            "accepted_submissions": metric.submissions - metric.failures,
+            "failures": metric.failures,
+            "recent_failures": metric.recent_failures,
+            "acceptance_rate": metric.acceptance_rate,
+            "status": metric.status,
         })
-    result.sort(key=lambda item: (-item["priority"], -item["submissions"], item["topic"]))
-    return {"items": result[:5]}
+    return {
+        "items": items,
+        "mastered_topics": [metric.key for metric in mastered_topics(state)],
+    }
+
+
+@router.get("/mastered")
+def mastered_topic_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return topics that have crossed the mastery and evidence thresholds."""
+    catalog = _catalog(db)
+    state = _build_state(db, current_user, catalog)
+    return {
+        "items": [
+            {
+                "topic": metric.key,
+                "skill_score": metric.skill_score,
+                "mastery": metric.mastery,
+                "confidence": metric.confidence,
+                "attempted_problems": metric.attempted_problems,
+                "solved_problems": metric.solved_problems,
+                "acceptance_rate": metric.acceptance_rate,
+                "status": metric.status,
+            }
+            for metric in mastered_topics(state)
+        ]
+    }

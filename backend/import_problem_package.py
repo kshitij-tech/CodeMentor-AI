@@ -37,6 +37,18 @@ def import_package(path: Path) -> tuple[bool, dict]:
 
     with SessionLocal() as db:
         problem = _find_existing(db, values)
+        content_duplicate = (
+            db.query(Problem)
+            .filter(
+                Problem.title == values["title"],
+                Problem.description == values["description"],
+            )
+            .first()
+        )
+        if content_duplicate is not None and (problem is None or content_duplicate.id != problem.id):
+            raise ProblemPackageError(
+                f"Duplicate problem content matches existing problem '{content_duplicate.slug}'."
+            )
         if problem is None:
             db.add(Problem(**values))
             created = True

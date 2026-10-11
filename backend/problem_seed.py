@@ -1,5 +1,5 @@
 from backend.models import Problem
-from backend.problem_catalog import ensure_starter_code
+from backend.problem_catalog import normalize_problem_record, quality_flags
 
 PROBLEMS = [
     {
@@ -122,31 +122,14 @@ PROBLEMS = [
 def seed_problems(db):
     for original in PROBLEMS:
         item = dict(original)
-
-        # Normalize the callable arguments before persisting them. Older seed
-        # rows used an extra list nesting such as [[[nums], budget]], which
-        # makes solve(nums, budget) receive one argument instead of two.
-        normalized_tests = []
-        for case in item.get("test_cases", []):
-            copied = dict(case)
-            args = list(copied.get("args", []))
-            if (
-                len(args) == 1
-                and isinstance(args[0], list)
-                and args[0]
-                and isinstance(args[0][0], list)
-            ):
-                args = args[0]
-            copied["args"] = args
-            normalized_tests.append(copied)
-        item["test_cases"] = normalized_tests
-
-        item["starter_code"] = ensure_starter_code(
-            item.get("starter_code"),
-            item.get("execution_mode", "function"),
-            item.get("test_cases"),
-            item.get("examples"),
-        )
+        item.setdefault("source", "seed")
+        item = normalize_problem_record(item)
+        flags = quality_flags(item)
+        if flags:
+            raise ValueError(
+                f"Seed problem {item.get('slug')!r} failed catalogue quality checks: "
+                + ", ".join(flags)
+            )
 
         existing = db.query(Problem).filter(Problem.slug == item["slug"]).first()
         if existing is None:
@@ -160,5 +143,7 @@ def seed_problems(db):
             existing.examples = item["examples"]
             existing.test_cases = item["test_cases"]
             existing.starter_code = item["starter_code"]
+            existing.source = item["source"]
             existing.execution_mode = item.get("execution_mode", "function")
+            existing.package_metadata = item.get("package_metadata") or {}
     db.commit()

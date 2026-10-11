@@ -9,11 +9,11 @@ from backend.models import Problem
 from backend.problem_catalog import audit_problems
 
 
-def load_problem_records() -> list[dict]:
+def load_problem_records():
     with SessionLocal() as db:
-        rows = db.query(Problem).order_by(Problem.id.asc()).all()
-        return [
-            {
+        rows = db.query(Problem).order_by(Problem.id.asc()).yield_per(1000)
+        for row in rows:
+            yield {
                 "id": row.id,
                 "slug": row.slug,
                 "title": row.title,
@@ -27,10 +27,9 @@ def load_problem_records() -> list[dict]:
                 "source": row.source,
                 "external_id": row.external_id,
                 "external_url": row.external_url,
+                "execution_mode": row.execution_mode,
+                "package_metadata": row.package_metadata or {},
             }
-            for row in rows
-        ]
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -58,6 +57,8 @@ def main() -> int:
         print(f"Total problems : {report['total']}")
         print(f"Clean problems : {report['clean']}")
         print(f"Problems with issues : {report['total'] - report['clean']}")
+        print(f"Quality rate : {report['health']['quality_rate_percent']}%")
+        print(f"Duplicate groups : {report['health']['duplicate_group_count']}")
         print()
 
         issues = report["issues"]
@@ -79,6 +80,14 @@ def main() -> int:
         print(f"Duplicate groups : {len(duplicate_groups)}")
         for index, (kind, labels) in enumerate(duplicate_groups, start=1):
             print(f"  {index}. [{kind}] {', '.join(labels)}")
+
+        print()
+        print("Difficulty distribution")
+        for name, count in report["health"]["difficulty_distribution"].items():
+            print(f"  {name:12} {count}")
+        print("Top topics")
+        for name, count in list(report["health"]["topic_distribution"].items())[:15]:
+            print(f"  {name:24} {count}")
 
     duplicate_count = sum(
         len(groups)

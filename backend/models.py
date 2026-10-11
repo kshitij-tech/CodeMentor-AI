@@ -1,25 +1,26 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, JSON, String, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
 
 
+POSTGRES_JSON = JSON().with_variant(JSONB(), "postgresql")
+
+
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(
         String(320),
         unique=True,
         index=True,
         nullable=False,
     )
-    password_hash: Mapped[str] = mapped_column(
-        String(512),
-        nullable=False,
-    )
+    password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -29,50 +30,61 @@ class User(Base):
 
 class UserProfile(Base):
     __tablename__ = "user_profiles"
+    __table_args__ = (Index("ix_user_profiles_user_id", "user_id", unique=True),)
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
-        unique=True,
-        index=True,
         nullable=False,
     )
-    full_name: Mapped[str | None] = mapped_column(
-        String(120),
-        nullable=True,
-    )
-    leetcode_username: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
-    )
+
+    full_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    leetcode_username: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
     preferred_language: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
+        String(50), nullable=True
     )
+    preferred_languages: Mapped[list[str] | None] = mapped_column(
+        POSTGRES_JSON, nullable=True
+    )
+
     experience_level: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
+        String(50), nullable=True
     )
+    dsa_familiarity: Mapped[list[str] | None] = mapped_column(
+        POSTGRES_JSON, nullable=True
+    )
+
     target_role: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
+        String(100), nullable=True
     )
     bio: Mapped[str | None] = mapped_column(
-        String(180),
-        nullable=True,
+        String(180), nullable=True
     )
     target_companies: Mapped[list[str] | None] = mapped_column(
-        JSON,
-        nullable=True,
+        POSTGRES_JSON, nullable=True
     )
+    target_categories: Mapped[list[str] | None] = mapped_column(
+        POSTGRES_JSON, nullable=True
+    )
+
+    daily_practice_target: Mapped[int] = mapped_column(
+        default=3,
+        nullable=False,
+    )
+
+    learning_preferences: Mapped[dict | None] = mapped_column(
+        POSTGRES_JSON, nullable=True
+    )
+
     preparation_timeline: Mapped[str | None] = mapped_column(
-        String(100),
-        nullable=True,
+        String(100), nullable=True
     )
     onboarding_completed: Mapped[bool] = mapped_column(
         default=False,
         nullable=False,
     )
+
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -80,20 +92,24 @@ class UserProfile(Base):
         nullable=False,
     )
 
-
 class Problem(Base):
     __tablename__ = "problems"
+    __table_args__ = (
+        Index("ix_problems_slug", "slug", unique=True),
+        Index("ix_problems_source_external_id", "source", "external_id"),
+        Index("ix_problems_difficulty_id", "difficulty", "id"),
+    )
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(120), nullable=False)
     title: Mapped[str] = mapped_column(String(180), nullable=False)
     difficulty: Mapped[str] = mapped_column(String(30), nullable=False)
-    topics: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    topics: Mapped[list[str]] = mapped_column(POSTGRES_JSON, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    constraints: Mapped[list[str]] = mapped_column(JSON, nullable=False)
-    examples: Mapped[list[dict]] = mapped_column(JSON, nullable=False)
-    test_cases: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
-    starter_code: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False)
+    constraints: Mapped[list[str]] = mapped_column(POSTGRES_JSON, nullable=False)
+    examples: Mapped[list[dict]] = mapped_column(POSTGRES_JSON, nullable=False)
+    test_cases: Mapped[list[dict]] = mapped_column(POSTGRES_JSON, nullable=False, default=list)
+    starter_code: Mapped[dict[str, str]] = mapped_column(POSTGRES_JSON, nullable=False)
     source: Mapped[str] = mapped_column(String(40), nullable=False, default="local")
     external_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
     external_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -101,7 +117,7 @@ class Problem(Base):
     time_limit_ms: Mapped[int] = mapped_column(nullable=False, default=2000)
     memory_limit_mb: Mapped[int | None] = mapped_column(nullable=True)
     validation: Mapped[str] = mapped_column(String(30), nullable=False, default="default")
-    package_metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    package_metadata: Mapped[dict | None] = mapped_column(POSTGRES_JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -118,13 +134,16 @@ class CodeWorkspace(Base):
             "language",
             name="uq_code_workspace_user_problem_language",
         ),
+        Index(
+            "ix_code_workspaces_user_updated_at",
+            "user_id",
+            "updated_at",
+        ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"),
-        index=True,
-        nullable=False,
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     problem_id: Mapped[int] = mapped_column(
         ForeignKey("problems.id", ondelete="CASCADE"),
@@ -143,12 +162,32 @@ class CodeWorkspace(Base):
 
 class CodingAttempt(Base):
     __tablename__ = "coding_attempts"
+    __table_args__ = (
+        Index(
+            "ix_coding_attempts_user_created_at",
+            "user_id",
+            "created_at",
+            "id",
+        ),
+        Index(
+            "ix_coding_attempts_user_problem_created_at",
+            "user_id",
+            "problem_id",
+            "created_at",
+            "id",
+        ),
+        Index(
+            "ix_coding_attempts_user_mode_status_created_at",
+            "user_id",
+            "mode",
+            "status",
+            "created_at",
+        ),
+    )
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"),
-        index=True,
-        nullable=False,
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     problem_id: Mapped[int] = mapped_column(
         ForeignKey("problems.id", ondelete="CASCADE"),
@@ -160,7 +199,7 @@ class CodingAttempt(Base):
     code: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
     summary: Mapped[str] = mapped_column(String(255), nullable=False)
-    results: Mapped[list[dict]] = mapped_column(JSON, nullable=False, default=list)
+    results: Mapped[list[dict]] = mapped_column(POSTGRES_JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -170,12 +209,20 @@ class CodingAttempt(Base):
 
 class MentorSession(Base):
     __tablename__ = "mentor_sessions"
+    __table_args__ = (
+        Index(
+            "ix_mentor_sessions_user_scope_problem_updated_at",
+            "user_id",
+            "scope",
+            "problem_id",
+            "updated_at",
+            "id",
+        ),
+    )
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"),
-        index=True,
-        nullable=False,
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     problem_id: Mapped[int | None] = mapped_column(
         ForeignKey("problems.id", ondelete="CASCADE"),
@@ -199,17 +246,131 @@ class MentorSession(Base):
 
 class MentorMessage(Base):
     __tablename__ = "mentor_messages"
+    __table_args__ = (
+        Index(
+            "ix_mentor_messages_session_created_at",
+            "session_id",
+            "created_at",
+            "id",
+        ),
+        Index(
+            "ix_mentor_messages_session_role_action",
+            "session_id",
+            "role",
+            "action",
+            "created_at",
+        ),
+    )
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(
         ForeignKey("mentor_sessions.id", ondelete="CASCADE"),
-        index=True,
         nullable=False,
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     action: Mapped[str | None] = mapped_column(String(30), nullable=True)
     hint_level: Mapped[int | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class CareerSkillProgress(Base):
+    __tablename__ = "career_skill_progress"
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "skill_type",
+            "skill_key",
+            name="uq_career_skill_progress_user_type_key",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    skill_type: Mapped[str] = mapped_column(String(40), nullable=False)
+    skill_key: Mapped[str] = mapped_column(String(120), nullable=False)
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="not_started")
+    score: Mapped[int] = mapped_column(nullable=False, default=0)
+    evidence_count: Mapped[int] = mapped_column(nullable=False, default=0)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class MockInterview(Base):
+    __tablename__ = "mock_interviews"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    role_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    mode: Mapped[str] = mapped_column(String(30), nullable=False, default="mixed")
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="in_progress")
+    current_index: Mapped[int] = mapped_column(nullable=False, default=0)
+    total_questions: Mapped[int] = mapped_column(nullable=False, default=0)
+    question_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    score: Mapped[int | None] = mapped_column(nullable=True)
+    feedback: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+
+class MockInterviewResponse(Base):
+    __tablename__ = "mock_interview_responses"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    interview_id: Mapped[int] = mapped_column(
+        ForeignKey("mock_interviews.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    question_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    score: Mapped[int | None] = mapped_column(nullable=True)
+    feedback: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
+class CareerResumeAnalysis(Base):
+    __tablename__ = "career_resume_analyses"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    role_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    matched_skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    missing_skills: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    recommendations: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    alignment_score: Mapped[int] = mapped_column(nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

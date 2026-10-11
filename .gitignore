@@ -37,3 +37,7 @@ Thumbs.db
 
 # Imported problem package cache
 .codementor_problem_packages/
+
+# Deployment artifacts and host-managed secrets
+deploy/backups/
+deploy/secrets/*.txt
